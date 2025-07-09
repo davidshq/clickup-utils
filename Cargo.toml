@@ -61,7 +61,7 @@ thiserror = "1.0"
 # Adds colored output for better user experience
 colored = "2.0"
 # Provides table formatting for structured output
-prettytable-rs = "0.9"
+prettytable-rs = "0.10"
 
 # Date/time handling
 # Used for timestamp parsing and formatting
