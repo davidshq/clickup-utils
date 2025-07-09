@@ -741,7 +741,7 @@ pub struct TasksResponse {
 /// 
 /// This struct represents a task in ClickUp with all its properties,
 /// metadata, and relationships.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Task {
     /// Unique task identifier
     pub id: String,
@@ -809,7 +809,7 @@ pub struct Task {
 }
 
 /// Task status information
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TaskStatus {
     /// Unique status identifier
     pub id: String,
@@ -826,7 +826,7 @@ pub struct TaskStatus {
 }
 
 /// Task creator information
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TaskCreator {
     /// Unique user identifier
     pub id: i64,
@@ -839,7 +839,7 @@ pub struct TaskCreator {
 }
 
 /// Task assignee information
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TaskAssignee {
     /// Unique user identifier
     pub id: i64,
@@ -856,7 +856,7 @@ pub struct TaskAssignee {
 }
 
 /// Task watcher information
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TaskWatcher {
     /// Unique user identifier
     pub id: i64,
@@ -875,7 +875,7 @@ pub struct TaskWatcher {
 /// Task checklist information
 /// 
 /// This struct represents a checklist within a task.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TaskChecklist {
     /// Unique checklist identifier
     pub id: String,
@@ -900,7 +900,7 @@ pub struct TaskChecklist {
 /// Task checklist item information
 /// 
 /// This struct represents an individual item within a task checklist.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TaskChecklistItem {
     /// Unique checklist item identifier
     pub id: String,
@@ -925,7 +925,7 @@ pub struct TaskChecklistItem {
 /// Task tag information
 /// 
 /// This struct represents a tag assigned to a task.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TaskTag {
     /// Tag display name
     pub name: Option<String>,
@@ -940,7 +940,7 @@ pub struct TaskTag {
 /// Task priority information
 /// 
 /// This struct defines the priority level of a task.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TaskPriority {
     /// Priority identifier
     #[serde(deserialize_with = "string_or_number")]
@@ -957,7 +957,7 @@ pub struct TaskPriority {
 /// Task custom field information
 /// 
 /// This struct represents a custom field value on a task.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TaskCustomField {
     /// Custom field identifier
     pub id: String,
@@ -975,7 +975,7 @@ pub struct TaskCustomField {
 /// Task list information
 /// 
 /// This struct contains information about the list containing the task.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TaskList {
     #[serde(deserialize_with = "string_or_number")]
     /// Unique list identifier
@@ -990,7 +990,7 @@ pub struct TaskList {
 /// Task folder information
 /// 
 /// This struct contains information about the folder containing the task's list.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TaskFolder {
     #[serde(deserialize_with = "string_or_number")]
     /// Unique folder identifier
@@ -1008,7 +1008,7 @@ pub struct TaskFolder {
 /// Task space information
 /// 
 /// This struct contains information about the space containing the task.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TaskSpace {
     #[serde(deserialize_with = "string_or_number")]
     /// Unique space identifier

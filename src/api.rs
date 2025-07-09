@@ -472,6 +472,7 @@ impl ClickUpApi {
             let query_params = vec![
                 ("page".to_string(), page.to_string()),
                 ("limit".to_string(), limit.to_string()),
+                ("subtasks".to_string(), "true".to_string()),
             ];
             
             let endpoint = format!("/list/{}/task", list_id);
@@ -634,38 +635,67 @@ impl ClickUpApi {
             
             match self.get_tasks(&list.id).await {
                 Ok(tasks_response) => {
-                    // Debug: Print all tags for each task
-                    for task in &tasks_response.tasks {
+                    // Helper function to recursively process tasks and their subtasks
+                    async fn process_task_recursively(api: &ClickUpApi, task: Task, tag: &str, depth: usize) -> Result<Vec<Task>, ClickUpError> {
+                        let mut matching_tasks = Vec::new();
+                        let indent = "  ".repeat(depth);
+                        
+                        // Process current task
                         let task_name = task.name.as_deref().unwrap_or("Unnamed Task");
                         let tag_names: Vec<String> = task.tags.iter()
                             .filter_map(|t| t.name.as_ref().map(|n| n.clone()))
                             .collect();
                         
                         if tag_names.is_empty() {
-                            println!("    Task '{}' (ID: {}): No tags", task_name, task.id);
+                            println!("{}Task '{}' (ID: {}): No tags", indent, task_name, task.id);
                         } else {
-                            println!("    Task '{}' (ID: {}): Tags: [{}]", 
-                                task_name, task.id, tag_names.join(", "));
+                            println!("{}Task '{}' (ID: {}): Tags: [{}]", 
+                                indent, task_name, task.id, tag_names.join(", "));
                         }
+                        
+                        // Check if current task has the tag
+                        let has_tag = task.tags.iter().any(|task_tag| {
+                            let tag_matches = task_tag.name.as_deref() == Some(tag);
+                            if tag_matches {
+                                println!("{}✓ Found matching tag '{}' on task '{}'", 
+                                    indent, tag, task_name);
+                            }
+                            tag_matches
+                        });
+                        
+                        if has_tag {
+                            matching_tasks.push(task.clone());
+                        }
+                        
+                        // Recursively process subtasks
+                        if let Some(subtasks) = &task.subtasks {
+                            println!("{}Found {} subtasks for task '{}'", indent, subtasks.len(), task_name);
+                            for subtask in subtasks {
+                                println!("{}  Subtask: '{}' (ID: {})", indent, subtask.name.as_deref().unwrap_or("Unnamed"), subtask.id);
+                                // Process subtask recursively (it should have full details including tags)
+                                let subtask_matches = Box::pin(process_task_recursively(api, subtask.clone(), tag, depth + 1)).await?;
+                                matching_tasks.extend(subtask_matches);
+                            }
+                        } else {
+                            println!("{}No subtasks found for task '{}'", indent, task_name);
+                        }
+                        
+                        Ok(matching_tasks)
                     }
                     
-                    // Filter tasks by tag
-                    let filtered_tasks: Vec<Task> = tasks_response.tasks
-                        .into_iter()
-                        .filter(|task| {
-                            let has_tag = task.tags.iter().any(|task_tag| {
-                                let tag_matches = task_tag.name.as_deref() == Some(tag.as_str());
-                                if tag_matches {
-                                    println!("    ✓ Found matching tag '{}' on task '{}'", 
-                                        tag, task.name.as_deref().unwrap_or("Unnamed Task"));
-                                }
-                                tag_matches
-                            });
-                            has_tag
-                        })
-                        .collect();
-                    
-                    all_tasks.extend(filtered_tasks);
+                    // Process all tasks and their subtasks
+                    let mut all_matching_tasks = Vec::new();
+                    for task in tasks_response.tasks {
+                        match process_task_recursively(self, task, &tag, 1).await {
+                            Ok(task_matches) => {
+                                all_matching_tasks.extend(task_matches);
+                            }
+                            Err(e) => {
+                                println!("{} Warning: Could not process task: {}", "⚠️".yellow(), e);
+                            }
+                        }
+                    }
+                    all_tasks.extend(all_matching_tasks);
                 }
                 Err(e) => {
                     println!("{} Warning: Could not fetch tasks from list '{}': {}", "⚠️".yellow(), list_name, e);
