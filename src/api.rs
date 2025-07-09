@@ -33,6 +33,7 @@
 use crate::config::Config;
 use crate::error::ClickUpError;
 use crate::models::*;
+use colored::Colorize;
 use log::{debug, error};
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
 use reqwest::Client;
@@ -147,12 +148,24 @@ impl ClickUpApi {
         method: reqwest::Method,
         endpoint: &str,
         body: Option<Value>,
+        query_params: Option<Vec<(String, String)>>,
     ) -> Result<T, ClickUpError>
     where
         T: for<'de> serde::Deserialize<'de>,
     {
         // Construct the full URL
-        let url = format!("{}{}", self.config.api_base_url, endpoint);
+        let mut url = format!("{}{}", self.config.api_base_url, endpoint);
+        
+        // Add query parameters if provided
+        if let Some(params) = query_params {
+            let query_string: String = params
+                .iter()
+                .map(|(key, value)| format!("{}={}", key, value))
+                .collect::<Vec<_>>()
+                .join("&");
+            url = format!("{}?{}", url, query_string);
+        }
+        
         let mut request = self.client.request(method, &url);
 
         // Add authentication header
@@ -216,6 +229,106 @@ impl ClickUpApi {
         })
     }
 
+    /// Makes an HTTP request to the ClickUp API and returns raw response text
+    /// 
+    /// This is similar to make_request but returns the raw response text instead of parsing it.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `method` - The HTTP method to use (GET, POST, PUT, DELETE)
+    /// * `endpoint` - The API endpoint path (without base URL)
+    /// * `body` - Optional JSON body for POST/PUT requests
+    /// * `query_params` - Optional query parameters
+    /// 
+    /// # Returns
+    /// 
+    /// Returns the raw response text on success, or a `ClickUpError` on failure.
+    /// 
+    /// # Errors
+    /// 
+    /// This function can return various errors including:
+    /// - Network errors (timeout, connection issues)
+    /// - Authentication errors (invalid token)
+    /// - API errors (4xx, 5xx responses)
+    async fn make_request_raw(
+        &self,
+        method: reqwest::Method,
+        endpoint: &str,
+        body: Option<Value>,
+        query_params: Option<Vec<(String, String)>>,
+    ) -> Result<String, ClickUpError> {
+        // Construct the full URL
+        let mut url = format!("{}{}", self.config.api_base_url, endpoint);
+        
+        // Add query parameters if provided
+        if let Some(params) = query_params {
+            let query_string: String = params
+                .iter()
+                .map(|(key, value)| format!("{}={}", key, value))
+                .collect::<Vec<_>>()
+                .join("&");
+            url = format!("{}?{}", url, query_string);
+        }
+        
+        let mut request = self.client.request(method, &url);
+
+        // Add authentication header
+        let auth_header = self.get_auth_header()?;
+        request = request.header(AUTHORIZATION, auth_header);
+
+        // Add request body if provided
+        if let Some(body) = body {
+            request = request.json(&body);
+        }
+
+        debug!("Making request to: {}", url);
+
+        // Send the request
+        let response = request.send().await.map_err(|e| {
+            error!("Request failed: {}", e);
+            ClickUpError::from(e)
+        })?;
+
+        // Check for rate limiting headers
+        if let Some(retry_after) = response.headers().get("Retry-After") {
+            if let (Ok(_s), Ok(retry_seconds)) = (retry_after.to_str(), retry_after.to_str().unwrap().parse::<u64>()) {
+                debug!("Rate limited, retry after {} seconds", retry_seconds);
+                return Err(ClickUpError::RateLimitError);
+            }
+        }
+
+        let status = response.status();
+        let response_text = response.text().await.map_err(|e| {
+            error!("Failed to read response: {}", e);
+            ClickUpError::NetworkError(format!("Failed to read response: {}", e))
+        })?;
+
+        debug!("Response status: {}, body: {}", status, response_text);
+
+        // Handle error responses
+        if !status.is_success() {
+            let error_msg = if !response_text.is_empty() {
+                response_text
+            } else {
+                format!("HTTP {}: {}", status.as_u16(), status.canonical_reason().unwrap_or("Unknown"))
+            };
+
+            return match status.as_u16() {
+                400 => Err(ClickUpError::ValidationError(format!("Bad request: {}", error_msg))),
+                401 => Err(ClickUpError::AuthError("Invalid API token".to_string())),
+                403 => Err(ClickUpError::PermissionError("Insufficient permissions".to_string())),
+                404 => Err(ClickUpError::NotFoundError("Resource not found".to_string())),
+                409 => Err(ClickUpError::ApiError(format!("Conflict: {}", error_msg))),
+                422 => Err(ClickUpError::ValidationError(format!("Validation error: {}", error_msg))),
+                429 => Err(ClickUpError::RateLimitError),
+                500..=599 => Err(ClickUpError::ApiError(format!("Server error: {}", error_msg))),
+                _ => Err(ClickUpError::ApiError(error_msg)),
+            };
+        }
+
+        Ok(response_text)
+    }
+
     // User endpoints
 
     /// Retrieves the current user's information
@@ -231,7 +344,7 @@ impl ClickUpApi {
     /// 
     /// This function can return authentication or network errors.
     pub async fn get_user(&self) -> Result<User, ClickUpError> {
-        self.make_request(reqwest::Method::GET, "/user", None).await
+        self.make_request(reqwest::Method::GET, "/user", None, None).await
     }
 
     // Workspace endpoints
@@ -249,7 +362,12 @@ impl ClickUpApi {
     /// 
     /// This function can return authentication, permission, or network errors.
     pub async fn get_workspaces(&self) -> Result<WorkspacesResponse, ClickUpError> {
-        self.make_request(reqwest::Method::GET, "/team", None).await
+        let response_text = self.make_request_raw(reqwest::Method::GET, "/team", None, None).await?;
+        println!("DEBUG: Raw workspace response (first 500 chars): {}", &response_text[..response_text.len().min(500)]);
+        serde_json::from_str(&response_text).map_err(|e| {
+            error!("Failed to parse workspace response: {}", e);
+            ClickUpError::DeserializationError(format!("Failed to parse workspace response: {}", e))
+        })
     }
 
     // Space endpoints
@@ -269,7 +387,7 @@ impl ClickUpApi {
     /// This function can return authentication, permission, or network errors.
     pub async fn get_spaces(&self, workspace_id: &str) -> Result<SpacesResponse, ClickUpError> {
         let endpoint = format!("/team/{}/space", workspace_id);
-        self.make_request(reqwest::Method::GET, &endpoint, None).await
+        self.make_request(reqwest::Method::GET, &endpoint, None, None).await
     }
 
     // List endpoints
@@ -289,7 +407,7 @@ impl ClickUpApi {
     /// This function can return authentication, permission, or network errors.
     pub async fn get_lists(&self, space_id: &str) -> Result<ListsResponse, ClickUpError> {
         let endpoint = format!("/space/{}/list", space_id);
-        self.make_request(reqwest::Method::GET, &endpoint, None).await
+        self.make_request(reqwest::Method::GET, &endpoint, None, None).await
     }
 
     // Task endpoints
@@ -309,7 +427,142 @@ impl ClickUpApi {
     /// This function can return authentication, permission, or network errors.
     pub async fn get_tasks(&self, list_id: &str) -> Result<TasksResponse, ClickUpError> {
         let endpoint = format!("/list/{}/task", list_id);
-        self.make_request(reqwest::Method::GET, &endpoint, None).await
+        self.make_request(reqwest::Method::GET, &endpoint, None, None).await
+    }
+
+    /// Retrieves tasks within a specific list filtered by tag
+    /// 
+    /// Note: This performs client-side filtering since the ClickUp API may not support
+    /// server-side tag filtering. All tasks are fetched and then filtered locally.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `list_id` - The ID of the list to get tasks from
+    /// * `tag` - The tag name to filter by
+    /// 
+    /// # Returns
+    /// 
+    /// Returns a `TasksResponse` containing a list of tasks with the specified tag.
+    /// 
+    /// # Errors
+    /// 
+    /// This function can return authentication, permission, or network errors.
+    pub async fn get_tasks_by_tag(&self, list_id: &str, tag: &str) -> Result<TasksResponse, ClickUpError> {
+        // Get all tasks from the list
+        let all_tasks = self.get_tasks(list_id).await?;
+        
+        // Filter tasks that have the specified tag
+        let filtered_tasks: Vec<Task> = all_tasks.tasks
+            .into_iter()
+            .filter(|task| {
+                task.tags.iter().any(|task_tag| task_tag.name.as_deref() == Some(tag))
+            })
+            .collect();
+        
+        Ok(TasksResponse { tasks: filtered_tasks })
+    }
+
+    /// Searches for tasks with a specific tag across all lists in a space
+    /// 
+    /// This method will prompt the user to select workspace and space if not provided,
+    /// then search through all lists in the selected space for tasks with the specified tag.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `tag` - The tag name to search for
+    /// * `workspace_id` - Optional workspace ID (will prompt if not provided)
+    /// * `space_id` - Optional space ID (will prompt if not provided)
+    /// 
+    /// # Returns
+    /// 
+    /// Returns a `TasksResponse` containing all tasks with the specified tag.
+    /// 
+    /// # Errors
+    /// 
+    /// This function can return authentication, permission, or network errors.
+    pub async fn search_tasks_by_tag(&self, tag: String, workspace_id: Option<String>, space_id: Option<String>) -> Result<TasksResponse, ClickUpError> {
+        use std::io::{self, Write};
+        
+        let mut all_tasks = Vec::new();
+        
+        // Get workspace ID
+        let workspace_id = if let Some(id) = workspace_id {
+            id
+        } else {
+            println!("{}", "Available Workspaces:".bold());
+            let workspaces = self.get_workspaces().await?;
+            for (i, workspace) in workspaces.teams.iter().enumerate() {
+                println!("  {}. {} ({})", i + 1, workspace.name.as_deref().unwrap_or(""), workspace.id);
+            }
+            
+            print!("Select workspace (enter number): ");
+            io::stdout().flush().map_err(|e| ClickUpError::ApiError(format!("Failed to flush stdout: {}", e)))?;
+            
+            let mut input = String::new();
+            io::stdin().read_line(&mut input).map_err(|e| ClickUpError::ApiError(format!("Failed to read input: {}", e)))?;
+            
+            let selection: usize = input.trim().parse().map_err(|_| ClickUpError::ValidationError("Invalid workspace selection".to_string()))?;
+            
+            if selection == 0 || selection > workspaces.teams.len() {
+                return Err(ClickUpError::ValidationError("Invalid workspace selection".to_string()));
+            }
+            
+            workspaces.teams[selection - 1].id.clone()
+        };
+        
+        // Get space ID
+        let space_id = if let Some(id) = space_id {
+            id
+        } else {
+            println!("{}", "Available Spaces:".bold());
+            let spaces = self.get_spaces(&workspace_id).await?;
+            for (i, space) in spaces.spaces.iter().enumerate() {
+                println!("  {}. {} ({})", i + 1, space.name.as_deref().unwrap_or(""), space.id);
+            }
+            
+            print!("Select space (enter number): ");
+            io::stdout().flush().map_err(|e| ClickUpError::ApiError(format!("Failed to flush stdout: {}", e)))?;
+            
+            let mut input = String::new();
+            io::stdin().read_line(&mut input).map_err(|e| ClickUpError::ApiError(format!("Failed to read input: {}", e)))?;
+            
+            let selection: usize = input.trim().parse().map_err(|_| ClickUpError::ValidationError("Invalid space selection".to_string()))?;
+            
+            if selection == 0 || selection > spaces.spaces.len() {
+                return Err(ClickUpError::ValidationError("Invalid space selection".to_string()));
+            }
+            
+            spaces.spaces[selection - 1].id.clone()
+        };
+        
+        // Get all lists in the space
+        let lists = self.get_lists(&space_id).await?;
+        
+        println!("{}", format!("Searching through {} lists for tasks with tag '{}'...", lists.lists.len(), tag).blue());
+        
+        // Search through each list
+        for list in &lists.lists {
+            println!("  Checking list: {}", list.name.as_deref().unwrap_or(""));
+            
+            match self.get_tasks(&list.id).await {
+                Ok(tasks_response) => {
+                    // Filter tasks by tag
+                    let filtered_tasks: Vec<Task> = tasks_response.tasks
+                        .into_iter()
+                        .filter(|task| {
+                            task.tags.iter().any(|task_tag| task_tag.name.as_deref() == Some(tag.as_str()))
+                        })
+                        .collect();
+                    
+                    all_tasks.extend(filtered_tasks);
+                }
+                Err(e) => {
+                    println!("{} Warning: Could not fetch tasks from list '{}': {}", "⚠️".yellow(), list.name.as_deref().unwrap_or(""), e);
+                }
+            }
+        }
+        
+        Ok(TasksResponse { tasks: all_tasks })
     }
 
     /// Retrieves a specific task by its ID
@@ -327,7 +580,7 @@ impl ClickUpApi {
     /// This function can return authentication, permission, or network errors.
     pub async fn get_task(&self, task_id: &str) -> Result<Task, ClickUpError> {
         let endpoint = format!("/task/{}", task_id);
-        self.make_request(reqwest::Method::GET, &endpoint, None).await
+        self.make_request(reqwest::Method::GET, &endpoint, None, None).await
     }
 
     /// Creates a new task in a specific list
@@ -349,7 +602,7 @@ impl ClickUpApi {
         let body = serde_json::to_value(task_data).map_err(|e| {
             ClickUpError::SerializationError(format!("Failed to serialize task data: {}", e))
         })?;
-        self.make_request(reqwest::Method::POST, &endpoint, Some(body)).await
+        self.make_request(reqwest::Method::POST, &endpoint, Some(body), None).await
     }
 
     /// Updates an existing task
@@ -371,7 +624,7 @@ impl ClickUpApi {
         let body = serde_json::to_value(task_data).map_err(|e| {
             ClickUpError::SerializationError(format!("Failed to serialize task data: {}", e))
         })?;
-        self.make_request(reqwest::Method::PUT, &endpoint, Some(body)).await
+        self.make_request(reqwest::Method::PUT, &endpoint, Some(body), None).await
     }
 
     /// Deletes a task
@@ -389,7 +642,7 @@ impl ClickUpApi {
     /// This function can return authentication, permission, or network errors.
     pub async fn delete_task(&self, task_id: &str) -> Result<(), ClickUpError> {
         let endpoint = format!("/task/{}", task_id);
-        let _: Value = self.make_request(reqwest::Method::DELETE, &endpoint, None).await?;
+        let _: Value = self.make_request(reqwest::Method::DELETE, &endpoint, None, None).await?;
         Ok(())
     }
 
@@ -410,7 +663,7 @@ impl ClickUpApi {
     /// This function can return authentication, permission, or network errors.
     pub async fn get_comments(&self, task_id: &str) -> Result<CommentsResponse, ClickUpError> {
         let endpoint = format!("/task/{}/comment", task_id);
-        self.make_request(reqwest::Method::GET, &endpoint, None).await
+        self.make_request(reqwest::Method::GET, &endpoint, None, None).await
     }
 
     /// Creates a new comment on a task
@@ -432,7 +685,7 @@ impl ClickUpApi {
         let body = serde_json::to_value(comment_data).map_err(|e| {
             ClickUpError::SerializationError(format!("Failed to serialize comment data: {}", e))
         })?;
-        self.make_request(reqwest::Method::POST, &endpoint, Some(body)).await
+        self.make_request(reqwest::Method::POST, &endpoint, Some(body), None).await
     }
 
     // Additional API endpoints
@@ -452,7 +705,7 @@ impl ClickUpApi {
     /// This function can return authentication, permission, or network errors.
     pub async fn get_workspace(&self, workspace_id: &str) -> Result<Workspace, ClickUpError> {
         let endpoint = format!("/team/{}", workspace_id);
-        self.make_request(reqwest::Method::GET, &endpoint, None).await
+        self.make_request(reqwest::Method::GET, &endpoint, None, None).await
     }
 
     /// Updates a comment on a task
@@ -474,7 +727,7 @@ impl ClickUpApi {
         let body = serde_json::to_value(comment_data).map_err(|e| {
             ClickUpError::SerializationError(format!("Failed to serialize comment data: {}", e))
         })?;
-        self.make_request(reqwest::Method::PUT, &endpoint, Some(body)).await
+        self.make_request(reqwest::Method::PUT, &endpoint, Some(body), None).await
     }
 
     /// Deletes a comment
@@ -492,7 +745,7 @@ impl ClickUpApi {
     /// This function can return authentication, permission, or network errors.
     pub async fn delete_comment(&self, comment_id: &str) -> Result<(), ClickUpError> {
         let endpoint = format!("/comment/{}", comment_id);
-        let _: Value = self.make_request(reqwest::Method::DELETE, &endpoint, None).await?;
+        let _: Value = self.make_request(reqwest::Method::DELETE, &endpoint, None, None).await?;
         Ok(())
     }
 } 

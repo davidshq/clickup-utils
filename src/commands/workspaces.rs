@@ -53,7 +53,7 @@ async fn list_workspaces(api: &ClickUpApi) -> Result<(), ClickUpError> {
     for workspace in &workspaces.teams {
         table.add_row(vec![
             Cell::new(&workspace.id),
-            Cell::new(&workspace.name),
+            Cell::new(workspace.name.as_deref().unwrap_or("")),
             Cell::new(workspace.members.len().to_string()),
             Cell::new(workspace.color.as_deref().unwrap_or("None")),
         ]);
@@ -68,7 +68,7 @@ async fn show_workspace(api: &ClickUpApi, workspace_id: &str) -> Result<(), Clic
 
     println!("{}", "Workspace Details".bold());
     println!("ID: {}", workspace.id);
-    println!("Name: {}", workspace.name);
+    println!("Name: {}", workspace.name.as_deref().unwrap_or(""));
     println!("Color: {}", workspace.color.as_deref().unwrap_or("None"));
     println!("Avatar: {}", workspace.avatar.as_deref().unwrap_or("None"));
     println!("Members: {}", workspace.members.len());
@@ -90,7 +90,7 @@ async fn show_workspace(api: &ClickUpApi, workspace_id: &str) -> Result<(), Clic
         if !roles.is_empty() {
             println!("\n{}", "Roles:".bold());
             for role in roles {
-                println!("  - {} ({})", role.name, role.key);
+                println!("  - {} (ID: {})", role.name, role.id);
             }
         }
     }

@@ -7,6 +7,9 @@
 
 A powerful command-line interface for the ClickUp API that allows you to manage your ClickUp workspaces, spaces, lists, tasks, and comments directly from the terminal.
 
+## WARNING: Vibe Coded
+This has been vibe coded using primarily Cursor. Expect the code quality to be low.
+
 ## 🚀 Features
 
 - **🔐 Authentication Management**: Secure API token storage and management
@@ -152,6 +155,12 @@ clickup-cli lists show --id <list-id>
 ```bash
 # List all tasks in a list
 clickup-cli tasks list --list-id <list-id>
+
+# List tasks filtered by tag (client-side filtering)
+clickup-cli tasks list-by-tag --list-id <list-id> --tag <tag-name>
+
+# Search for tasks with a specific tag across all lists in a space
+clickup-cli tasks search-by-tag --tag <tag-name> [--workspace-id <workspace-id>] [--space-id <space-id>]
 
 # Show details of a specific task
 clickup-cli tasks show --id <task-id>
@@ -319,6 +328,15 @@ clickup-cli tasks create \
 clickup-cli tasks update \
   --id "task_abc123" \
   --status "done"
+
+# List tasks with specific tag
+clickup-cli tasks list-by-tag \
+  --list-id "list_789" \
+  --tag "update-auto"
+
+# Search for tasks with specific tag across all lists in a space
+clickup-cli tasks search-by-tag \
+  --tag "update-auto"
 
 # Delete completed tasks
 clickup-cli tasks delete --id "task_abc123"

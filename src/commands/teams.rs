@@ -51,7 +51,7 @@ async fn list_teams(api: &ClickUpApi) -> Result<(), ClickUpError> {
     for team in &workspaces.teams {
         table.add_row(vec![
             Cell::new(&team.id),
-            Cell::new(&team.name),
+            Cell::new(team.name.as_deref().unwrap_or("")),
             Cell::new(team.members.len().to_string()),
             Cell::new(team.color.as_deref().unwrap_or("None")),
         ]);
@@ -71,7 +71,7 @@ async fn show_team(api: &ClickUpApi, team_id: &str) -> Result<(), ClickUpError> 
 
     println!("{}", "Team Details".bold());
     println!("ID: {}", team.id);
-    println!("Name: {}", team.name);
+    println!("Name: {}", team.name.as_deref().unwrap_or(""));
     println!("Color: {}", team.color.as_deref().unwrap_or("None"));
     println!("Avatar: {}", team.avatar.as_deref().unwrap_or("None"));
     println!("Members: {}", team.members.len());
@@ -93,7 +93,7 @@ async fn show_team(api: &ClickUpApi, team_id: &str) -> Result<(), ClickUpError> 
         if !roles.is_empty() {
             println!("\n{}", "Roles:".bold());
             for role in roles {
-                println!("  - {} ({})", role.name, role.key);
+                println!("  - {} (ID: {})", role.name, role.id);
             }
         }
     }

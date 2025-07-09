@@ -134,7 +134,7 @@ async fn show_comment(api: &ClickUpApi, comment_id: &str) -> Result<(), ClickUpE
                     if let Some(comment) = comments.comments.into_iter().find(|c| c.id == comment_id) {
                         println!("{}", "Comment Details".bold());
                         println!("ID: {}", comment.id);
-                        println!("Task: {} ({})", task.name, task.id);
+                        println!("Task: {} ({})", task.name.as_deref().unwrap_or(""), task.id);
                         println!("User: {} ({})", comment.user.username, comment.user.id);
                         println!("Created: {}", comment.date_created);
                         println!("Updated: {}", comment.date_updated);

@@ -37,7 +37,239 @@
 //! };
 //! ```
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, Deserializer};
+
+// Custom deserializers for handling ClickUp API type inconsistencies
+
+/// Deserializes a field that can be either a string or a number into a String
+fn string_or_number<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct StringOrNumberVisitor;
+    impl<'de> serde::de::Visitor<'de> for StringOrNumberVisitor {
+        type Value = String;
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a string or a number")
+        }
+        fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(value.to_owned())
+        }
+        fn visit_string<E>(self, value: String) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(value)
+        }
+        fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(value.to_string())
+        }
+        fn visit_i64<E>(self, value: i64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(value.to_string())
+        }
+    }
+    deserializer.deserialize_any(StringOrNumberVisitor)
+}
+
+/// Deserializes a field that can be either a string or a number into an Option<i64>
+fn opt_i64_from_string_or_number<'de, D>(deserializer: D) -> Result<Option<i64>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct OptI64Visitor;
+    impl<'de> serde::de::Visitor<'de> for OptI64Visitor {
+        type Value = Option<i64>;
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("an integer, a string containing an integer, or null")
+        }
+        fn visit_none<E>(self) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(None)
+        }
+        fn visit_some<D2>(self, deserializer: D2) -> Result<Self::Value, D2::Error>
+        where
+            D2: serde::Deserializer<'de>,
+        {
+            let val: serde_json::Value = Deserialize::deserialize(deserializer)?;
+            match val {
+                serde_json::Value::Number(n) => n.as_i64().map(Some).ok_or_else(|| serde::de::Error::custom("invalid number for i64")),
+                serde_json::Value::String(s) => s.parse::<i64>().map(Some).map_err(|_| serde::de::Error::custom("invalid string for i64")),
+                _ => Err(serde::de::Error::custom("unexpected type for Option<i64>")),
+            }
+        }
+    }
+    deserializer.deserialize_option(OptI64Visitor)
+}
+
+/// Deserializes a field that can be either a string or a number into an i64
+fn i64_from_string_or_number<'de, D>(deserializer: D) -> Result<i64, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct I64Visitor;
+    impl<'de> serde::de::Visitor<'de> for I64Visitor {
+        type Value = i64;
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("an integer or a string containing an integer")
+        }
+        fn visit_i64<E>(self, value: i64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(value)
+        }
+        fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(value as i64)
+        }
+        fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            value.parse::<i64>().map_err(|_| serde::de::Error::custom("invalid string for i64"))
+        }
+        fn visit_string<E>(self, value: String) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            value.parse::<i64>().map_err(|_| serde::de::Error::custom("invalid string for i64"))
+        }
+    }
+    deserializer.deserialize_any(I64Visitor)
+}
+
+/// Deserializes a field that can be either a string or a number into an Option<String>
+fn opt_string_from_string_or_number<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct OptStringVisitor;
+    impl<'de> serde::de::Visitor<'de> for OptStringVisitor {
+        type Value = Option<String>;
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a string, a number, or null")
+        }
+        fn visit_none<E>(self) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(None)
+        }
+        fn visit_some<D2>(self, deserializer: D2) -> Result<Self::Value, D2::Error>
+        where
+            D2: serde::Deserializer<'de>,
+        {
+            let val: serde_json::Value = Deserialize::deserialize(deserializer)?;
+            match val {
+                serde_json::Value::String(s) => Ok(Some(s)),
+                serde_json::Value::Number(n) => Ok(Some(n.to_string())),
+                _ => Err(serde::de::Error::custom("unexpected type for Option<String>")),
+            }
+        }
+    }
+    deserializer.deserialize_option(OptStringVisitor)
+}
+
+/// Deserializes a field that can be either a bool or an integer (0/1) into a bool
+fn bool_from_bool_or_int<'de, D>(deserializer: D) -> Result<bool, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct BoolOrIntVisitor;
+    impl<'de> serde::de::Visitor<'de> for BoolOrIntVisitor {
+        type Value = bool;
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a boolean or 0/1 integer")
+        }
+        fn visit_bool<E>(self, value: bool) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(value)
+        }
+        fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            match value {
+                0 => Ok(false),
+                1 => Ok(true),
+                _ => Err(serde::de::Error::custom("invalid integer for bool")),
+            }
+        }
+        fn visit_i64<E>(self, value: i64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            match value {
+                0 => Ok(false),
+                1 => Ok(true),
+                _ => Err(serde::de::Error::custom("invalid integer for bool")),
+            }
+        }
+    }
+    deserializer.deserialize_any(BoolOrIntVisitor)
+}
+
+/// Deserializes a field that can be either a bool or an integer (0/1) into an Option<bool>
+fn opt_bool_from_bool_or_int<'de, D>(deserializer: D) -> Result<Option<bool>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct OptBoolOrIntVisitor;
+    impl<'de> serde::de::Visitor<'de> for OptBoolOrIntVisitor {
+        type Value = Option<bool>;
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a boolean, 0/1 integer, or null")
+        }
+        fn visit_bool<E>(self, value: bool) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(Some(value))
+        }
+        fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            match value {
+                0 => Ok(Some(false)),
+                1 => Ok(Some(true)),
+                _ => Ok(None), // Invalid integer becomes None
+            }
+        }
+        fn visit_i64<E>(self, value: i64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            match value {
+                0 => Ok(Some(false)),
+                1 => Ok(Some(true)),
+                _ => Ok(None), // Invalid integer becomes None
+            }
+        }
+        fn visit_none<E>(self) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(None)
+        }
+    }
+    deserializer.deserialize_any(OptBoolOrIntVisitor)
+}
 
 // User models
 
@@ -60,7 +292,7 @@ pub struct UserData {
     /// Unique user identifier
     pub id: i64,
     /// User's display name
-    pub username: String,
+    pub username: Option<String>,
     /// User's email address
     pub email: String,
     /// User's preferred color for UI display
@@ -98,10 +330,11 @@ pub struct WorkspacesResponse {
 /// It contains spaces, members, and role definitions.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Workspace {
+    #[serde(deserialize_with = "string_or_number")]
     /// Unique workspace identifier
     pub id: String,
     /// Workspace display name
-    pub name: String,
+    pub name: Option<String>,
     /// Workspace color for UI display
     pub color: Option<String>,
     /// URL to workspace avatar
@@ -140,11 +373,14 @@ pub struct WorkspaceMemberUser {
     pub initials: Option<String>,
     /// URL to user's profile picture
     pub profile_picture: Option<String>,
-    /// User's role in the workspace
+    /// User's role in the workspace - can be string or number
+    #[serde(deserialize_with = "opt_i64_from_string_or_number", default)]
     pub role: Option<i64>,
-    /// User's role subtype
+    /// User's role subtype - can be string or number
+    #[serde(deserialize_with = "opt_i64_from_string_or_number", default)]
     pub role_subtype: Option<i64>,
-    /// User's role key
+    /// User's role key - can be string or number
+    #[serde(deserialize_with = "opt_string_from_string_or_number", default)]
     pub role_key: Option<String>,
     /// Custom role configuration
     pub custom_role: Option<serde_json::Value>,
@@ -169,12 +405,10 @@ pub struct WorkspaceRole {
     pub id: i64,
     /// Role display name
     pub name: String,
-    /// Role key for programmatic access
-    pub key: String,
     /// Role color for UI display
     pub color: Option<String>,
-    /// Role display order
-    pub orderindex: i64,
+    /// Role permissions
+    pub permissions: Option<serde_json::Value>,
 }
 
 // Space models
@@ -190,83 +424,143 @@ pub struct SpacesResponse {
 
 /// Space information
 /// 
-/// A space represents a project or organizational unit within a workspace.
-/// It contains lists, tasks, and has specific features enabled.
+/// A space represents a project or team within a workspace.
+/// It contains lists, folders, and task organization.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Space {
+    #[serde(deserialize_with = "string_or_number")]
     /// Unique space identifier
     pub id: String,
     /// Space display name
-    pub name: String,
+    pub name: Option<String>,
     /// Whether the space is private
+    #[serde(deserialize_with = "bool_from_bool_or_int")]
     pub private: bool,
-    /// Available statuses in the space
-    pub statuses: Vec<SpaceStatus>,
-    /// Whether multiple assignees are allowed
+    /// Space color for UI display
+    pub color: Option<String>,
+    /// URL to space avatar
+    pub avatar: Option<String>,
+    /// Whether the space allows multiple assignees
     pub multiple_assignees: bool,
     /// Space features configuration
-    pub features: SpaceFeatures,
+    pub features: Option<SpaceFeatures>,
+    /// Whether the space is archived
+    pub archived: bool,
+    /// Space statuses
+    pub statuses: Vec<SpaceStatus>,
 }
 
-/// Space status definition
+/// Space features configuration
 /// 
-/// This struct defines a status that can be assigned to tasks within a space.
+/// This struct defines the features enabled for a space.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SpaceFeatures {
+    /// Due date features
+    pub due_dates: Option<DueDateFeatures>,
+    /// Time tracking features
+    pub time_tracking: Option<TimeTrackingFeatures>,
+    /// Tag features
+    pub tags: Option<TagFeatures>,
+    /// Time estimate features
+    pub time_estimates: Option<TimeEstimateFeatures>,
+    /// Checklist features
+    pub checklists: Option<ChecklistFeatures>,
+    /// Custom field features
+    pub custom_fields: Option<CustomFieldFeatures>,
+    /// Dependency features
+    pub remap_dependencies: Option<DependencyFeatures>,
+    /// Dependency warning features
+    pub dependency_warning: Option<DependencyWarningFeatures>,
+    /// Portfolio features
+    pub portfolios: Option<PortfolioFeatures>,
+}
+
+/// Due date features configuration
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DueDateFeatures {
+    /// Whether due dates are enabled
+    pub enabled: bool,
+    /// Whether start dates are enabled
+    pub start_date: bool,
+    /// Whether due date remapping is enabled
+    pub remap_due_dates: bool,
+    /// Whether closed due date remapping is enabled
+    pub remap_closed_due_date: bool,
+}
+
+/// Time tracking features configuration
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TimeTrackingFeatures {
+    /// Whether time tracking is enabled
+    pub enabled: bool,
+}
+
+/// Tag features configuration
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TagFeatures {
+    /// Whether tags are enabled
+    pub enabled: bool,
+}
+
+/// Time estimate features configuration
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TimeEstimateFeatures {
+    /// Whether time estimates are enabled
+    pub enabled: bool,
+}
+
+/// Checklist features configuration
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ChecklistFeatures {
+    /// Whether checklists are enabled
+    pub enabled: bool,
+}
+
+/// Custom field features configuration
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CustomFieldFeatures {
+    /// Whether custom fields are enabled
+    pub enabled: bool,
+}
+
+/// Dependency features configuration
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DependencyFeatures {
+    /// Whether dependency remapping is enabled
+    pub enabled: bool,
+}
+
+/// Dependency warning features configuration
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DependencyWarningFeatures {
+    /// Whether dependency warnings are enabled
+    pub enabled: bool,
+}
+
+/// Portfolio features configuration
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PortfolioFeatures {
+    /// Whether portfolios are enabled
+    pub enabled: bool,
+}
+
+/// Space status information
+/// 
+/// This struct represents a status that can be assigned to tasks in a space.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SpaceStatus {
     /// Unique status identifier
     pub id: String,
     /// Status display name
     pub status: String,
-    /// Status type (e.g., "open", "closed")
-    pub type_: String,
-    /// Status display order
-    pub orderindex: i64,
     /// Status color for UI display
     pub color: String,
-}
-
-/// Space features configuration
-/// 
-/// This struct defines which features are enabled for a space.
-#[derive(Debug, Serialize, Deserialize)]
-pub struct SpaceFeatures {
-    /// Due date functionality
-    pub due_dates: SpaceFeature,
-    /// Sprint functionality
-    pub sprints: SpaceFeature,
-    /// Time tracking functionality
-    pub time_tracking: SpaceFeature,
-    /// Story points functionality
-    pub points: SpaceFeature,
-    /// Custom items functionality
-    pub custom_items: SpaceFeature,
-    /// Priority functionality
-    pub priorities: SpaceFeature,
-    /// Tag functionality
-    pub tags: SpaceFeature,
-    /// Time estimates functionality
-    pub time_estimates: SpaceFeature,
-    /// Check unresolved functionality
-    pub check_unresolved: SpaceFeature,
-    /// Zoom integration
-    pub zoom: SpaceFeature,
-    /// Milestone functionality
-    pub milestones: SpaceFeature,
-    /// Custom fields functionality
-    pub custom_fields: SpaceFeature,
-    /// Dependency warning functionality
-    pub dependency_warning: SpaceFeature,
-    /// Multiple assignees functionality
-    pub multiple_assignees: SpaceFeature,
-}
-
-/// Individual space feature configuration
-/// 
-/// This struct defines whether a specific feature is enabled in a space.
-#[derive(Debug, Serialize, Deserialize)]
-pub struct SpaceFeature {
-    /// Whether the feature is enabled
-    pub enabled: bool,
+    /// Status display order
+    #[serde(deserialize_with = "i64_from_string_or_number")]
+    pub orderindex: i64,
+    /// Status type
+    #[serde(rename = "type")]
+    pub type_: String,
 }
 
 // List models
@@ -283,139 +577,204 @@ pub struct ListsResponse {
 /// List information
 /// 
 /// A list represents a collection of tasks within a space.
-/// It can be organized in folders and has various metadata.
+/// It can be organized in folders or directly in the space.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct List {
+    #[serde(deserialize_with = "string_or_number")]
     /// Unique list identifier
     pub id: String,
     /// List display name
-    pub name: String,
+    pub name: Option<String>,
     /// List display order
+    #[serde(deserialize_with = "i64_from_string_or_number")]
     pub orderindex: i64,
-    /// List description content
-    pub content: String,
-    /// Current list status
-    pub status: Option<serde_json::Value>,
-    /// List priority setting
-    pub priority: Option<serde_json::Value>,
+    /// List content/description
+    pub content: Option<String>,
+    /// List status configuration
+    pub status: Option<ListStatus>,
+    /// List priority configuration
+    pub priority: Option<ListPriority>,
     /// List assignee
-    pub assignee: Option<serde_json::Value>,
+    pub assignee: Option<ListAssignee>,
     /// Number of tasks in the list
-    pub task_count: Option<String>,
+    pub task_count: Option<i64>,
     /// List due date
     pub due_date: Option<String>,
     /// List start date
     pub start_date: Option<String>,
-    /// Parent folder information
-    pub folder: Option<Folder>,
-    /// Parent space information
-    pub space: Option<Space>,
-    /// Inbound email address for the list
-    pub inbound_address: Option<String>,
+    /// List folder information
+    pub folder: Option<ListFolder>,
+    /// List space information
+    pub space: ListSpace,
+    /// Whether the list is archived
+    pub archived: Option<bool>,
+    /// Whether the list overrides statuses
+    pub override_statuses: Option<bool>,
+    /// List statuses
+    pub statuses: Option<Vec<SpaceStatus>>,
 }
 
-/// Folder information
-/// 
-/// A folder is a container for lists within a space.
+/// List status configuration
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Folder {
+pub struct ListStatus {
+    /// Status display name
+    pub status: String,
+    /// Status color for UI display
+    pub color: String,
+    /// Whether to hide the status label
+    pub hide_label: Option<bool>,
+}
+
+/// List priority configuration
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ListPriority {
+    /// Priority display name
+    pub priority: String,
+    /// Priority color for UI display
+    pub color: String,
+}
+
+/// List assignee information
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ListAssignee {
+    /// Unique user identifier
+    pub id: i64,
+    /// User's display name
+    pub username: String,
+    /// User's email address
+    pub email: String,
+    /// User's preferred color
+    pub color: String,
+    /// URL to user's profile picture
+    pub profile_picture: Option<String>,
+    /// User's initials for avatar display
+    pub initials: Option<String>,
+}
+
+/// List folder information
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ListFolder {
+    #[serde(deserialize_with = "string_or_number")]
     /// Unique folder identifier
     pub id: String,
     /// Folder display name
     pub name: String,
     /// Whether the folder is hidden
-    pub hidden: bool,
+    pub hidden: Option<bool>,
     /// Whether the user has access to the folder
-    pub access: bool,
+    pub access: Option<bool>,
+}
+
+/// List space information
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ListSpace {
+    #[serde(deserialize_with = "string_or_number")]
+    /// Unique space identifier
+    pub id: String,
+    /// Space display name
+    pub name: String,
 }
 
 // Task models
 
 /// Response containing a list of tasks
 /// 
-/// This struct represents the API response when fetching tasks within a list.
+/// This struct represents the API response when fetching tasks from a list.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TasksResponse {
-    /// List of tasks in the list
+    /// List of tasks
     pub tasks: Vec<Task>,
 }
 
 /// Task information
 /// 
-/// A task represents a work item within a list. It contains all the details
-/// about the task including status, assignees, dates, and metadata.
+/// This struct represents a task in ClickUp with all its properties,
+/// metadata, and relationships.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Task {
     /// Unique task identifier
     pub id: String,
     /// Task display name
-    pub name: String,
-    /// Task description in text format
-    pub text_content: Option<String>,
-    /// Task description in rich format
-    pub description: Option<String>,
-    /// Current task status
+    pub name: Option<String>,
+    /// Task custom identifier
+    pub custom_id: Option<String>,
+    /// Task text content
+    pub text_content: String,
+    /// Task description
+    pub description: String,
+    /// Task status
     pub status: TaskStatus,
     /// Task display order
+    #[serde(deserialize_with = "string_or_number")]
     pub orderindex: String,
     /// Task creation timestamp
     pub date_created: String,
     /// Task last update timestamp
     pub date_updated: String,
-    /// Task completion timestamp
+    /// Task close timestamp
     pub date_closed: Option<String>,
     /// Task creator information
     pub creator: TaskCreator,
-    /// List of task assignees
+    /// Task assignees
     pub assignees: Vec<TaskAssignee>,
-    /// List of task checklists
+    /// Task watchers
+    pub watchers: Vec<TaskWatcher>,
+    /// Task checklists
     pub checklists: Vec<TaskChecklist>,
-    /// List of task tags
+    /// Task tags
     pub tags: Vec<TaskTag>,
-    /// Parent task identifier (for subtasks)
+    /// Parent task ID (for subtasks)
     pub parent: Option<String>,
+    /// Top-level parent task ID
+    pub top_level_parent: Option<String>,
     /// Task priority
     pub priority: Option<TaskPriority>,
     /// Task due date
     pub due_date: Option<String>,
     /// Task start date
     pub start_date: Option<String>,
-    /// Task story points
-    pub points: Option<i64>,
     /// Task time estimate (in milliseconds)
     pub time_estimate: Option<i64>,
     /// Task time spent (in milliseconds)
     pub time_spent: Option<i64>,
-    /// List of task custom fields
+    /// Task custom fields
     pub custom_fields: Vec<TaskCustomField>,
-    /// Parent list information
+    /// Task dependencies
+    pub dependencies: Vec<String>,
+    /// Task linked tasks
+    pub linked_tasks: Vec<String>,
+    /// Task team ID
+    pub team_id: String,
+    /// Task list information
     pub list: TaskList,
-    /// Parent folder information
+    /// Task folder information
     pub folder: Option<TaskFolder>,
-    /// Parent space information
+    /// Task space information
     pub space: TaskSpace,
-    /// Task URL in ClickUp
+    /// Task URL
     pub url: String,
+    /// Task subtasks
+    pub subtasks: Option<Vec<Task>>,
 }
 
 /// Task status information
-/// 
-/// This struct defines the current status of a task.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TaskStatus {
+    /// Unique status identifier
+    pub id: String,
     /// Status display name
     pub status: String,
     /// Status color for UI display
     pub color: String,
     /// Status display order
+    #[serde(deserialize_with = "i64_from_string_or_number")]
     pub orderindex: i64,
     /// Status type
+    #[serde(rename = "type")]
     pub type_: String,
 }
 
 /// Task creator information
-/// 
-/// This struct contains information about the user who created the task.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TaskCreator {
     /// Unique user identifier
@@ -423,26 +782,43 @@ pub struct TaskCreator {
     /// User's display name
     pub username: String,
     /// User's preferred color
-    pub color: Option<String>,
+    pub color: String,
     /// URL to user's profile picture
     pub profile_picture: Option<String>,
 }
 
 /// Task assignee information
-/// 
-/// This struct contains information about a user assigned to the task.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TaskAssignee {
     /// Unique user identifier
     pub id: i64,
     /// User's display name
     pub username: String,
+    /// User's email address
+    pub email: String,
     /// User's preferred color
-    pub color: Option<String>,
-    /// User's initials for avatar display
-    pub initials: Option<String>,
+    pub color: String,
     /// URL to user's profile picture
     pub profile_picture: Option<String>,
+    /// User's initials for avatar display
+    pub initials: Option<String>,
+}
+
+/// Task watcher information
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TaskWatcher {
+    /// Unique user identifier
+    pub id: i64,
+    /// User's display name
+    pub username: String,
+    /// User's email address
+    pub email: String,
+    /// User's preferred color
+    pub color: String,
+    /// URL to user's profile picture
+    pub profile_picture: Option<String>,
+    /// User's initials for avatar display
+    pub initials: Option<String>,
 }
 
 /// Task checklist information
@@ -451,21 +827,23 @@ pub struct TaskAssignee {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TaskChecklist {
     /// Unique checklist identifier
-    pub task_id: String,
+    pub id: String,
     /// Checklist display name
-    pub name: String,
+    pub name: Option<String>,
+    /// Checklist display order
+    #[serde(deserialize_with = "i64_from_string_or_number")]
+    pub orderindex: i64,
+    /// Checklist assignee
+    pub assignee: Option<serde_json::Value>,
+    /// Whether the checklist is resolved
+    #[serde(deserialize_with = "opt_bool_from_bool_or_int")]
+    pub resolved: Option<bool>,
+    /// Parent checklist item (for nested items)
+    pub parent: Option<serde_json::Value>,
     /// Checklist creation timestamp
     pub date_created: String,
-    /// Checklist display order
-    pub orderindex: i64,
-    /// Checklist creator user ID
-    pub creator: i64,
-    /// Number of resolved checklist items
-    pub resolved: i64,
-    /// Number of unresolved checklist items
-    pub unresolved: i64,
-    /// List of checklist items
-    pub items: Vec<TaskChecklistItem>,
+    /// Child checklist items
+    pub children: Option<Vec<TaskChecklistItem>>,
 }
 
 /// Task checklist item information
@@ -476,19 +854,21 @@ pub struct TaskChecklistItem {
     /// Unique checklist item identifier
     pub id: String,
     /// Checklist item display name
-    pub name: String,
+    pub name: Option<String>,
     /// Checklist item display order
+    #[serde(deserialize_with = "i64_from_string_or_number")]
     pub orderindex: i64,
     /// Checklist item assignee
     pub assignee: Option<serde_json::Value>,
     /// Whether the checklist item is resolved
-    pub resolved: bool,
+    #[serde(deserialize_with = "opt_bool_from_bool_or_int")]
+    pub resolved: Option<bool>,
     /// Parent checklist item (for nested items)
     pub parent: Option<serde_json::Value>,
     /// Checklist item creation timestamp
     pub date_created: String,
     /// Child checklist items
-    pub children: Vec<serde_json::Value>,
+    pub children: Option<Vec<serde_json::Value>>,
 }
 
 /// Task tag information
@@ -497,7 +877,7 @@ pub struct TaskChecklistItem {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TaskTag {
     /// Tag display name
-    pub name: String,
+    pub name: Option<String>,
     /// Tag foreground color
     pub tag_fg: String,
     /// Tag background color
@@ -512,12 +892,14 @@ pub struct TaskTag {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TaskPriority {
     /// Priority identifier
+    #[serde(deserialize_with = "string_or_number")]
     pub id: String,
     /// Priority display name
     pub priority: String,
     /// Priority color for UI display
     pub color: String,
     /// Priority display order
+    #[serde(deserialize_with = "string_or_number")]
     pub orderindex: String,
 }
 
@@ -529,8 +911,9 @@ pub struct TaskCustomField {
     /// Custom field identifier
     pub id: String,
     /// Custom field display name
-    pub name: String,
+    pub name: Option<String>,
     /// Custom field type
+    #[serde(rename = "type")]
     pub type_: String,
     /// Custom field type configuration
     pub type_config: Option<serde_json::Value>,
@@ -543,12 +926,14 @@ pub struct TaskCustomField {
 /// This struct contains information about the list containing the task.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TaskList {
+    #[serde(deserialize_with = "string_or_number")]
     /// Unique list identifier
     pub id: String,
     /// List display name
-    pub name: String,
+    pub name: Option<String>,
     /// Whether the user has access to the list
-    pub access: bool,
+    #[serde(deserialize_with = "opt_bool_from_bool_or_int")]
+    pub access: Option<bool>,
 }
 
 /// Task folder information
@@ -556,14 +941,17 @@ pub struct TaskList {
 /// This struct contains information about the folder containing the task's list.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TaskFolder {
+    #[serde(deserialize_with = "string_or_number")]
     /// Unique folder identifier
     pub id: String,
     /// Folder display name
-    pub name: String,
+    pub name: Option<String>,
     /// Whether the folder is hidden
-    pub hidden: bool,
+    #[serde(deserialize_with = "opt_bool_from_bool_or_int")]
+    pub hidden: Option<bool>,
     /// Whether the user has access to the folder
-    pub access: bool,
+    #[serde(deserialize_with = "opt_bool_from_bool_or_int")]
+    pub access: Option<bool>,
 }
 
 /// Task space information
@@ -571,29 +959,19 @@ pub struct TaskFolder {
 /// This struct contains information about the space containing the task.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TaskSpace {
+    #[serde(deserialize_with = "string_or_number")]
     /// Unique space identifier
     pub id: String,
     /// Space display name
-    pub name: String,
-    /// Space color for UI display
-    pub color: Option<String>,
-    /// Whether the space is private
-    pub private: bool,
-    /// URL to space avatar
-    pub avatar: Option<String>,
-    /// Whether admins can manage the space
-    pub admin_can_manage: Option<bool>,
-    /// Available statuses in the space
-    pub statuses: Vec<SpaceStatus>,
-    /// Whether multiple assignees are allowed
-    pub multiple_assignees: bool,
+    pub name: Option<String>,
 }
 
 // Request models
 
 /// Request data for creating a new task
 /// 
-/// This struct contains all the data needed to create a new task in ClickUp.
+/// This struct contains the data needed to create a new task in ClickUp.
+/// All fields except `name` are optional.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateTaskRequest {
     /// Task display name (required)
@@ -626,6 +1004,28 @@ pub struct CreateTaskRequest {
     pub points: Option<i64>,
     /// Whether to notify assignees
     pub notify_all: Option<bool>,
+}
+
+impl Default for CreateTaskRequest {
+    fn default() -> Self {
+        Self {
+            name: String::new(),
+            description: None,
+            status: None,
+            priority: None,
+            due_date: None,
+            due_date_time: None,
+            time_estimate: None,
+            assignees: None,
+            tags: None,
+            parent: None,
+            custom_fields: None,
+            start_date: None,
+            start_date_time: None,
+            points: None,
+            notify_all: None,
+        }
+    }
 }
 
 /// Request data for updating an existing task
@@ -728,6 +1128,7 @@ pub struct CommentText {
     /// Text content
     pub text: String,
     /// Text type (e.g., "text", "link", "mention")
+    #[serde(rename = "type")]
     pub type_: String,
 }
 
@@ -751,10 +1152,10 @@ pub struct CommentUser {
 /// This struct contains the data needed to create a new comment on a task.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateCommentRequest {
-    /// Comment text content (required)
+    /// Comment content
     pub comment_text: String,
-    /// User ID to assign the comment to
+    /// Comment assignee (if any)
     pub assignee: Option<i64>,
-    /// Whether to notify all users
+    /// Whether to notify assignee
     pub notify_all: Option<bool>,
 } 

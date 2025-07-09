@@ -55,7 +55,7 @@ async fn list_spaces(api: &ClickUpApi, workspace_id: &str) -> Result<(), ClickUp
     for space in &spaces.spaces {
         table.add_row(vec![
             Cell::new(&space.id),
-            Cell::new(&space.name),
+            Cell::new(space.name.as_deref().unwrap_or("")),
             Cell::new(if space.private { "Yes" } else { "No" }),
             Cell::new(&space.statuses.len().to_string()),
             Cell::new(if space.multiple_assignees { "Yes" } else { "No" }),
@@ -76,7 +76,7 @@ async fn show_space(api: &ClickUpApi, space_id: &str) -> Result<(), ClickUpError
         if let Some(space) = spaces.spaces.into_iter().find(|s| s.id == space_id) {
             println!("{}", "Space Details".bold());
             println!("ID: {}", space.id);
-            println!("Name: {}", space.name);
+            println!("Name: {}", space.name.as_deref().unwrap_or(""));
             println!("Private: {}", if space.private { "Yes" } else { "No" });
             println!("Multiple Assignees: {}", if space.multiple_assignees { "Yes" } else { "No" });
             println!("Statuses: {}", space.statuses.len());
@@ -88,11 +88,18 @@ async fn show_space(api: &ClickUpApi, space_id: &str) -> Result<(), ClickUpError
                 }
             }
 
-            println!("\n{}", "Features:".bold());
-            println!("  Due Dates: {}", if space.features.due_dates.enabled { "Enabled" } else { "Disabled" });
-            println!("  Time Tracking: {}", if space.features.time_tracking.enabled { "Enabled" } else { "Disabled" });
-            println!("  Points: {}", if space.features.points.enabled { "Enabled" } else { "Disabled" });
-            println!("  Custom Fields: {}", if space.features.custom_fields.enabled { "Enabled" } else { "Disabled" });
+            if let Some(features) = &space.features {
+                println!("\n{}", "Features:".bold());
+                if let Some(due_dates) = &features.due_dates {
+                    println!("  Due Dates: {}", if due_dates.enabled { "Enabled" } else { "Disabled" });
+                }
+                if let Some(time_tracking) = &features.time_tracking {
+                    println!("  Time Tracking: {}", if time_tracking.enabled { "Enabled" } else { "Disabled" });
+                }
+                if let Some(custom_fields) = &features.custom_fields {
+                    println!("  Custom Fields: {}", if custom_fields.enabled { "Enabled" } else { "Disabled" });
+                }
+            }
             
             return Ok(());
         }

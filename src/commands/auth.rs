@@ -184,7 +184,7 @@ async fn test_auth(config: &Config) -> Result<(), ClickUpError> {
     match api.get_user().await {
         Ok(user) => {
             println!("{}", "✓ Authentication successful!".green());
-            println!("User: {} ({})", user.user.username, user.user.email);
+            println!("User: {} ({})", user.user.username.as_deref().unwrap_or(""), user.user.email);
         }
         Err(e) => {
             println!("{}", "✗ Authentication failed".red());

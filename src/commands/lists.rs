@@ -54,12 +54,13 @@ async fn list_lists(api: &ClickUpApi, space_id: &str) -> Result<(), ClickUpError
 
     for list in &lists.lists {
         let folder_name = list.folder.as_ref().map(|f| f.name.as_str()).unwrap_or("None");
-        let task_count = list.task_count.as_deref().unwrap_or("0");
+        let task_count = list.task_count.map_or("".to_string(), |c| c.to_string());
+        let content = list.content.as_deref().unwrap_or("");
         
         table.add_row(vec![
             Cell::new(&list.id),
-            Cell::new(&list.name),
-            Cell::new(&list.content),
+            Cell::new(list.name.as_deref().unwrap_or("")),
+            Cell::new(content),
             Cell::new(task_count),
             Cell::new(folder_name),
         ]);
@@ -81,22 +82,18 @@ async fn show_list(api: &ClickUpApi, list_id: &str) -> Result<(), ClickUpError> 
             if let Some(list) = lists.lists.into_iter().find(|l| l.id == list_id) {
                 println!("{}", "List Details".bold());
                 println!("ID: {}", list.id);
-                println!("Name: {}", list.name);
-                println!("Content: {}", list.content);
+                println!("Name: {}", list.name.as_deref().unwrap_or(""));
+                println!("Content: {}", list.content.as_deref().unwrap_or(""));
                 println!("Order Index: {}", list.orderindex);
-                println!("Task Count: {}", list.task_count.as_deref().unwrap_or("0"));
+                println!("Task Count: {}", list.task_count.map_or(0, |c| c));
                 
                 if let Some(folder) = &list.folder {
                     println!("Folder: {} ({})", folder.name, folder.id);
                 }
                 
-                if let Some(space) = &list.space {
-                    println!("Space: {} ({})", space.name, space.id);
-                }
+                println!("Space: {} ({})", list.space.name, list.space.id);
                 
-                if let Some(inbound_address) = &list.inbound_address {
-                    println!("Inbound Address: {}", inbound_address);
-                }
+
                 
                 return Ok(());
             }

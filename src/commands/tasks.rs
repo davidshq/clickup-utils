@@ -14,6 +14,27 @@ pub enum TaskCommands {
         #[arg(short, long)]
         list_id: String,
     },
+    /// List tasks in a list filtered by tag
+    ListByTag {
+        /// List ID
+        #[arg(short, long)]
+        list_id: String,
+        /// Tag name to filter by
+        #[arg(short, long)]
+        tag: String,
+    },
+    /// Search for tasks with a specific tag across all lists in a space
+    SearchByTag {
+        /// Tag name to search for
+        #[arg(short, long)]
+        tag: String,
+        /// Workspace ID (optional - will prompt if not provided)
+        #[arg(short, long)]
+        workspace_id: Option<String>,
+        /// Space ID (optional - will prompt if not provided)
+        #[arg(short, long)]
+        space_id: Option<String>,
+    },
     /// Show details of a specific task
     Show {
         /// Task ID
@@ -83,6 +104,12 @@ pub async fn execute(command: TaskCommands, config: &Config) -> Result<(), Click
         TaskCommands::List { list_id } => {
             list_tasks(&api, &list_id).await?;
         }
+        TaskCommands::ListByTag { list_id, tag } => {
+            list_tasks_by_tag(&api, &list_id, &tag).await?;
+        }
+        TaskCommands::SearchByTag { tag, workspace_id, space_id } => {
+            search_tasks_by_tag(&api, tag, workspace_id, space_id).await?;
+        }
         TaskCommands::Show { id } => {
             show_task(&api, &id).await?;
         }
@@ -128,7 +155,7 @@ async fn list_tasks(api: &ClickUpApi, list_id: &str) -> Result<(), ClickUpError>
         
         table.add_row(vec![
             Cell::new(&task.id),
-            Cell::new(&task.name),
+            Cell::new(task.name.as_deref().unwrap_or("")),
             Cell::new(&task.status.status),
             Cell::new(priority),
             Cell::new(due_date),
@@ -140,19 +167,111 @@ async fn list_tasks(api: &ClickUpApi, list_id: &str) -> Result<(), ClickUpError>
     Ok(())
 }
 
+async fn list_tasks_by_tag(api: &ClickUpApi, list_id: &str, tag: &str) -> Result<(), ClickUpError> {
+    println!("{}", format!("Fetching tasks with tag '{}'...", tag).blue());
+    let tasks = api.get_tasks_by_tag(list_id, tag).await?;
+    
+    if tasks.tasks.is_empty() {
+        println!("{}", format!("No tasks found with tag '{}'", tag).yellow());
+        return Ok(());
+    }
+
+    let mut table = Table::new();
+    table.set_header(vec![
+        Cell::new("ID").add_attribute(comfy_table::Attribute::Bold),
+        Cell::new("Name").add_attribute(comfy_table::Attribute::Bold),
+        Cell::new("Status").add_attribute(comfy_table::Attribute::Bold),
+        Cell::new("Priority").add_attribute(comfy_table::Attribute::Bold),
+        Cell::new("Due Date").add_attribute(comfy_table::Attribute::Bold),
+        Cell::new("Assignees").add_attribute(comfy_table::Attribute::Bold),
+        Cell::new("Tags").add_attribute(comfy_table::Attribute::Bold),
+    ]);
+
+    for task in &tasks.tasks {
+        let priority = task.priority.as_ref().map(|p| p.priority.as_str()).unwrap_or("None");
+        let due_date = task.due_date.as_deref().unwrap_or("None");
+        let assignees = if task.assignees.is_empty() {
+            "None".to_string()
+        } else {
+            task.assignees.iter().map(|a| a.username.clone()).collect::<Vec<_>>().join(", ")
+        };
+        
+        let tag_names = task.tags.iter().filter_map(|t| t.name.as_deref()).collect::<Vec<_>>().join(", ");
+        
+        table.add_row(vec![
+            Cell::new(&task.id),
+            Cell::new(task.name.as_deref().unwrap_or("")),
+            Cell::new(&task.status.status),
+            Cell::new(priority),
+            Cell::new(due_date),
+            Cell::new(&assignees),
+            Cell::new(&tag_names),
+        ]);
+    }
+
+    println!("{}", format!("Tasks with tag '{}':", tag).bold());
+    println!("{}", table);
+    Ok(())
+}
+
+async fn search_tasks_by_tag(api: &ClickUpApi, tag: String, workspace_id: Option<String>, space_id: Option<String>) -> Result<(), ClickUpError> {
+    println!("{}", format!("Searching for tasks with tag '{}'...", tag).blue());
+    let tasks = api.search_tasks_by_tag(tag.clone(), workspace_id, space_id).await?;
+    
+    if tasks.tasks.is_empty() {
+        println!("{}", format!("No tasks found with tag '{}'", tag).yellow());
+        return Ok(());
+    }
+
+    let mut table = Table::new();
+    table.set_header(vec![
+        Cell::new("ID").add_attribute(comfy_table::Attribute::Bold),
+        Cell::new("Name").add_attribute(comfy_table::Attribute::Bold),
+        Cell::new("Status").add_attribute(comfy_table::Attribute::Bold),
+        Cell::new("Priority").add_attribute(comfy_table::Attribute::Bold),
+        Cell::new("Due Date").add_attribute(comfy_table::Attribute::Bold),
+        Cell::new("Assignees").add_attribute(comfy_table::Attribute::Bold),
+        Cell::new("Tags").add_attribute(comfy_table::Attribute::Bold),
+    ]);
+
+    for task in &tasks.tasks {
+        let priority = task.priority.as_ref().map(|p| p.priority.as_str()).unwrap_or("None");
+        let due_date = task.due_date.as_deref().unwrap_or("None");
+        let assignees = if task.assignees.is_empty() {
+            "None".to_string()
+        } else {
+            task.assignees.iter().map(|a| a.username.clone()).collect::<Vec<_>>().join(", ")
+        };
+        
+        let tag_names = task.tags.iter().filter_map(|t| t.name.as_deref()).collect::<Vec<_>>().join(", ");
+        
+        table.add_row(vec![
+            Cell::new(&task.id),
+            Cell::new(task.name.as_deref().unwrap_or("")),
+            Cell::new(&task.status.status),
+            Cell::new(priority),
+            Cell::new(due_date),
+            Cell::new(&assignees),
+            Cell::new(&tag_names),
+        ]);
+    }
+
+    println!("{}", format!("Tasks with tag '{}':", tag).bold());
+    println!("{}", table);
+    Ok(())
+}
+
 async fn show_task(api: &ClickUpApi, task_id: &str) -> Result<(), ClickUpError> {
     let task = api.get_task(task_id).await?;
 
     println!("{}", "Task Details".bold());
     println!("ID: {}", task.id);
-    println!("Name: {}", task.name);
+    println!("Name: {}", task.name.as_deref().unwrap_or(""));
     println!("Status: {} ({})", task.status.status, task.status.color);
     println!("Created: {}", task.date_created);
     println!("Updated: {}", task.date_updated);
     
-    if let Some(description) = &task.description {
-        println!("Description: {}", description);
-    }
+    println!("Description: {}", task.description);
     
     if let Some(priority) = &task.priority {
         println!("Priority: {} ({})", priority.priority, priority.color);
@@ -166,9 +285,7 @@ async fn show_task(api: &ClickUpApi, task_id: &str) -> Result<(), ClickUpError> 
         println!("Start Date: {}", start_date);
     }
     
-    if let Some(points) = task.points {
-        println!("Points: {}", points);
-    }
+
     
     if let Some(time_estimate) = task.time_estimate {
         println!("Time Estimate: {} ms", time_estimate);
@@ -188,15 +305,14 @@ async fn show_task(api: &ClickUpApi, task_id: &str) -> Result<(), ClickUpError> 
     if !task.tags.is_empty() {
         println!("\n{}", "Tags:".bold());
         for tag in &task.tags {
-            println!("  - {} ({}/{})", tag.name, tag.tag_fg, tag.tag_bg);
+            println!("  - {} ({}/{})", tag.name.as_deref().unwrap_or(""), tag.tag_fg, tag.tag_bg);
         }
     }
     
     if !task.checklists.is_empty() {
         println!("\n{}", "Checklists:".bold());
         for checklist in &task.checklists {
-            println!("  - {} ({} resolved, {} unresolved)", 
-                checklist.name, checklist.resolved, checklist.unresolved);
+                    println!("    - {} [{}]", checklist.name.as_deref().unwrap_or(""), checklist.resolved.unwrap_or(false));
         }
     }
     
@@ -237,7 +353,7 @@ async fn create_task(
     
     println!("{}", "✓ Task created successfully!".green());
     println!("ID: {}", task.id);
-    println!("Name: {}", task.name);
+    println!("Name: {}", task.name.as_deref().unwrap_or(""));
     println!("Status: {}", task.status.status);
     println!("URL: {}", task.url);
     
@@ -276,7 +392,7 @@ async fn update_task(
     
     println!("{}", "✓ Task updated successfully!".green());
     println!("ID: {}", task.id);
-    println!("Name: {}", task.name);
+    println!("Name: {}", task.name.as_deref().unwrap_or(""));
     println!("Status: {}", task.status.status);
     println!("URL: {}", task.url);
     
