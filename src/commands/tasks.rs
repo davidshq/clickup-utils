@@ -227,6 +227,10 @@ async fn create_task(
         tags: None,
         parent: None,
         custom_fields: None,
+        start_date: None,
+        start_date_time: None,
+        points: None,
+        notify_all: None,
     };
 
     let task = api.create_task(list_id, task_data).await?;
@@ -262,6 +266,10 @@ async fn update_task(
         tags: None,
         parent: None,
         custom_fields: None,
+        start_date: None,
+        start_date_time: None,
+        points: None,
+        notify_all: None,
     };
 
     let task = api.update_task(task_id, task_data).await?;

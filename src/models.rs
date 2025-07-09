@@ -115,20 +115,49 @@ pub struct Workspace {
 /// Workspace member information
 /// 
 /// This struct represents a user who is a member of a workspace.
+/// The API response nests user data under a 'user' field.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct WorkspaceMember {
+    /// User information
+    pub user: WorkspaceMemberUser,
+    /// Information about who invited this user
+    pub invited_by: Option<WorkspaceMemberUser>,
+}
+
+/// Workspace member user information
+/// 
+/// This struct contains the actual user data within a workspace member.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct WorkspaceMemberUser {
     /// Unique user identifier
-    pub id: i64,
+    pub id: Option<i64>,
     /// User's display name
-    pub username: String,
+    pub username: Option<String>,
     /// User's email address
-    pub email: String,
-    /// User's preferred color
+    pub email: Option<String>,
     pub color: Option<String>,
     /// User's initials for avatar display
     pub initials: Option<String>,
     /// URL to user's profile picture
     pub profile_picture: Option<String>,
+    /// User's role in the workspace
+    pub role: Option<i64>,
+    /// User's role subtype
+    pub role_subtype: Option<i64>,
+    /// User's role key
+    pub role_key: Option<String>,
+    /// Custom role configuration
+    pub custom_role: Option<serde_json::Value>,
+    /// Timestamp of user's last activity
+    pub last_active: Option<String>,
+    /// Timestamp when user joined
+    pub date_joined: Option<String>,
+    /// Timestamp when user was invited
+    pub date_invited: Option<String>,
+    /// User's status (e.g., "active", "banned")
+    pub status: Option<String>,
+    /// Date when user was banned (if applicable)
+    pub banned_date: Option<String>,
 }
 
 /// Workspace role definition
@@ -589,6 +618,14 @@ pub struct CreateTaskRequest {
     pub parent: Option<String>,
     /// List of custom field values
     pub custom_fields: Option<Vec<CustomFieldValue>>,
+    /// Task start date (Unix timestamp in milliseconds)
+    pub start_date: Option<i64>,
+    /// Whether the start date includes time
+    pub start_date_time: Option<bool>,
+    /// Task story points
+    pub points: Option<i64>,
+    /// Whether to notify assignees
+    pub notify_all: Option<bool>,
 }
 
 /// Request data for updating an existing task
@@ -619,6 +656,14 @@ pub struct UpdateTaskRequest {
     pub parent: Option<String>,
     /// List of custom field values
     pub custom_fields: Option<Vec<CustomFieldValue>>,
+    /// Task start date (Unix timestamp in milliseconds)
+    pub start_date: Option<i64>,
+    /// Whether the start date includes time
+    pub start_date_time: Option<bool>,
+    /// Task story points
+    pub points: Option<i64>,
+    /// Whether to notify assignees
+    pub notify_all: Option<bool>,
 }
 
 /// Custom field value for task requests

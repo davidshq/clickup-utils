@@ -78,7 +78,13 @@ async fn show_team(api: &ClickUpApi, team_id: &str) -> Result<(), ClickUpError> 
     if !team.members.is_empty() {
         println!("\n{}", "Members:".bold());
         for member in &team.members {
-            println!("  - {} ({})", member.username, member.email);
+                if let (Some(username), Some(email)) = (&member.user.username, &member.user.email) {
+                println!("  - {} ({})", username, email);
+            } else if let Some(username) = &member.user.username {
+                println!("  - {} (no email)", username);
+            } else {
+                println!("  - Unknown user");
+            }
         }
     }
 

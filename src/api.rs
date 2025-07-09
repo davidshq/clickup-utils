@@ -89,8 +89,8 @@ impl ClickUpApi {
     /// Creates the authorization header for API requests
     /// 
     /// This function retrieves the API token from configuration and formats it
-    /// appropriately for HTTP authorization headers. Personal tokens (starting with 'pk_')
-    /// are used without 'Bearer' prefix, while OAuth tokens use 'Bearer' prefix.
+    /// appropriately for HTTP authorization headers. ClickUp API v2 supports both
+    /// personal tokens and OAuth tokens, with different header formats.
     /// 
     /// # Returns
     /// 
@@ -104,13 +104,14 @@ impl ClickUpApi {
     fn get_auth_header(&self) -> Result<HeaderValue, ClickUpError> {
         let token = self.config.get_api_token()?;
         
-        // Personal tokens (starting with 'pk_') should be used without 'Bearer'
-        // OAuth tokens should use 'Bearer' prefix
+        // ClickUp API v2 supports both personal tokens and OAuth tokens
+        // Personal tokens (starting with 'pk_') are used directly
+        // OAuth tokens and other tokens use 'Bearer' prefix
         let auth_value = if token.starts_with("pk_") {
-            // Personal token - use without Bearer
+            // Personal token - use directly without Bearer
             token.to_string()
         } else {
-            // OAuth token - use with Bearer
+            // OAuth token or other token types - use with Bearer prefix
             format!("Bearer {}", token)
         };
         
@@ -171,6 +172,14 @@ impl ClickUpApi {
             ClickUpError::from(e)
         })?;
 
+        // Check for rate limiting headers
+        if let Some(retry_after) = response.headers().get("Retry-After") {
+            if let (Ok(_s), Ok(retry_seconds)) = (retry_after.to_str(), retry_after.to_str().unwrap().parse::<u64>()) {
+                debug!("Rate limited, retry after {} seconds", retry_seconds);
+                return Err(ClickUpError::RateLimitError);
+            }
+        }
+
         let status = response.status();
         let response_text = response.text().await.map_err(|e| {
             error!("Failed to read response: {}", e);
@@ -188,10 +197,14 @@ impl ClickUpApi {
             };
 
             return match status.as_u16() {
+                400 => Err(ClickUpError::ValidationError(format!("Bad request: {}", error_msg))),
                 401 => Err(ClickUpError::AuthError("Invalid API token".to_string())),
                 403 => Err(ClickUpError::PermissionError("Insufficient permissions".to_string())),
                 404 => Err(ClickUpError::NotFoundError("Resource not found".to_string())),
+                409 => Err(ClickUpError::ApiError(format!("Conflict: {}", error_msg))),
+                422 => Err(ClickUpError::ValidationError(format!("Validation error: {}", error_msg))),
                 429 => Err(ClickUpError::RateLimitError),
+                500..=599 => Err(ClickUpError::ApiError(format!("Server error: {}", error_msg))),
                 _ => Err(ClickUpError::ApiError(error_msg)),
             };
         }
@@ -420,5 +433,150 @@ impl ClickUpApi {
             ClickUpError::SerializationError(format!("Failed to serialize comment data: {}", e))
         })?;
         self.make_request(reqwest::Method::POST, &endpoint, Some(body)).await
+    }
+
+    // Additional API endpoints
+
+    /// Retrieves a specific workspace by its ID
+    /// 
+    /// # Arguments
+    /// 
+    /// * `workspace_id` - The ID of the workspace to retrieve
+    /// 
+    /// # Returns
+    /// 
+    /// Returns a `Workspace` struct containing the workspace's information.
+    /// 
+    /// # Errors
+    /// 
+    /// This function can return authentication, permission, or network errors.
+    pub async fn get_workspace(&self, workspace_id: &str) -> Result<Workspace, ClickUpError> {
+        let endpoint = format!("/team/{}", workspace_id);
+        self.make_request(reqwest::Method::GET, &endpoint, None).await
+    }
+
+    /// Retrieves a specific space by its ID
+    /// 
+    /// # Arguments
+    /// 
+    /// * `space_id` - The ID of the space to retrieve
+    /// 
+    /// # Returns
+    /// 
+    /// Returns a `Space` struct containing the space's information.
+    /// 
+    /// # Errors
+    /// 
+    /// This function can return authentication, permission, or network errors.
+    pub async fn get_space(&self, space_id: &str) -> Result<Space, ClickUpError> {
+        let endpoint = format!("/space/{}", space_id);
+        self.make_request(reqwest::Method::GET, &endpoint, None).await
+    }
+
+    /// Retrieves a specific list by its ID
+    /// 
+    /// # Arguments
+    /// 
+    /// * `list_id` - The ID of the list to retrieve
+    /// 
+    /// # Returns
+    /// 
+    /// Returns a `List` struct containing the list's information.
+    /// 
+    /// # Errors
+    /// 
+    /// This function can return authentication, permission, or network errors.
+    pub async fn get_list(&self, list_id: &str) -> Result<List, ClickUpError> {
+        let endpoint = format!("/list/{}", list_id);
+        self.make_request(reqwest::Method::GET, &endpoint, None).await
+    }
+
+    /// Retrieves tasks with optional filtering and pagination
+    /// 
+    /// # Arguments
+    /// 
+    /// * `list_id` - The ID of the list to get tasks from
+    /// * `page` - Page number for pagination (optional)
+    /// * `limit` - Number of tasks per page (optional, max 100)
+    /// * `subtasks` - Whether to include subtasks (optional)
+    /// * `status` - Filter by status (optional)
+    /// 
+    /// # Returns
+    /// 
+    /// Returns a `TasksResponse` containing a list of tasks.
+    /// 
+    /// # Errors
+    /// 
+    /// This function can return authentication, permission, or network errors.
+    pub async fn get_tasks_with_params(
+        &self,
+        list_id: &str,
+        page: Option<i32>,
+        limit: Option<i32>,
+        subtasks: Option<bool>,
+        status: Option<&str>,
+    ) -> Result<TasksResponse, ClickUpError> {
+        let mut endpoint = format!("/list/{}/task", list_id);
+        let mut params = Vec::new();
+
+        if let Some(p) = page {
+            params.push(format!("page={}", p));
+        }
+        if let Some(l) = limit {
+            params.push(format!("limit={}", l.min(100))); // API limit is 100
+        }
+        if let Some(s) = subtasks {
+            params.push(format!("subtasks={}", s));
+        }
+        if let Some(s) = status {
+            params.push(format!("status={}", s));
+        }
+
+        if !params.is_empty() {
+            endpoint.push_str(&format!("?{}", params.join("&")));
+        }
+
+        self.make_request(reqwest::Method::GET, &endpoint, None).await
+    }
+
+    /// Updates a comment on a task
+    /// 
+    /// # Arguments
+    /// 
+    /// * `comment_id` - The ID of the comment to update
+    /// * `comment_data` - The updated comment data
+    /// 
+    /// # Returns
+    /// 
+    /// Returns the updated `Comment` with the new information.
+    /// 
+    /// # Errors
+    /// 
+    /// This function can return authentication, permission, validation, or network errors.
+    pub async fn update_comment(&self, comment_id: &str, comment_data: CreateCommentRequest) -> Result<Comment, ClickUpError> {
+        let endpoint = format!("/comment/{}", comment_id);
+        let body = serde_json::to_value(comment_data).map_err(|e| {
+            ClickUpError::SerializationError(format!("Failed to serialize comment data: {}", e))
+        })?;
+        self.make_request(reqwest::Method::PUT, &endpoint, Some(body)).await
+    }
+
+    /// Deletes a comment
+    /// 
+    /// # Arguments
+    /// 
+    /// * `comment_id` - The ID of the comment to delete
+    /// 
+    /// # Returns
+    /// 
+    /// Returns `Ok(())` on successful deletion.
+    /// 
+    /// # Errors
+    /// 
+    /// This function can return authentication, permission, or network errors.
+    pub async fn delete_comment(&self, comment_id: &str) -> Result<(), ClickUpError> {
+        let endpoint = format!("/comment/{}", comment_id);
+        let _: Value = self.make_request(reqwest::Method::DELETE, &endpoint, None).await?;
+        Ok(())
     }
 } 

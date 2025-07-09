@@ -35,6 +35,27 @@ pub enum CommentCommands {
         #[arg(short, long)]
         notify_all: Option<bool>,
     },
+    /// Update an existing comment
+    Update {
+        /// Comment ID
+        #[arg(short, long)]
+        id: String,
+        /// New comment text
+        #[arg(short, long)]
+        text: String,
+        /// Assignee ID (optional)
+        #[arg(short, long)]
+        assignee: Option<i64>,
+        /// Notify all team members
+        #[arg(short, long)]
+        notify_all: Option<bool>,
+    },
+    /// Delete a comment
+    Delete {
+        /// Comment ID
+        #[arg(short, long)]
+        id: String,
+    },
 }
 
 pub async fn execute(command: CommentCommands, config: &Config) -> Result<(), ClickUpError> {
@@ -49,6 +70,12 @@ pub async fn execute(command: CommentCommands, config: &Config) -> Result<(), Cl
         }
         CommentCommands::Create { task_id, text, assignee, notify_all } => {
             create_comment(&api, &task_id, text, assignee, notify_all).await?;
+        }
+        CommentCommands::Update { id, text, assignee, notify_all } => {
+            update_comment(&api, &id, text, assignee, notify_all).await?;
+        }
+        CommentCommands::Delete { id } => {
+            delete_comment(&api, &id).await?;
         }
     }
     Ok(())
@@ -130,6 +157,38 @@ async fn show_comment(api: &ClickUpApi, comment_id: &str) -> Result<(), ClickUpE
     }
 
     Err(ClickUpError::NotFoundError(format!("Comment {} not found", comment_id)))
+}
+
+async fn update_comment(
+    api: &ClickUpApi,
+    comment_id: &str,
+    text: String,
+    assignee: Option<i64>,
+    notify_all: Option<bool>,
+) -> Result<(), ClickUpError> {
+    let comment_data = CreateCommentRequest {
+        comment_text: text,
+        assignee,
+        notify_all,
+    };
+
+    let comment = api.update_comment(comment_id, comment_data).await?;
+    
+    println!("{}", "✓ Comment updated successfully!".green());
+    println!("ID: {}", comment.id);
+    println!("Text: {}", comment.comment_text);
+    println!("Updated: {}", comment.date_updated);
+    
+    Ok(())
+}
+
+async fn delete_comment(api: &ClickUpApi, comment_id: &str) -> Result<(), ClickUpError> {
+    api.delete_comment(comment_id).await?;
+    
+    println!("{}", "✓ Comment deleted successfully!".green());
+    println!("Deleted comment ID: {}", comment_id);
+    
+    Ok(())
 }
 
 async fn create_comment(

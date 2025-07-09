@@ -189,6 +189,15 @@ clickup-cli comments create \
   --task-id <task-id> \
   --text "This is a comment" \
   --notify-all true
+
+# Update an existing comment
+clickup-cli comments update \
+  --id <comment-id> \
+  --text "Updated comment text" \
+  --notify-all true
+
+# Delete a comment
+clickup-cli comments delete --id <comment-id>
 ```
 
 ## ⚙️ Configuration

@@ -61,12 +61,7 @@ async fn list_workspaces(api: &ClickUpApi) -> Result<(), ClickUpError> {
 }
 
 async fn show_workspace(api: &ClickUpApi, workspace_id: &str) -> Result<(), ClickUpError> {
-    let workspaces = api.get_workspaces().await?;
-    
-    let workspace = workspaces.teams
-        .into_iter()
-        .find(|w| w.id == workspace_id)
-        .ok_or_else(|| ClickUpError::NotFoundError(format!("Workspace {} not found", workspace_id)))?;
+    let workspace = api.get_workspace(workspace_id).await?;
 
     println!("{}", "Workspace Details".bold());
     println!("ID: {}", workspace.id);
@@ -78,7 +73,13 @@ async fn show_workspace(api: &ClickUpApi, workspace_id: &str) -> Result<(), Clic
     if !workspace.members.is_empty() {
         println!("\n{}", "Members:".bold());
         for member in &workspace.members {
-            println!("  - {} ({})", member.username, member.email);
+            if let (Some(username), Some(email)) = (&member.user.username, &member.user.email) {
+                println!("  - {} ({})", username, email);
+            } else if let Some(username) = &member.user.username {
+                println!("  - {} (no email)", username);
+            } else {
+                println!("  - Unknown user");
+            }
         }
     }
 
