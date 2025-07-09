@@ -3,7 +3,7 @@ use crate::config::Config;
 use crate::error::ClickUpError;
 use clap::Subcommand;
 use colored::*;
-use prettytable::{Table, Row, Cell};
+use comfy_table::{Table, Cell};
 
 #[derive(Subcommand)]
 pub enum SpaceCommands {
@@ -44,25 +44,25 @@ async fn list_spaces(api: &ClickUpApi, workspace_id: &str) -> Result<(), ClickUp
     }
 
     let mut table = Table::new();
-    table.add_row(Row::new(vec![
-        Cell::new("ID").style_spec("bFg"),
-        Cell::new("Name").style_spec("bFg"),
-        Cell::new("Private").style_spec("bFg"),
-        Cell::new("Statuses").style_spec("bFg"),
-        Cell::new("Multiple Assignees").style_spec("bFg"),
-    ]));
+    table.set_header(vec![
+        Cell::new("ID").add_attribute(comfy_table::Attribute::Bold),
+        Cell::new("Name").add_attribute(comfy_table::Attribute::Bold),
+        Cell::new("Private").add_attribute(comfy_table::Attribute::Bold),
+        Cell::new("Statuses").add_attribute(comfy_table::Attribute::Bold),
+        Cell::new("Multiple Assignees").add_attribute(comfy_table::Attribute::Bold),
+    ]);
 
     for space in &spaces.spaces {
-        table.add_row(Row::new(vec![
+        table.add_row(vec![
             Cell::new(&space.id),
             Cell::new(&space.name),
             Cell::new(if space.private { "Yes" } else { "No" }),
             Cell::new(&space.statuses.len().to_string()),
             Cell::new(if space.multiple_assignees { "Yes" } else { "No" }),
-        ]));
+        ]);
     }
 
-    table.printstd();
+    println!("{}", table);
     Ok(())
 }
 

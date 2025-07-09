@@ -3,7 +3,7 @@ use crate::config::Config;
 use crate::error::ClickUpError;
 use clap::Subcommand;
 use colored::*;
-use prettytable::{Table, Row, Cell};
+use comfy_table::{Table, Cell};
 
 #[derive(Subcommand)]
 pub enum ListCommands {
@@ -44,28 +44,28 @@ async fn list_lists(api: &ClickUpApi, space_id: &str) -> Result<(), ClickUpError
     }
 
     let mut table = Table::new();
-    table.add_row(Row::new(vec![
-        Cell::new("ID").style_spec("bFg"),
-        Cell::new("Name").style_spec("bFg"),
-        Cell::new("Content").style_spec("bFg"),
-        Cell::new("Task Count").style_spec("bFg"),
-        Cell::new("Folder").style_spec("bFg"),
-    ]));
+    table.set_header(vec![
+        Cell::new("ID").add_attribute(comfy_table::Attribute::Bold),
+        Cell::new("Name").add_attribute(comfy_table::Attribute::Bold),
+        Cell::new("Content").add_attribute(comfy_table::Attribute::Bold),
+        Cell::new("Task Count").add_attribute(comfy_table::Attribute::Bold),
+        Cell::new("Folder").add_attribute(comfy_table::Attribute::Bold),
+    ]);
 
     for list in &lists.lists {
         let folder_name = list.folder.as_ref().map(|f| f.name.as_str()).unwrap_or("None");
         let task_count = list.task_count.as_deref().unwrap_or("0");
         
-        table.add_row(Row::new(vec![
+        table.add_row(vec![
             Cell::new(&list.id),
             Cell::new(&list.name),
             Cell::new(&list.content),
             Cell::new(task_count),
             Cell::new(folder_name),
-        ]));
+        ]);
     }
 
-    table.printstd();
+    println!("{}", table);
     Ok(())
 }
 

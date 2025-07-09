@@ -4,7 +4,7 @@ use crate::error::ClickUpError;
 use crate::models::{CreateTaskRequest, UpdateTaskRequest};
 use clap::Subcommand;
 use colored::*;
-use prettytable::{Table, Row, Cell};
+use comfy_table::{Table, Cell};
 
 #[derive(Subcommand)]
 pub enum TaskCommands {
@@ -108,35 +108,35 @@ async fn list_tasks(api: &ClickUpApi, list_id: &str) -> Result<(), ClickUpError>
     }
 
     let mut table = Table::new();
-    table.add_row(Row::new(vec![
-        Cell::new("ID").style_spec("bFg"),
-        Cell::new("Name").style_spec("bFg"),
-        Cell::new("Status").style_spec("bFg"),
-        Cell::new("Priority").style_spec("bFg"),
-        Cell::new("Due Date").style_spec("bFg"),
-        Cell::new("Assignees").style_spec("bFg"),
-    ]));
+    table.set_header(vec![
+        Cell::new("ID").add_attribute(comfy_table::Attribute::Bold),
+        Cell::new("Name").add_attribute(comfy_table::Attribute::Bold),
+        Cell::new("Status").add_attribute(comfy_table::Attribute::Bold),
+        Cell::new("Priority").add_attribute(comfy_table::Attribute::Bold),
+        Cell::new("Due Date").add_attribute(comfy_table::Attribute::Bold),
+        Cell::new("Assignees").add_attribute(comfy_table::Attribute::Bold),
+    ]);
 
     for task in &tasks.tasks {
-        let priority = task.priority.as_ref().map(|p| &p.priority).map_or("None", |v| v);
+        let priority = task.priority.as_ref().map(|p| p.priority.as_str()).unwrap_or("None");
         let due_date = task.due_date.as_deref().unwrap_or("None");
         let assignees = if task.assignees.is_empty() {
             "None".to_string()
         } else {
-            task.assignees.iter().map(|a| a.username.as_str()).collect::<Vec<_>>().join(", ")
+            task.assignees.iter().map(|a| a.username.clone()).collect::<Vec<_>>().join(", ")
         };
         
-        table.add_row(Row::new(vec![
+        table.add_row(vec![
             Cell::new(&task.id),
             Cell::new(&task.name),
             Cell::new(&task.status.status),
             Cell::new(priority),
             Cell::new(due_date),
             Cell::new(&assignees),
-        ]));
+        ]);
     }
 
-    table.printstd();
+    println!("{}", table);
     Ok(())
 }
 

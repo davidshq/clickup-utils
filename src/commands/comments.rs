@@ -4,7 +4,7 @@ use crate::error::ClickUpError;
 use crate::models::CreateCommentRequest;
 use clap::Subcommand;
 use colored::*;
-use prettytable::{Table, Row, Cell};
+use comfy_table::{Table, Cell};
 
 #[derive(Subcommand)]
 pub enum CommentCommands {
@@ -90,13 +90,13 @@ async fn list_comments(api: &ClickUpApi, task_id: &str) -> Result<(), ClickUpErr
     }
 
     let mut table = Table::new();
-    table.add_row(Row::new(vec![
-        Cell::new("ID").style_spec("bFg"),
-        Cell::new("User").style_spec("bFg"),
-        Cell::new("Comment").style_spec("bFg"),
-        Cell::new("Created").style_spec("bFg"),
-        Cell::new("Resolved").style_spec("bFg"),
-    ]));
+    table.set_header(vec![
+        Cell::new("ID").add_attribute(comfy_table::Attribute::Bold),
+        Cell::new("User").add_attribute(comfy_table::Attribute::Bold),
+        Cell::new("Comment").add_attribute(comfy_table::Attribute::Bold),
+        Cell::new("Created").add_attribute(comfy_table::Attribute::Bold),
+        Cell::new("Resolved").add_attribute(comfy_table::Attribute::Bold),
+    ]);
 
     for comment in &comments.comments {
         let comment_text = if comment.comment_text.len() > 50 {
@@ -105,16 +105,16 @@ async fn list_comments(api: &ClickUpApi, task_id: &str) -> Result<(), ClickUpErr
             comment.comment_text.clone()
         };
         
-        table.add_row(Row::new(vec![
+        table.add_row(vec![
             Cell::new(&comment.id),
             Cell::new(&comment.user.username),
             Cell::new(&comment_text),
             Cell::new(&comment.date_created),
             Cell::new(if comment.resolved { "Yes" } else { "No" }),
-        ]));
+        ]);
     }
 
-    table.printstd();
+    println!("{}", table);
     Ok(())
 }
 

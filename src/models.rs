@@ -109,7 +109,7 @@ pub struct Workspace {
     /// List of workspace members
     pub members: Vec<WorkspaceMember>,
     /// List of available roles in the workspace
-    pub roles: Vec<WorkspaceRole>,
+    pub roles: Option<Vec<WorkspaceRole>>,
 }
 
 /// Workspace member information
