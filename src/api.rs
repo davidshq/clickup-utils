@@ -89,7 +89,8 @@ impl ClickUpApi {
     /// Creates the authorization header for API requests
     /// 
     /// This function retrieves the API token from configuration and formats it
-    /// as a Bearer token for HTTP authorization headers.
+    /// appropriately for HTTP authorization headers. Personal tokens (starting with 'pk_')
+    /// are used without 'Bearer' prefix, while OAuth tokens use 'Bearer' prefix.
     /// 
     /// # Returns
     /// 
@@ -102,7 +103,17 @@ impl ClickUpApi {
     /// - `ClickUpError::AuthError` if the API token is missing or invalid
     fn get_auth_header(&self) -> Result<HeaderValue, ClickUpError> {
         let token = self.config.get_api_token()?;
-        let auth_value = format!("Bearer {}", token);
+        
+        // Personal tokens (starting with 'pk_') should be used without 'Bearer'
+        // OAuth tokens should use 'Bearer' prefix
+        let auth_value = if token.starts_with("pk_") {
+            // Personal token - use without Bearer
+            token.to_string()
+        } else {
+            // OAuth token - use with Bearer
+            format!("Bearer {}", token)
+        };
+        
         HeaderValue::from_str(&auth_value).map_err(|e| {
             ClickUpError::AuthError(format!("Invalid auth header: {}", e))
         })
