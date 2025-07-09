@@ -136,23 +136,4 @@ pub enum ClickUpError {
     /// invalid values.
     #[error("Configuration error: {0}")]
     ConfigParseError(#[from] config::ConfigError),
-
-    /// Timeout error
-    /// 
-    /// This error occurs when API requests exceed the configured timeout.
-    #[error("Request timeout: {0}")]
-    TimeoutError(String),
-
-    /// Invalid response format
-    /// 
-    /// This error occurs when the API response doesn't match the expected format.
-    #[error("Invalid response format: {0}")]
-    InvalidResponseError(String),
-
-    /// Feature not supported
-    /// 
-    /// This error occurs when trying to use a feature that is not supported
-    /// by the current API version or plan.
-    #[error("Feature not supported: {0}")]
-    UnsupportedFeatureError(String),
 } 
