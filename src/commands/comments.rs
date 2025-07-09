@@ -108,7 +108,7 @@ async fn show_comment(api: &ClickUpApi, comment_id: &str) -> Result<(), ClickUpE
                         println!("{}", "Comment Details".bold());
                         println!("ID: {}", comment.id);
                         println!("Task: {} ({})", task.name, task.id);
-                        println!("User: {} ({})", comment.user.username, comment.user.email);
+                        println!("User: {} ({})", comment.user.username, comment.user.id);
                         println!("Created: {}", comment.date_created);
                         println!("Updated: {}", comment.date_updated);
                         println!("Resolved: {}", if comment.resolved { "Yes" } else { "No" });

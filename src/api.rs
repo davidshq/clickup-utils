@@ -33,7 +33,7 @@
 use crate::config::Config;
 use crate::error::ClickUpError;
 use crate::models::*;
-use log::{debug, error, info};
+use log::{debug, error};
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
 use reqwest::Client;
 use serde_json::Value;

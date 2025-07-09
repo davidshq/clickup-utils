@@ -19,9 +19,9 @@
 use crate::api::ClickUpApi;
 use crate::config::Config;
 use crate::error::ClickUpError;
-use clap::{Subcommand, Args};
+use clap::Subcommand;
 use colored::*;
-use log::{error, info};
+
 use std::io::{self, Write};
 
 /// Authentication command variants

@@ -36,7 +36,6 @@
 use crate::error::ClickUpError;
 use config::{Config as ConfigFile, Environment, File};
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
 
 /// Application configuration structure
 /// 
@@ -45,7 +44,7 @@ use std::path::PathBuf;
 /// 
 /// The configuration can be loaded from multiple sources and automatically
 /// saves changes to the user's config directory.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Config {
     /// ClickUp API token for authentication
     /// 
@@ -104,23 +103,29 @@ impl Config {
 
         let config_file = config_dir.join("config.toml");
 
-        // Initialize the configuration builder
-        let mut config = ConfigFile::new();
+        // Use ConfigBuilder to avoid deprecated methods
+        let mut builder = ConfigFile::builder();
 
         // Load configuration from file if it exists
         if config_file.exists() {
-            config = config.merge(File::from(config_file.as_path()))?;
+            builder = builder.add_source(File::from(config_file.as_path()));
         }
 
         // Load configuration from environment variables
-        // Environment variables should be prefixed with "CLICKUP" and use "_" as separator
-        config = config.merge(Environment::with_prefix("CLICKUP").separator("_"))?;
+        builder = builder.add_source(Environment::with_prefix("CLICKUP").separator("_"));
 
         // Set default values for required fields
-        config.set_default("api_base_url", "https://api.clickup.com/api/v2")?;
+        builder = builder.set_default("api_base_url", "https://api.clickup.com/api/v2").map_err(|e| {
+            ClickUpError::ConfigError(format!("Failed to set default: {}", e))
+        })?;
 
-        // Convert the configuration builder to our Config struct
-        let config: Config = config.try_into()?;
+        // Build the config and deserialize
+        let config = builder.build().map_err(|e| {
+            ClickUpError::ConfigParseError(e)
+        })?;
+        let config: Config = config.try_deserialize().map_err(|_| {
+            ClickUpError::ConfigParseError(config::ConfigError::NotFound("Failed to parse config".to_string()))
+        })?;
 
         Ok(config)
     }
@@ -235,4 +240,4 @@ impl Default for Config {
             api_base_url: "https://api.clickup.com/api/v2".to_string(),
         }
     }
-} 
+}

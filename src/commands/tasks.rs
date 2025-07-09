@@ -2,7 +2,7 @@ use crate::api::ClickUpApi;
 use crate::config::Config;
 use crate::error::ClickUpError;
 use crate::models::{CreateTaskRequest, UpdateTaskRequest};
-use clap::{Subcommand, Args};
+use clap::Subcommand;
 use colored::*;
 use prettytable::{Table, Row, Cell};
 
@@ -118,12 +118,12 @@ async fn list_tasks(api: &ClickUpApi, list_id: &str) -> Result<(), ClickUpError>
     ]));
 
     for task in &tasks.tasks {
-        let priority = task.priority.as_ref().map(|p| &p.priority).unwrap_or("None");
+        let priority = task.priority.as_ref().map(|p| &p.priority).map_or("None", |v| v);
         let due_date = task.due_date.as_deref().unwrap_or("None");
         let assignees = if task.assignees.is_empty() {
             "None".to_string()
         } else {
-            task.assignees.iter().map(|a| &a.username).collect::<Vec<_>>().join(", ")
+            task.assignees.iter().map(|a| a.username.as_str()).collect::<Vec<_>>().join(", ")
         };
         
         table.add_row(Row::new(vec![
@@ -181,7 +181,7 @@ async fn show_task(api: &ClickUpApi, task_id: &str) -> Result<(), ClickUpError> 
     if !task.assignees.is_empty() {
         println!("\n{}", "Assignees:".bold());
         for assignee in &task.assignees {
-            println!("  - {} ({})", assignee.username, assignee.email);
+            println!("  - {} ({})", assignee.username, assignee.id);
         }
     }
     

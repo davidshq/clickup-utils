@@ -36,7 +36,6 @@
 //! - Linux: `~/.config/clickup-cli/config.toml`
 
 use clap::{Parser, Subcommand};
-use colored::*;
 use log::{error, info};
 
 mod api;
@@ -49,7 +48,6 @@ use crate::commands::{
     auth, comments, lists, spaces, tasks, teams, workspaces,
 };
 use crate::config::Config;
-use crate::error::ClickUpError;
 
 /// Main CLI application structure
 /// 

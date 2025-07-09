@@ -1,7 +1,7 @@
 use crate::api::ClickUpApi;
 use crate::config::Config;
 use crate::error::ClickUpError;
-use clap::{Subcommand, Args};
+use clap::Subcommand;
 use colored::*;
 use prettytable::{Table, Row, Cell};
 
