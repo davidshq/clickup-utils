@@ -1,0 +1,49 @@
+[package]
+name = "clickup-cli"
+version = "0.1.0"
+edition = "2021"
+authors = ["Your Name <your.email@example.com>"]
+description = "A command-line interface for ClickUp API"
+license = "MIT"
+
+[dependencies]
+# CLI and argument parsing
+clap = { version = "4.4", features = ["derive"] }
+
+# HTTP client
+reqwest = { version = "0.11", features = ["json"] }
+
+# JSON serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Async runtime
+tokio = { version = "1.0", features = ["full"] }
+
+# Configuration management
+config = "0.14"
+dirs = "5.0"
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Terminal output and formatting
+colored = "2.0"
+prettytable-rs = "0.9"
+
+# Date/time handling
+chrono = { version = "0.4", features = ["serde"] }
+
+# TOML serialization
+toml = "0.8"
+
+# Environment variables
+dotenv = "0.15"
+
+# Logging
+env_logger = "0.10"
+log = "0.4"
+
+[dev-dependencies]
+tokio-test = "0.4" 
