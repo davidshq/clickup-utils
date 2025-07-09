@@ -34,7 +34,7 @@ clap = { version = "4.4", features = ["derive"] }
 
 # HTTP client for API requests
 # Handles HTTP requests to ClickUp API with JSON support
-reqwest = { version = "0.11", features = ["json"] }
+reqwest = { version = "0.12.22", features = ["json"] }
 
 # JSON serialization and deserialization
 # Used for API request/response handling and configuration
@@ -47,44 +47,25 @@ tokio = { version = "1.0", features = ["full"] }
 
 # Configuration management
 # Handles loading configuration from files and environment variables
-config = "0.14"
+config = "0.15.13"
 # Provides cross-platform directory discovery
-dirs = "5.0"
+dirs = "6.0.0"
 
 # Error handling
-# Provides error type definitions and conversions
-anyhow = "1.0"
 # Enables custom error types with derive macros
-thiserror = "1.0"
+thiserror = "2.0.12"
 
 # Terminal output and formatting
 # Adds colored output for better user experience
-colored = "2.0"
+colored = "3.0.0"
 # Provides table formatting for structured output
 comfy-table = "7.1"
 
-# Date/time handling
-# Used for timestamp parsing and formatting
-chrono = { version = "0.4", features = ["serde"] }
-
 # TOML serialization
 # Used for configuration file format
-toml = "0.8"
-
-# Environment variables
-# Supports .env file loading for development
-dotenv = "0.15"
+toml = "0.9.0"
 
 # Logging
 # Provides structured logging throughout the application
-env_logger = "0.10"
-log = "0.4"
-
-[dev-dependencies]
-# Testing utilities for async code
-tokio-test = "0.4"
-
-# Optional: Add more dev dependencies as needed
-# For example:
-# mockito = "1.0"  # For API mocking in tests
-# tempfile = "3.0" # For temporary file handling in tests 
+env_logger = "0.11.8"
+log = "0.4" 
