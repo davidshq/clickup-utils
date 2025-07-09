@@ -5,45 +5,86 @@ edition = "2021"
 authors = ["Your Name <your.email@example.com>"]
 description = "A command-line interface for ClickUp API"
 license = "MIT"
+repository = "https://github.com/davidshq/clickup-cli"
+keywords = ["clickup", "cli", "api", "task-management", "productivity"]
+categories = ["command-line-utilities", "api-bindings"]
+readme = "README.md"
+documentation = "https://docs.rs/clickup-cli"
+homepage = "https://github.com/davidshq/clickup-cli"
+
+# Package metadata for better discoverability
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+# Package metadata for crates.io
+[package.metadata.crates-io]
+repository = "https://github.com/davidshq/clickup-cli"
+homepage = "https://github.com/davidshq/clickup-cli"
+documentation = "https://docs.rs/clickup-cli"
+keywords = ["clickup", "cli", "api", "task-management", "productivity"]
+categories = ["command-line-utilities", "api-bindings"]
+license = "MIT"
+description = "A comprehensive command-line interface for the ClickUp API"
 
 [dependencies]
 # CLI and argument parsing
+# Provides command-line argument parsing with derive macros
 clap = { version = "4.4", features = ["derive"] }
 
-# HTTP client
+# HTTP client for API requests
+# Handles HTTP requests to ClickUp API with JSON support
 reqwest = { version = "0.11", features = ["json"] }
 
-# JSON serialization
+# JSON serialization and deserialization
+# Used for API request/response handling and configuration
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
-# Async runtime
+# Async runtime for concurrent operations
+# Required for async/await support throughout the application
 tokio = { version = "1.0", features = ["full"] }
 
 # Configuration management
+# Handles loading configuration from files and environment variables
 config = "0.14"
+# Provides cross-platform directory discovery
 dirs = "5.0"
 
 # Error handling
+# Provides error type definitions and conversions
 anyhow = "1.0"
+# Enables custom error types with derive macros
 thiserror = "1.0"
 
 # Terminal output and formatting
+# Adds colored output for better user experience
 colored = "2.0"
+# Provides table formatting for structured output
 prettytable-rs = "0.9"
 
 # Date/time handling
+# Used for timestamp parsing and formatting
 chrono = { version = "0.4", features = ["serde"] }
 
 # TOML serialization
+# Used for configuration file format
 toml = "0.8"
 
 # Environment variables
+# Supports .env file loading for development
 dotenv = "0.15"
 
 # Logging
+# Provides structured logging throughout the application
 env_logger = "0.10"
 log = "0.4"
 
 [dev-dependencies]
-tokio-test = "0.4" 
+# Testing utilities for async code
+tokio-test = "0.4"
+
+# Optional: Add more dev dependencies as needed
+# For example:
+# mockito = "1.0"  # For API mocking in tests
+# tempfile = "3.0" # For temporary file handling in tests 

@@ -1,31 +1,37 @@
 # ClickUp CLI
 
-A powerful command-line interface for ClickUp API that allows you to manage your ClickUp workspaces, spaces, lists, tasks, and comments directly from the terminal.
+[![Crates.io](https://img.shields.io/crates/v/clickup-cli)](https://crates.io/crates/clickup-cli)
+[![Documentation](https://docs.rs/clickup-cli/badge.svg)](https://docs.rs/clickup-cli)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Rust](https://img.shields.io/badge/rust-1.70+-orange.svg)](https://www.rust-lang.org/)
 
-## Features
+A powerful command-line interface for the ClickUp API that allows you to manage your ClickUp workspaces, spaces, lists, tasks, and comments directly from the terminal.
 
-- **Authentication Management**: Set up and manage your ClickUp API tokens
-- **Workspace Management**: List and view workspace details
-- **Space Management**: Browse spaces within workspaces
-- **List Management**: View lists within spaces
-- **Task Management**: Create, read, update, and delete tasks
-- **Comment Management**: Add and view comments on tasks
-- **Beautiful Output**: Formatted tables and colored output
-- **Error Handling**: Comprehensive error messages and logging
-- **Configuration**: Persistent configuration storage
+## 🚀 Features
 
-## Installation
+- **🔐 Authentication Management**: Secure API token storage and management
+- **🏢 Workspace Management**: List and view workspace details
+- **📁 Space Management**: Browse spaces within workspaces
+- **📋 List Management**: View lists within spaces
+- **✅ Task Management**: Create, read, update, and delete tasks
+- **💬 Comment Management**: Add and view comments on tasks
+- **🎨 Beautiful Output**: Formatted tables and colored output
+- **🛡️ Error Handling**: Comprehensive error messages and logging
+- **⚙️ Configuration**: Persistent configuration storage
+- **🔍 Debug Mode**: Detailed logging for troubleshooting
+
+## 📦 Installation
 
 ### Prerequisites
 
-- Rust 1.70+ (install from [rustup.rs](https://rustup.rs/))
-- ClickUp API token (get from your ClickUp settings)
+- **Rust 1.70+** (install from [rustup.rs](https://rustup.rs/))
+- **ClickUp API token** (get from your ClickUp settings)
 
 ### Build from Source
 
 ```bash
 # Clone the repository
-git clone <repository-url>
+git clone https://github.com/davidshq/clickup-cli.git
 cd clickup-cli
 
 # Build the application
@@ -43,7 +49,14 @@ cargo install --path .
 # Now you can use `clickup-cli` from anywhere
 ```
 
-## Quick Start
+### Install from Crates.io
+
+```bash
+# Install the latest version from crates.io
+cargo install clickup-cli
+```
+
+## 🚀 Quick Start
 
 1. **Set up your API token**:
    ```bash
@@ -73,14 +86,16 @@ cargo install --path .
    clickup-cli tasks list --list-id <list-id>
    ```
 
-## Usage
+## 📖 Usage
 
 ### Authentication Commands
 
 ```bash
-# Set your API token
+# Set your API token (interactive mode - recommended)
+clickup-cli auth set
+
+# Set your API token (command-line mode)
 clickup-cli auth set --token <your-api-token>
-clickup-cli auth set  # Interactive mode
 
 # Test your authentication
 clickup-cli auth test
@@ -176,7 +191,7 @@ clickup-cli comments create \
   --notify-all true
 ```
 
-## Configuration
+## ⚙️ Configuration
 
 The CLI stores configuration in your system's config directory:
 
@@ -184,124 +199,159 @@ The CLI stores configuration in your system's config directory:
 - **macOS**: `~/Library/Application Support/clickup-cli/config.toml`
 - **Linux**: `~/.config/clickup-cli/config.toml`
 
+### Configuration File Format
+
+```toml
+# API token for authentication
+api_token = "your-api-token-here"
+
+# Default workspace ID (optional)
+workspace_id = "workspace-id"
+
+# Default list ID (optional)
+default_list_id = "list-id"
+
+# API base URL (defaults to ClickUp v2 API)
+api_base_url = "https://api.clickup.com/api/v2"
+```
+
 ### Environment Variables
 
 You can also set configuration via environment variables:
 
 ```bash
 export CLICKUP_API_TOKEN="your-api-token"
+export CLICKUP_WORKSPACE_ID="workspace-id"
+export CLICKUP_DEFAULT_LIST_ID="list-id"
 export CLICKUP_API_BASE_URL="https://api.clickup.com/api/v2"
 ```
 
-## Getting Your ClickUp API Token
+## 🔑 Getting Your ClickUp API Token
 
-1. Log in to your ClickUp account
-2. Go to **Settings** → **Apps**
-3. Click **Create New App** or use your personal token
-4. Copy the API token
+1. **Log in to your ClickUp account**
+2. **Go to Settings** → **Apps**
+3. **Click Create New App** or use your personal token
+4. **Copy the API token** and use it with the CLI
 
-## Examples
+### Personal Token (Recommended)
 
-### Workflow Examples
+1. Go to **Settings** → **Apps**
+2. Click **Generate API Token**
+3. Copy the generated token
 
-**Create a task from command line**:
+### App Token
+
+1. Go to **Settings** → **Apps**
+2. Click **Create New App**
+3. Configure your app settings
+4. Copy the API token from your app
+
+## 🐛 Debug Mode
+
+Enable debug logging for troubleshooting:
+
 ```bash
-# Set up authentication
+# Enable debug mode
+clickup-cli --debug <command>
+
+# Example with debug output
+clickup-cli --debug auth test
+```
+
+## 📝 Examples
+
+### Complete Workflow Example
+
+```bash
+# 1. Set up authentication
 clickup-cli auth set
 
-# Find your workspace and list IDs
+# 2. List workspaces
 clickup-cli workspaces list
-clickup-cli spaces list --workspace-id <workspace-id>
-clickup-cli lists list --space-id <space-id>
 
-# Create a task
+# 3. List spaces in a workspace
+clickup-cli spaces list --workspace-id "workspace_123"
+
+# 4. List lists in a space
+clickup-cli lists list --space-id "space_456"
+
+# 5. Create a task
 clickup-cli tasks create \
-  --list-id <list-id> \
-  --name "Review pull request #123" \
-  --description "Please review the changes in PR #123" \
-  --priority 3 \
-  --status "to do"
-```
+  --list-id "list_789" \
+  --name "Complete project documentation" \
+  --description "Write comprehensive documentation for the new feature" \
+  --status "to do" \
+  --priority 1
 
-**Update task status**:
-```bash
-clickup-cli tasks update --id <task-id> --status "in progress"
-```
+# 6. List tasks to verify creation
+clickup-cli tasks list --list-id "list_789"
 
-**Add a comment to a task**:
-```bash
+# 7. Add a comment to the task
 clickup-cli comments create \
-  --task-id <task-id> \
-  --text "Working on this now" \
-  --notify-all true
+  --task-id "task_abc123" \
+  --text "Starting work on this task"
 ```
 
-## Error Handling
-
-The CLI provides detailed error messages for common issues:
-
-- **Authentication errors**: Invalid or missing API token
-- **Permission errors**: Insufficient permissions for the requested action
-- **Rate limiting**: When you exceed API rate limits
-- **Network errors**: Connection issues
-- **Validation errors**: Invalid input parameters
-
-## Development
-
-### Building for Development
+### Advanced Task Management
 
 ```bash
-# Build in debug mode
+# Create a task with all options
+clickup-cli tasks create \
+  --list-id "list_789" \
+  --name "Complex Task" \
+  --description "This is a detailed task description" \
+  --status "in progress" \
+  --priority 2 \
+  --due-date 1640995200000 \
+  --assignees 123,456 \
+  --tags "urgent", "frontend"
+
+# Update task status
+clickup-cli tasks update \
+  --id "task_abc123" \
+  --status "done"
+
+# Delete completed tasks
+clickup-cli tasks delete --id "task_abc123"
+```
+
+## 🤝 Contributing
+
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+
+### Development Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/clickup-cli.git
+cd clickup-cli
+
+# Install dependencies
 cargo build
 
-# Run with debug logging
-cargo run -- --debug workspaces list
-```
-
-### Running Tests
-
-```bash
+# Run tests
 cargo test
+
+# Run with debug logging
+cargo run -- --debug auth test
 ```
 
-### Adding New Commands
+## 📄 License
 
-The CLI is designed to be easily extensible. To add new commands:
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-1. Create a new module in `src/commands/`
-2. Define your command structure using `clap::Subcommand`
-3. Implement the `execute` function
-4. Add the module to `src/commands/mod.rs`
-5. Add the command to the main CLI structure in `src/main.rs`
+## 🙏 Acknowledgments
 
-## Contributing
+- [ClickUp API](https://clickup.com/api) for providing the API
+- [clap](https://github.com/clap-rs/clap) for excellent CLI argument parsing
+- [reqwest](https://github.com/seanmonstar/reqwest) for HTTP client functionality
+- [serde](https://github.com/serde-rs/serde) for serialization support
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+## 📞 Support
 
-## License
+- **Issues**: [GitHub Issues](https://github.com/davidshq/clickup-cli/issues)
+- **Documentation**: [API Documentation](https://docs.rs/clickup-cli)
 
-MIT License - see LICENSE file for details.
+## 🔄 Changelog
 
-## Support
-
-For issues and questions:
-
-1. Check the error messages for guidance
-2. Use `--debug` flag for detailed logging
-3. Verify your API token is correct
-4. Check your ClickUp permissions
-
-## Roadmap
-
-- [ ] Webhook support for real-time updates
-- [ ] Batch operations for multiple tasks
-- [ ] Export/import functionality
-- [ ] Custom field support
-- [ ] Time tracking integration
-- [ ] Advanced filtering and search
-- [ ] Shell completion scripts
-- [ ] Plugin system for custom commands 
+See [CHANGELOG.md](CHANGELOG.md) for a detailed history of changes.
