@@ -563,6 +563,57 @@ pub struct SpaceStatus {
     pub type_: String,
 }
 
+// Folder models
+
+/// Response containing a list of folders
+/// 
+/// This struct represents the API response when fetching folders within a space.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct FoldersResponse {
+    /// List of folders in the space
+    pub folders: Vec<Folder>,
+}
+
+/// Folder information
+/// 
+/// A folder represents a collection of lists within a space.
+/// It provides organization for lists and can contain multiple lists.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Folder {
+    #[serde(deserialize_with = "string_or_number")]
+    /// Unique folder identifier
+    pub id: String,
+    /// Folder display name
+    pub name: Option<String>,
+    /// Folder display order
+    #[serde(deserialize_with = "i64_from_string_or_number")]
+    pub orderindex: i64,
+    /// Folder content/description
+    pub content: Option<String>,
+    /// Whether the folder is hidden
+    pub hidden: Option<bool>,
+    /// Whether the user has access to the folder
+    pub access: Option<bool>,
+    /// Folder space information
+    pub space: FolderSpace,
+    /// Whether the folder is archived
+    pub archived: Option<bool>,
+    /// Whether the folder overrides statuses
+    pub override_statuses: Option<bool>,
+    /// Folder statuses
+    pub statuses: Option<Vec<SpaceStatus>>,
+}
+
+/// Folder space information
+#[derive(Debug, Serialize, Deserialize)]
+pub struct FolderSpace {
+    #[serde(deserialize_with = "string_or_number")]
+    /// Unique space identifier
+    pub id: String,
+    /// Space display name
+    pub name: String,
+}
+
 // List models
 
 /// Response containing a list of lists

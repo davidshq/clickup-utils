@@ -19,6 +19,12 @@ pub enum SpaceCommands {
         #[arg(short, long)]
         id: String,
     },
+    /// List all folders in a space
+    ListFolders {
+        /// Space ID
+        #[arg(short, long)]
+        space_id: String,
+    },
 }
 
 pub async fn execute(command: SpaceCommands, config: &Config) -> Result<(), ClickUpError> {
@@ -30,6 +36,9 @@ pub async fn execute(command: SpaceCommands, config: &Config) -> Result<(), Clic
         }
         SpaceCommands::Show { id } => {
             show_space(&api, &id).await?;
+        }
+        SpaceCommands::ListFolders { space_id } => {
+            list_folders(&api, &space_id).await?;
         }
     }
     Ok(())
@@ -106,4 +115,39 @@ async fn show_space(api: &ClickUpApi, space_id: &str) -> Result<(), ClickUpError
     }
 
     Err(ClickUpError::NotFoundError(format!("Space {} not found", space_id)))
+}
+
+async fn list_folders(api: &ClickUpApi, space_id: &str) -> Result<(), ClickUpError> {
+    let folders = api.get_folders(space_id).await?;
+    
+    if folders.folders.is_empty() {
+        println!("{}", "No folders found".yellow());
+        return Ok(());
+    }
+
+    let mut table = Table::new();
+    table.set_header(vec![
+        Cell::new("ID").add_attribute(comfy_table::Attribute::Bold),
+        Cell::new("Name").add_attribute(comfy_table::Attribute::Bold),
+        Cell::new("Content").add_attribute(comfy_table::Attribute::Bold),
+        Cell::new("Hidden").add_attribute(comfy_table::Attribute::Bold),
+        Cell::new("Archived").add_attribute(comfy_table::Attribute::Bold),
+    ]);
+
+    for folder in &folders.folders {
+        let content = folder.content.as_deref().unwrap_or("");
+        let hidden = if folder.hidden.unwrap_or(false) { "Yes" } else { "No" };
+        let archived = if folder.archived.unwrap_or(false) { "Yes" } else { "No" };
+        
+        table.add_row(vec![
+            Cell::new(&folder.id),
+            Cell::new(folder.name.as_deref().unwrap_or("")),
+            Cell::new(content),
+            Cell::new(hidden),
+            Cell::new(archived),
+        ]);
+    }
+
+    println!("{}", table);
+    Ok(())
 } 

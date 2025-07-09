@@ -410,6 +410,44 @@ impl ClickUpApi {
         self.make_request(reqwest::Method::GET, &endpoint, None, None).await
     }
 
+    // Folder endpoints
+
+    /// Retrieves all folders within a specific space
+    /// 
+    /// # Arguments
+    /// 
+    /// * `space_id` - The ID of the space to get folders from
+    /// 
+    /// # Returns
+    /// 
+    /// Returns a `FoldersResponse` containing a list of folders.
+    /// 
+    /// # Errors
+    /// 
+    /// This function can return authentication, permission, or network errors.
+    pub async fn get_folders(&self, space_id: &str) -> Result<FoldersResponse, ClickUpError> {
+        let endpoint = format!("/space/{}/folder", space_id);
+        self.make_request(reqwest::Method::GET, &endpoint, None, None).await
+    }
+
+    /// Retrieves all lists within a specific folder
+    /// 
+    /// # Arguments
+    /// 
+    /// * `folder_id` - The ID of the folder to get lists from
+    /// 
+    /// # Returns
+    /// 
+    /// Returns a `ListsResponse` containing a list of lists.
+    /// 
+    /// # Errors
+    /// 
+    /// This function can return authentication, permission, or network errors.
+    pub async fn get_folder_lists(&self, folder_id: &str) -> Result<ListsResponse, ClickUpError> {
+        let endpoint = format!("/folder/{}/list", folder_id);
+        self.make_request(reqwest::Method::GET, &endpoint, None, None).await
+    }
+
     // Task endpoints
 
     /// Retrieves all tasks within a specific list
@@ -426,8 +464,31 @@ impl ClickUpApi {
     /// 
     /// This function can return authentication, permission, or network errors.
     pub async fn get_tasks(&self, list_id: &str) -> Result<TasksResponse, ClickUpError> {
-        let endpoint = format!("/list/{}/task", list_id);
-        self.make_request(reqwest::Method::GET, &endpoint, None, None).await
+        let mut all_tasks = Vec::new();
+        let mut page = 0;
+        let limit = 100; // ClickUp API default limit
+        
+        loop {
+            let query_params = vec![
+                ("page".to_string(), page.to_string()),
+                ("limit".to_string(), limit.to_string()),
+            ];
+            
+            let endpoint = format!("/list/{}/task", list_id);
+            let response: TasksResponse = self.make_request(reqwest::Method::GET, &endpoint, None, Some(query_params)).await?;
+            
+            let tasks_count = response.tasks.len();
+            all_tasks.extend(response.tasks);
+            
+            // If we got fewer tasks than the limit, we've reached the end
+            if tasks_count < limit {
+                break;
+            }
+            
+            page += 1;
+        }
+        
+        Ok(TasksResponse { tasks: all_tasks })
     }
 
     /// Retrieves tasks within a specific list filtered by tag
@@ -535,29 +596,79 @@ impl ClickUpApi {
             spaces.spaces[selection - 1].id.clone()
         };
         
-        // Get all lists in the space
-        let lists = self.get_lists(&space_id).await?;
+        // Get all lists in the space (both direct lists and lists in folders)
+        let mut all_lists = Vec::new();
         
-        println!("{}", format!("Searching through {} lists for tasks with tag '{}'...", lists.lists.len(), tag).blue());
+        // Get direct lists in the space
+        let space_lists = self.get_lists(&space_id).await?;
+        all_lists.extend(space_lists.lists);
+        
+        // Get folders and their lists
+        match self.get_folders(&space_id).await {
+            Ok(folders_response) => {
+                for folder in &folders_response.folders {
+                    println!("  Checking folder: {}", folder.name.as_deref().unwrap_or(""));
+                    
+                    match self.get_folder_lists(&folder.id).await {
+                        Ok(folder_lists) => {
+                            all_lists.extend(folder_lists.lists);
+                        }
+                        Err(e) => {
+                            println!("{} Warning: Could not fetch lists from folder '{}': {}", "⚠️".yellow(), folder.name.as_deref().unwrap_or(""), e);
+                        }
+                    }
+                }
+            }
+            Err(e) => {
+                println!("{} Warning: Could not fetch folders: {}", "⚠️".yellow(), e);
+            }
+        }
+        
+        println!("{}", format!("Searching through {} lists for tasks with tag '{}'...", all_lists.len(), tag).blue());
         
         // Search through each list
-        for list in &lists.lists {
-            println!("  Checking list: {}", list.name.as_deref().unwrap_or(""));
+        for list in &all_lists {
+            let list_name = list.name.as_deref().unwrap_or("");
+            let folder_info = list.folder.as_ref().map(|f| format!(" (in folder: {})", f.name)).unwrap_or_default();
+            println!("  Checking list: {}{}", list_name, folder_info);
             
             match self.get_tasks(&list.id).await {
                 Ok(tasks_response) => {
+                    // Debug: Print all tags for each task
+                    for task in &tasks_response.tasks {
+                        let task_name = task.name.as_deref().unwrap_or("Unnamed Task");
+                        let tag_names: Vec<String> = task.tags.iter()
+                            .filter_map(|t| t.name.as_ref().map(|n| n.clone()))
+                            .collect();
+                        
+                        if tag_names.is_empty() {
+                            println!("    Task '{}' (ID: {}): No tags", task_name, task.id);
+                        } else {
+                            println!("    Task '{}' (ID: {}): Tags: [{}]", 
+                                task_name, task.id, tag_names.join(", "));
+                        }
+                    }
+                    
                     // Filter tasks by tag
                     let filtered_tasks: Vec<Task> = tasks_response.tasks
                         .into_iter()
                         .filter(|task| {
-                            task.tags.iter().any(|task_tag| task_tag.name.as_deref() == Some(tag.as_str()))
+                            let has_tag = task.tags.iter().any(|task_tag| {
+                                let tag_matches = task_tag.name.as_deref() == Some(tag.as_str());
+                                if tag_matches {
+                                    println!("    ✓ Found matching tag '{}' on task '{}'", 
+                                        tag, task.name.as_deref().unwrap_or("Unnamed Task"));
+                                }
+                                tag_matches
+                            });
+                            has_tag
                         })
                         .collect();
                     
                     all_tasks.extend(filtered_tasks);
                 }
                 Err(e) => {
-                    println!("{} Warning: Could not fetch tasks from list '{}': {}", "⚠️".yellow(), list.name.as_deref().unwrap_or(""), e);
+                    println!("{} Warning: Could not fetch tasks from list '{}': {}", "⚠️".yellow(), list_name, e);
                 }
             }
         }
