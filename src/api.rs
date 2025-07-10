@@ -204,7 +204,19 @@ impl ClickUpApi {
         // Handle error responses
         if !status.is_success() {
             let error_msg = if !response_text.is_empty() {
-                response_text
+                // Try to parse ClickUp-specific error format
+                if let Ok(error_json) = serde_json::from_str::<serde_json::Value>(&response_text) {
+                    if let (Some(err_msg), Some(ecode)) = (
+                        error_json.get("err").and_then(|v| v.as_str()),
+                        error_json.get("ECODE").and_then(|v| v.as_str())
+                    ) {
+                        format!("ClickUp Error {}: {}", ecode, err_msg)
+                    } else {
+                        response_text
+                    }
+                } else {
+                    response_text
+                }
             } else {
                 format!("HTTP {}: {}", status.as_u16(), status.canonical_reason().unwrap_or("Unknown"))
             };
@@ -308,7 +320,19 @@ impl ClickUpApi {
         // Handle error responses
         if !status.is_success() {
             let error_msg = if !response_text.is_empty() {
-                response_text
+                // Try to parse ClickUp-specific error format
+                if let Ok(error_json) = serde_json::from_str::<serde_json::Value>(&response_text) {
+                    if let (Some(err_msg), Some(ecode)) = (
+                        error_json.get("err").and_then(|v| v.as_str()),
+                        error_json.get("ECODE").and_then(|v| v.as_str())
+                    ) {
+                        format!("ClickUp Error {}: {}", ecode, err_msg)
+                    } else {
+                        response_text
+                    }
+                } else {
+                    response_text
+                }
             } else {
                 format!("HTTP {}: {}", status.as_u16(), status.canonical_reason().unwrap_or("Unknown"))
             };

@@ -189,6 +189,9 @@ impl Config {
     /// 
     /// This function can return the same errors as `save()`.
     pub fn set_api_token(&mut self, token: String) -> Result<(), ClickUpError> {
+        if token.trim().is_empty() {
+            return Err(ClickUpError::ValidationError("API token cannot be empty or whitespace".to_string()));
+        }
         self.api_token = Some(token);
         self.save()
     }
