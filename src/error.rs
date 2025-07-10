@@ -19,7 +19,7 @@
 //! ## Usage
 //! 
 //! ```rust
-//! use crate::error::ClickUpError;
+//! use clickup_cli::error::ClickUpError;
 //! 
 //! fn some_function() -> Result<(), ClickUpError> {
 //!     // Function implementation

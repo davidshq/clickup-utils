@@ -17,17 +17,24 @@
 //! ## Usage
 //! 
 //! ```rust
-//! use crate::api::ClickUpApi;
-//! use crate::config::Config;
+//! use clickup_cli::api::ClickUpApi;
+//! use clickup_cli::config::Config;
+//! use clickup_cli::models::CreateTaskRequest;
 //! 
-//! let config = Config::load()?;
-//! let api = ClickUpApi::new(config)?;
-//! 
-//! // Get user information
-//! let user = api.get_user().await?;
-//! 
-//! // Create a task
-//! let task = api.create_task("list_id", task_data).await?;
+//! #[tokio::main]
+//! async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//!     let config = Config::default();
+//!     let api = ClickUpApi::new(config)?;
+//!     // Get user information (would fail without a real token)
+//!     // let user = api.get_user().await?;
+//!     // Create a task (would fail without a real token)
+//!     let task_data = CreateTaskRequest {
+//!         name: "Test Task".to_string(),
+//!         ..Default::default()
+//!     };
+//!     // let task = api.create_task("list_id", task_data).await?;
+//!     Ok(())
+//! }
 //! ```
 
 use crate::config::Config;

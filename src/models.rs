@@ -24,17 +24,22 @@
 //! ## Usage
 //! 
 //! ```rust
-//! use crate::models::{User, Task, CreateTaskRequest};
+//! use clickup_cli::models::{User, Task, CreateTaskRequest};
+//! use serde_json;
 //! 
-//! // Deserialize API response
-//! let user: User = serde_json::from_str(json_data)?;
-//! 
-//! // Create request data
-//! let task_request = CreateTaskRequest {
-//!     name: "My Task".to_string(),
-//!     description: Some("Task description".to_string()),
-//!     ..Default::default()
-//! };
+//! fn main() -> Result<(), Box<dyn std::error::Error>> {
+//!     // Example JSON for a user
+//!     let json_data = r#"{"user":{"id":1,"username":"test","email":"test@example.com"}}"#;
+//!     // Deserialize API response
+//!     let user: User = serde_json::from_str(json_data)?;
+//!     // Create request data
+//!     let task_request = CreateTaskRequest {
+//!         name: "My Task".to_string(),
+//!         description: Some("Task description".to_string()),
+//!         ..Default::default()
+//!     };
+//!     Ok(())
+//! }
 //! ```
 
 use serde::{Deserialize, Serialize, Deserializer};
