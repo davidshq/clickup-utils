@@ -1,14 +1,22 @@
 # ClickUp CLI
 
-[![Crates.io](https://img.shields.io/crates/v/clickup-cli)](https://crates.io/crates/clickup-cli)
-[![Documentation](https://docs.rs/clickup-cli/badge.svg)](https://docs.rs/clickup-cli)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/rust-1.70+-orange.svg)](https://www.rust-lang.org/)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 A powerful command-line interface for the ClickUp API that allows you to manage your ClickUp workspaces, spaces, lists, tasks, and comments directly from the terminal.
 
 ## WARNING: Vibe Coded
 This has been vibe coded using primarily Cursor. Expect the code quality to be low.
+
+## ⚠️ Development Status
+
+**This project is currently in active development.** While functional, it may have bugs and incomplete features. Please report issues and contribute improvements.
+
+### Known Issues
+- Some tests may fail (see `CODE_REVIEW_RECOMMENDATIONS.md`)
+- 103 Clippy warnings need to be addressed
+- Package metadata needs updating
+- Documentation examples need expansion
 
 ## 🚀 Features
 
@@ -22,6 +30,8 @@ This has been vibe coded using primarily Cursor. Expect the code quality to be l
 - **🛡️ Error Handling**: Comprehensive error messages and logging
 - **⚙️ Configuration**: Persistent configuration storage
 - **🔍 Debug Mode**: Detailed logging for troubleshooting
+- **🏷️ Tag-based Operations**: Search and filter tasks by tags
+- **📅 Overdue Task Management**: Update overdue tasks with specific tags
 
 ## 📦 Installation
 
@@ -30,7 +40,7 @@ This has been vibe coded using primarily Cursor. Expect the code quality to be l
 - **Rust 1.70+** (install from [rustup.rs](https://rustup.rs/))
 - **ClickUp API token** (get from your ClickUp settings)
 
-### Build from Source
+### Build from Source (Recommended)
 
 ```bash
 # Clone the repository
@@ -52,12 +62,14 @@ cargo install --path .
 # Now you can use `clickup-cli` from anywhere
 ```
 
-### Install from Crates.io
+### Install from Crates.io (Coming Soon)
 
 ```bash
-# Install the latest version from crates.io
+# Install the latest version from crates.io (when published)
 cargo install clickup-cli
 ```
+
+**Note**: This package is not yet published to crates.io. Use the local installation method above.
 
 ## 🚀 Quick Start
 
@@ -352,24 +364,53 @@ clickup-cli tasks delete --id "task_abc123"
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+We welcome contributions! This project is in active development and needs help with:
+
+### Current Priorities
+- **Fix failing tests** (see `CODE_REVIEW_RECOMMENDATIONS.md`)
+- **Address 103 Clippy warnings**
+- **Update package metadata** in `Cargo.toml`
+- **Improve error messages** and user experience
+- **Add comprehensive tests** and documentation
 
 ### Development Setup
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/clickup-cli.git
+git clone https://github.com/davidshq/clickup-cli.git
 cd clickup-cli
 
 # Install dependencies
 cargo build
 
-# Run tests
+# Run tests (some may fail - see recommendations)
 cargo test
+
+# Check for issues
+cargo check
+cargo clippy
 
 # Run with debug logging
 cargo run -- --debug auth test
 ```
+
+### Code Quality
+
+Before submitting contributions:
+1. Run `cargo clippy` and fix warnings
+2. Run `cargo test` and ensure all tests pass
+3. Follow the existing code style
+4. Add tests for new features
+5. Update documentation as needed
+
+### Known Issues
+
+- Some tests in `tests/config_tests.rs` may fail
+- 103 Clippy warnings need to be addressed
+- Package metadata in `Cargo.toml` needs updating
+- Documentation examples need expansion
+
+See `CODE_REVIEW_RECOMMENDATIONS.md` for detailed improvement suggestions.
 
 ## 📄 License
 
@@ -385,8 +426,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 📞 Support
 
 - **Issues**: [GitHub Issues](https://github.com/davidshq/clickup-cli/issues)
-- **Documentation**: [API Documentation](https://docs.rs/clickup-cli)
+- **Documentation**: [API Documentation](https://docs.rs/clickup-cli) (when published)
+- **Development Status**: See `CODE_REVIEW_RECOMMENDATIONS.md` for current issues and improvements
 
 ## 🔄 Changelog
 
-See [CHANGELOG.md](CHANGELOG.md) for a detailed history of changes.
+This project is in active development. See [CODE_REVIEW_RECOMMENDATIONS.md](CODE_REVIEW_RECOMMENDATIONS.md) for current development status and planned improvements.
+
+For detailed change history, check the [GitHub commits](https://github.com/davidshq/clickup-cli/commits/main).
