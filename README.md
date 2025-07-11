@@ -162,6 +162,9 @@ clickup-cli tasks list-by-tag --list-id <list-id> --tag <tag-name>
 # Search for tasks with a specific tag across all lists in a space
 clickup-cli tasks search-by-tag --tag <tag-name> [--workspace-id <workspace-id>] [--space-id <space-id>]
 
+# Update overdue tasks with a specific tag to today's date
+clickup-cli tasks update-overdue-by-tag --tag <tag-name> [--workspace-id <workspace-id>] [--space-id <space-id>] [--dry-run]
+
 # Show details of a specific task
 clickup-cli tasks show --id <task-id>
 
@@ -337,6 +340,11 @@ clickup-cli tasks list-by-tag \
 # Search for tasks with specific tag across all lists in a space
 clickup-cli tasks search-by-tag \
   --tag "update-auto"
+
+# Update overdue tasks with a specific tag to today's date
+clickup-cli tasks update-overdue-by-tag \
+  --tag "urgent" \
+  --dry-run
 
 # Delete completed tasks
 clickup-cli tasks delete --id "task_abc123"

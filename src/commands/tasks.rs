@@ -35,6 +35,21 @@ pub enum TaskCommands {
         #[arg(short, long)]
         space_id: Option<String>,
     },
+    /// Update overdue tasks with a specific tag to today's date
+    UpdateOverdueByTag {
+        /// Tag name to filter by
+        #[arg(short, long)]
+        tag: String,
+        /// Workspace ID (optional - will prompt if not provided)
+        #[arg(short, long)]
+        workspace_id: Option<String>,
+        /// Space ID (optional - will prompt if not provided)
+        #[arg(short, long)]
+        space_id: Option<String>,
+        /// Dry run mode - show what would be updated without making changes
+        #[arg(short, long)]
+        dry_run: bool,
+    },
     /// Show details of a specific task
     Show {
         /// Task ID
@@ -109,6 +124,9 @@ pub async fn execute(command: TaskCommands, config: &Config) -> Result<(), Click
         }
         TaskCommands::SearchByTag { tag, workspace_id, space_id } => {
             search_tasks_by_tag(&api, tag, workspace_id, space_id).await?;
+        }
+        TaskCommands::UpdateOverdueByTag { tag, workspace_id, space_id, dry_run } => {
+            update_overdue_by_tag(&api, tag, workspace_id, space_id, dry_run).await?;
         }
         TaskCommands::Show { id } => {
             show_task(&api, &id).await?;
@@ -258,6 +276,116 @@ async fn search_tasks_by_tag(api: &ClickUpApi, tag: String, workspace_id: Option
 
     println!("{}", format!("Tasks with tag '{}':", tag).bold());
     println!("{}", table);
+    Ok(())
+}
+
+async fn update_overdue_by_tag(api: &ClickUpApi, tag: String, workspace_id: Option<String>, space_id: Option<String>, dry_run: bool) -> Result<(), ClickUpError> {
+    println!("{}", format!("Searching for overdue tasks with tag '{}'...", tag).blue());
+    let tasks = api.search_tasks_by_tag(tag.clone(), workspace_id, space_id).await?;
+    
+    if tasks.tasks.is_empty() {
+        println!("{}", format!("No tasks found with tag '{}' to check.", tag).yellow());
+        return Ok(());
+    }
+
+    let mut updated_count = 0;
+    let mut checked_count = 0;
+    
+    for task in &tasks.tasks {
+        checked_count += 1;
+        
+        if let Some(due_date_str) = &task.due_date {
+            // Try to parse as Unix timestamp first (milliseconds)
+            let due_date_time = if let Ok(timestamp_ms) = due_date_str.parse::<i64>() {
+                // Convert milliseconds to DateTime
+                chrono::DateTime::from_timestamp_millis(timestamp_ms)
+                    .ok_or_else(|| ClickUpError::ValidationError(format!("Invalid timestamp: {}", timestamp_ms)))?
+            } else {
+                // Try to parse as RFC3339 string format and convert to Utc
+                chrono::DateTime::parse_from_rfc3339(due_date_str)
+                    .map(|dt| dt.with_timezone(&chrono::Utc))
+                    .map_err(|e| ClickUpError::ValidationError(format!("Could not parse due date '{}': {}", due_date_str, e)))?
+            };
+            
+            let today = chrono::Utc::now();
+            
+            if due_date_time < today {
+                println!("{}", format!("Task '{}' (ID: {}) is overdue (due: {}).", 
+                    task.name.as_deref().unwrap_or("Unnamed"), 
+                    task.id, 
+                    due_date_str
+                ).red());
+                
+                if !dry_run {
+                    // Convert today's date to Unix timestamp in milliseconds
+                    let today_timestamp = today.timestamp_millis();
+                    
+                    let update_data = UpdateTaskRequest {
+                        name: None,
+                        description: None,
+                        status: Some(task.status.status.clone()), // Required by API
+                        priority: None,
+                        due_date: Some(today_timestamp), // Only field we want to change
+                        due_date_time: Some(true), // Required for due date updates
+                        time_estimate: None,
+                        assignees: None,
+                        tags: None,
+                        parent: None,
+                        custom_fields: None,
+                        start_date: None,
+                        start_date_time: None,
+                        points: None,
+                        notify_all: None,
+                    };
+                    
+                    match api.update_task(&task.id, update_data).await {
+                        Ok(_) => {
+                            println!("{}", format!("✓ Updated task '{}' due date to today.", 
+                                task.name.as_deref().unwrap_or("Unnamed")
+                            ).green());
+                            updated_count += 1;
+                        }
+                        Err(e) => {
+                            println!("{}", format!("✗ Failed to update task '{}': {}", 
+                                task.name.as_deref().unwrap_or("Unnamed"), e
+                            ).red());
+                        }
+                    }
+                } else {
+                    println!("{}", format!("[DRY RUN] Would update task '{}' due date to today.", 
+                        task.name.as_deref().unwrap_or("Unnamed")
+                    ).yellow());
+                    updated_count += 1;
+                }
+            } else {
+                println!("{}", format!("Task '{}' (ID: {}) is not overdue (due: {}).", 
+                    task.name.as_deref().unwrap_or("Unnamed"), 
+                    task.id, 
+                    due_date_str
+                ).green());
+            }
+        } else {
+            println!("{}", format!("Task '{}' (ID: {}) has no due date.", 
+                task.name.as_deref().unwrap_or("Unnamed"), 
+                task.id
+            ).blue());
+        }
+    }
+
+    println!("\n{}", "Summary:".bold());
+    println!("  Tasks checked: {}", checked_count);
+    println!("  Tasks updated: {}", updated_count);
+    
+    if updated_count > 0 {
+        if dry_run {
+            println!("{}", format!("[DRY RUN] Would have updated {} overdue tasks with tag '{}'.", updated_count, tag).yellow());
+        } else {
+            println!("{}", format!("✓ Successfully updated {} overdue tasks with tag '{}'.", updated_count, tag).green());
+        }
+    } else {
+        println!("{}", format!("No overdue tasks found with tag '{}' to update.", tag).yellow());
+    }
+    
     Ok(())
 }
 
