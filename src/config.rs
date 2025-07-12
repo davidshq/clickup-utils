@@ -72,53 +72,55 @@ pub struct Config {
 
 impl Config {
     /// Loads configuration from all available sources
-    /// 
+    ///
     /// This function loads configuration from multiple sources in order of precedence:
     /// 1. Environment variables (highest priority)
-    /// 2. Configuration file (`config.toml`)
+    /// 2. Configuration file (`config.toml` or the provided path)
     /// 3. Default values (lowest priority)
-    /// 
-    /// The configuration directory and file are created automatically if they don't exist.
-    /// 
+    ///
+    /// The configuration directory and file are created automatically if they don't exist (unless a custom path is provided).
+    ///
+    /// # Arguments
+    ///
+    /// * `config_file_override` - Optional path to a config file. If `Some(path)`, loads from that file. If `None`, uses the default location.
+    ///
     /// # Returns
-    /// 
+    ///
     /// Returns a `Config` instance with the loaded configuration, or a `ClickUpError`
     /// if the configuration cannot be loaded.
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// This function can return:
     /// - `ClickUpError::ConfigError` if the config directory cannot be created
     /// - `ClickUpError::ConfigParseError` if the configuration file is invalid
-    pub fn load() -> Result<Self, ClickUpError> {
-        // Get the user's config directory
-        let config_dir = dirs::config_dir()
-            .ok_or_else(|| ClickUpError::ConfigError("Could not find config directory".to_string()))?
-            .join("clickup-cli");
-
-        // Create the config directory if it doesn't exist
-        std::fs::create_dir_all(&config_dir).map_err(|e| {
-            ClickUpError::ConfigError(format!("Failed to create config directory: {}", e))
-        })?;
-
-        let config_file = config_dir.join("config.toml");
+    pub fn load_with_path(config_file_override: Option<&std::path::Path>) -> Result<Self, ClickUpError> {
+        use std::path::Path;
+        // Get the config file path
+        let config_file = if let Some(path) = config_file_override {
+            path.to_path_buf()
+        } else {
+            let config_dir = dirs::config_dir()
+                .ok_or_else(|| ClickUpError::ConfigError("Could not find config directory".to_string()))?
+                .join("clickup-cli");
+            std::fs::create_dir_all(&config_dir).map_err(|e| {
+                ClickUpError::ConfigError(format!("Failed to create config directory: {}", e))
+            })?;
+            config_dir.join("config.toml")
+        };
 
         // Use ConfigBuilder to avoid deprecated methods
         let mut builder = ConfigFile::builder();
-
         // Load configuration from file if it exists
         if config_file.exists() {
             builder = builder.add_source(File::from(config_file.as_path()));
         }
-
         // Load configuration from environment variables
         builder = builder.add_source(Environment::with_prefix("CLICKUP").separator("_"));
-
         // Set default values for required fields
         builder = builder.set_default("api_base_url", "https://api.clickup.com/api/v2").map_err(|e| {
             ClickUpError::ConfigError(format!("Failed to set default: {}", e))
         })?;
-
         // Build the config and deserialize
         let config = builder.build().map_err(|e| {
             ClickUpError::ConfigParseError(e)
@@ -126,50 +128,66 @@ impl Config {
         let config: Config = config.try_deserialize().map_err(|_| {
             ClickUpError::ConfigParseError(config::ConfigError::NotFound("Failed to parse config".to_string()))
         })?;
-
         Ok(config)
     }
 
+    /// Loads configuration from the default location
+    ///
+    /// This is a convenience wrapper for `load_with_path(None)`. See that method for details.
+    pub fn load() -> Result<Self, ClickUpError> {
+        Self::load_with_path(None)
+    }
+
     /// Saves the current configuration to the config file
-    /// 
+    ///
     /// This function serializes the current configuration to TOML format and
-    /// writes it to the user's config directory. The file is created if it
+    /// writes it to the user's config directory or a custom path. The file is created if it
     /// doesn't exist, or overwritten if it does.
-    /// 
+    ///
+    /// # Arguments
+    ///
+    /// * `config_file_override` - Optional path to a config file. If `Some(path)`, saves to that file. If `None`, uses the default location.
+    ///
     /// # Returns
-    /// 
+    ///
     /// Returns `Ok(())` on successful save, or a `ClickUpError` on failure.
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// This function can return:
     /// - `ClickUpError::ConfigError` if the config directory cannot be created
     /// - `ClickUpError::SerializationError` if the configuration cannot be serialized
     /// - `ClickUpError::IoError` if the file cannot be written
-    pub fn save(&self) -> Result<(), ClickUpError> {
-        // Get the user's config directory
-        let config_dir = dirs::config_dir()
-            .ok_or_else(|| ClickUpError::ConfigError("Could not find config directory".to_string()))?
-            .join("clickup-cli");
-
-        // Create the config directory if it doesn't exist
-        std::fs::create_dir_all(&config_dir).map_err(|e| {
-            ClickUpError::ConfigError(format!("Failed to create config directory: {}", e))
-        })?;
-
-        let config_file = config_dir.join("config.toml");
-        
+    pub fn save_with_path(&self, config_file_override: Option<&std::path::Path>) -> Result<(), ClickUpError> {
+        use std::path::Path;
+        // Get the config file path
+        let config_file = if let Some(path) = config_file_override {
+            path.to_path_buf()
+        } else {
+            let config_dir = dirs::config_dir()
+                .ok_or_else(|| ClickUpError::ConfigError("Could not find config directory".to_string()))?
+                .join("clickup-cli");
+            std::fs::create_dir_all(&config_dir).map_err(|e| {
+                ClickUpError::ConfigError(format!("Failed to create config directory: {}", e))
+            })?;
+            config_dir.join("config.toml")
+        };
         // Serialize the configuration to TOML format
         let config_str = toml::to_string_pretty(self).map_err(|e| {
             ClickUpError::SerializationError(format!("Failed to serialize config: {}", e))
         })?;
-
         // Write the configuration to the file
         std::fs::write(config_file, config_str).map_err(|e| {
             ClickUpError::ConfigError(format!("Failed to write config file: {}", e))
         })?;
-
         Ok(())
+    }
+
+    /// Saves the current configuration to the default config file
+    ///
+    /// This is a convenience wrapper for `save_with_path(None)`. See that method for details.
+    pub fn save(&self) -> Result<(), ClickUpError> {
+        self.save_with_path(None)
     }
 
     /// Sets the API token and saves the configuration
