@@ -1,5 +1,5 @@
 use clickup_cli::api::ClickUpApi;
-use clickup_cli::config::Config;
+use clickup_cli::config::{Config, RateLimitConfig};
 use tempfile::TempDir;
 use std::sync::Once;
 
@@ -26,6 +26,7 @@ fn test_api_client_creation_with_valid_config() {
         workspace_id: Some("workspace_123".to_string()),
         default_list_id: Some("list_456".to_string()),
         api_base_url: "https://api.clickup.com/api/v2".to_string(),
+        rate_limit: RateLimitConfig::default(),
     };
     
     let api = ClickUpApi::new(config);
@@ -40,6 +41,7 @@ fn test_api_client_creation_without_token() {
         workspace_id: None,
         default_list_id: None,
         api_base_url: "https://api.clickup.com/api/v2".to_string(),
+        rate_limit: RateLimitConfig::default(),
     };
     
     let api = ClickUpApi::new(config);
@@ -54,6 +56,7 @@ fn test_api_client_with_personal_token() {
         workspace_id: None,
         default_list_id: None,
         api_base_url: "https://api.clickup.com/api/v2".to_string(),
+        rate_limit: RateLimitConfig::default(),
     };
     
     let api = ClickUpApi::new(config);
@@ -68,6 +71,7 @@ fn test_api_client_with_oauth_token() {
         workspace_id: None,
         default_list_id: None,
         api_base_url: "https://api.clickup.com/api/v2".to_string(),
+        rate_limit: RateLimitConfig::default(),
     };
     
     let api = ClickUpApi::new(config);
@@ -82,6 +86,7 @@ fn test_api_client_with_custom_base_url() {
         workspace_id: None,
         default_list_id: None,
         api_base_url: "https://custom.api.clickup.com/api/v2".to_string(),
+        rate_limit: RateLimitConfig::default(),
     };
     
     let api = ClickUpApi::new(config);
@@ -96,6 +101,7 @@ fn test_api_client_creation_failure() {
         workspace_id: None,
         default_list_id: None,
         api_base_url: "invalid-url".to_string(),
+        rate_limit: RateLimitConfig::default(),
     };
     
     let api = ClickUpApi::new(config);
@@ -110,6 +116,7 @@ fn test_api_client_config_clone() {
         workspace_id: Some("workspace_123".to_string()),
         default_list_id: Some("list_456".to_string()),
         api_base_url: "https://api.clickup.com/api/v2".to_string(),
+        rate_limit: RateLimitConfig::default(),
     };
     
     let api1 = ClickUpApi::new(config.clone());
@@ -128,6 +135,7 @@ fn test_api_client_with_empty_token() {
         workspace_id: None,
         default_list_id: None,
         api_base_url: "https://api.clickup.com/api/v2".to_string(),
+        rate_limit: RateLimitConfig::default(),
     };
     
     let api = ClickUpApi::new(config);
@@ -142,6 +150,7 @@ fn test_api_client_with_whitespace_token() {
         workspace_id: None,
         default_list_id: None,
         api_base_url: "https://api.clickup.com/api/v2".to_string(),
+        rate_limit: RateLimitConfig::default(),
     };
     
     let api = ClickUpApi::new(config);
@@ -156,6 +165,7 @@ fn test_api_client_multiple_instances() {
         workspace_id: None,
         default_list_id: None,
         api_base_url: "https://api.clickup.com/api/v2".to_string(),
+        rate_limit: RateLimitConfig::default(),
     };
     
     let config2 = Config {
@@ -163,6 +173,7 @@ fn test_api_client_multiple_instances() {
         workspace_id: None,
         default_list_id: None,
         api_base_url: "https://api.clickup.com/api/v2".to_string(),
+        rate_limit: RateLimitConfig::default(),
     };
     
     let api1 = ClickUpApi::new(config1);
@@ -180,6 +191,7 @@ fn test_api_client_with_none_values() {
         workspace_id: None,
         default_list_id: None,
         api_base_url: "https://api.clickup.com/api/v2".to_string(),
+        rate_limit: RateLimitConfig::default(),
     };
     
     let api = ClickUpApi::new(config);
@@ -195,6 +207,7 @@ fn test_api_client_with_long_token() {
         workspace_id: None,
         default_list_id: None,
         api_base_url: "https://api.clickup.com/api/v2".to_string(),
+        rate_limit: RateLimitConfig::default(),
     };
     
     let api = ClickUpApi::new(config);
@@ -210,6 +223,7 @@ fn test_api_client_with_special_characters_in_token() {
         workspace_id: None,
         default_list_id: None,
         api_base_url: "https://api.clickup.com/api/v2".to_string(),
+        rate_limit: RateLimitConfig::default(),
     };
     
     let api = ClickUpApi::new(config);

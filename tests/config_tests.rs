@@ -1,11 +1,12 @@
-use clickup_cli::config::Config;
+use clickup_cli::config::{Config, RateLimitConfig};
 use tempfile::TempDir;
 use std::fs;
 use std::env;
-use std::path::PathBuf;
+
 
 // Test configuration that properly isolates tests
 struct TestConfig {
+    #[allow(dead_code)]
     temp_dir: TempDir,
     config_file: std::path::PathBuf,
     original_xdg: Option<String>,
@@ -65,7 +66,7 @@ impl Drop for TestConfig {
 
 #[test]
 fn test_config_default() {
-    let test_config = TestConfig::new();
+    let _test_config = TestConfig::new();
     let config = Config::default();
     assert_eq!(config.api_base_url, "https://api.clickup.com/api/v2");
     assert!(config.api_token.is_none());
@@ -78,7 +79,7 @@ fn test_config_set_and_get_api_token() {
     let test_config = TestConfig::new();
     let mut config = Config::default();
     let test_token = "test_token_123".to_string();
-    let result = config.set_api_token(test_token.clone());
+    let _result = config.set_api_token(test_token.clone());
     // Save to temp config file
     let save_result = config.save_with_path(Some(&test_config.config_file));
     assert!(save_result.is_ok());
@@ -89,7 +90,7 @@ fn test_config_set_and_get_api_token() {
 
 #[test]
 fn test_config_get_api_token_when_none() {
-    let test_config = TestConfig::new();
+    let _test_config = TestConfig::new();
     let config = Config::default();
     let result = config.get_api_token();
     assert!(result.is_err());
@@ -101,7 +102,7 @@ fn test_config_get_api_token_when_none() {
 
 #[test]
 fn test_config_is_authenticated() {
-    let test_config = TestConfig::new();
+    let _test_config = TestConfig::new();
     let mut config = Config::default();
     assert!(!config.is_authenticated());
     config.set_api_token("test_token".to_string()).unwrap();
@@ -117,13 +118,14 @@ fn test_config_save_and_load() {
         workspace_id: Some("workspace_123".to_string()),
         default_list_id: Some("list_456".to_string()),
         api_base_url: "https://test.api.clickup.com/api/v2".to_string(),
+        rate_limit: RateLimitConfig::default(),
     };
     // Save the config to the temp file
     let save_result = config.save_with_path(Some(&test_config.config_file));
-    assert!(save_result.is_ok(), "Failed to save config: {:?}", save_result);
+    assert!(save_result.is_ok(), "Failed to save config: {save_result:?}");
     // Load the config and verify all fields
     let loaded_config = Config::load_with_path(Some(&test_config.config_file));
-    assert!(loaded_config.is_ok(), "Failed to load config: {:?}", loaded_config);
+    assert!(loaded_config.is_ok(), "Failed to load config: {loaded_config:?}");
     let loaded_config = loaded_config.unwrap();
     assert_eq!(loaded_config.api_token, config.api_token);
     assert_eq!(loaded_config.workspace_id, config.workspace_id);
@@ -133,7 +135,7 @@ fn test_config_save_and_load() {
 
 #[test]
 fn test_config_validation_empty_token() {
-    let test_config = TestConfig::new();
+    let _test_config = TestConfig::new();
     let mut config = Config::default();
     let result = config.set_api_token("".to_string());
     assert!(result.is_err());
@@ -145,7 +147,7 @@ fn test_config_validation_empty_token() {
 
 #[test]
 fn test_config_validation_whitespace_token() {
-    let test_config = TestConfig::new();
+    let _test_config = TestConfig::new();
     let mut config = Config::default();
     let result = config.set_api_token("   ".to_string());
     assert!(result.is_err());

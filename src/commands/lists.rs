@@ -66,7 +66,7 @@ async fn list_lists(api: &ClickUpApi, space_id: &str) -> Result<(), ClickUpError
         ]);
     }
 
-    println!("{}", table);
+    println!("{table}");
     Ok(())
 }
 
@@ -100,5 +100,5 @@ async fn show_list(api: &ClickUpApi, list_id: &str) -> Result<(), ClickUpError> 
         }
     }
 
-    Err(ClickUpError::NotFoundError(format!("List {} not found", list_id)))
+    Err(ClickUpError::NotFoundError(format!("List {list_id} not found")))
 } 

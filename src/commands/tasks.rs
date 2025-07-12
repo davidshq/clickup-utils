@@ -6,6 +6,28 @@ use clap::Subcommand;
 use colored::*;
 use comfy_table::{Table, Cell};
 
+/// Parameters for creating a task
+struct CreateTaskParams {
+    list_id: String,
+    name: String,
+    description: Option<String>,
+    status: Option<String>,
+    priority: Option<i64>,
+    due_date: Option<i64>,
+    time_estimate: Option<i64>,
+}
+
+/// Parameters for updating a task
+struct UpdateTaskParams {
+    task_id: String,
+    name: Option<String>,
+    description: Option<String>,
+    status: Option<String>,
+    priority: Option<i64>,
+    due_date: Option<i64>,
+    time_estimate: Option<i64>,
+}
+
 #[derive(Subcommand)]
 pub enum TaskCommands {
     /// List all tasks in a list
@@ -132,10 +154,28 @@ pub async fn execute(command: TaskCommands, config: &Config) -> Result<(), Click
             show_task(&api, &id).await?;
         }
         TaskCommands::Create { list_id, name, description, status, priority, due_date, time_estimate } => {
-            create_task(&api, &list_id, name, description, status, priority, due_date, time_estimate).await?;
+            let params = CreateTaskParams {
+                list_id: list_id.clone(),
+                name,
+                description,
+                status,
+                priority,
+                due_date,
+                time_estimate,
+            };
+            create_task(&api, params).await?;
         }
         TaskCommands::Update { id, name, description, status, priority, due_date, time_estimate } => {
-            update_task(&api, &id, name, description, status, priority, due_date, time_estimate).await?;
+            let params = UpdateTaskParams {
+                task_id: id.clone(),
+                name,
+                description,
+                status,
+                priority,
+                due_date,
+                time_estimate,
+            };
+            update_task(&api, params).await?;
         }
         TaskCommands::Delete { id } => {
             delete_task(&api, &id).await?;
@@ -181,16 +221,16 @@ async fn list_tasks(api: &ClickUpApi, list_id: &str) -> Result<(), ClickUpError>
         ]);
     }
 
-    println!("{}", table);
+    println!("{table}");
     Ok(())
 }
 
 async fn list_tasks_by_tag(api: &ClickUpApi, list_id: &str, tag: &str) -> Result<(), ClickUpError> {
-    println!("{}", format!("Fetching tasks with tag '{}'...", tag).blue());
+    println!("{}", format!("Fetching tasks with tag '{tag}'...").blue());
     let tasks = api.get_tasks_by_tag(list_id, tag).await?;
     
     if tasks.tasks.is_empty() {
-        println!("{}", format!("No tasks found with tag '{}'", tag).yellow());
+        println!("{}", format!("No tasks found with tag '{tag}'").yellow());
         return Ok(());
     }
 
@@ -227,17 +267,17 @@ async fn list_tasks_by_tag(api: &ClickUpApi, list_id: &str, tag: &str) -> Result
         ]);
     }
 
-    println!("{}", format!("Tasks with tag '{}':", tag).bold());
-    println!("{}", table);
+    println!("{}", format!("Tasks with tag '{tag}':").bold());
+    println!("{table}");
     Ok(())
 }
 
 async fn search_tasks_by_tag(api: &ClickUpApi, tag: String, workspace_id: Option<String>, space_id: Option<String>) -> Result<(), ClickUpError> {
-    println!("{}", format!("Searching for tasks with tag '{}'...", tag).blue());
+    println!("{}", format!("Searching for tasks with tag '{tag}'...").blue());
     let tasks = api.search_tasks_by_tag(tag.clone(), workspace_id, space_id).await?;
     
     if tasks.tasks.is_empty() {
-        println!("{}", format!("No tasks found with tag '{}'", tag).yellow());
+        println!("{}", format!("No tasks found with tag '{tag}'").yellow());
         return Ok(());
     }
 
@@ -274,17 +314,17 @@ async fn search_tasks_by_tag(api: &ClickUpApi, tag: String, workspace_id: Option
         ]);
     }
 
-    println!("{}", format!("Tasks with tag '{}':", tag).bold());
-    println!("{}", table);
+    println!("{}", format!("Tasks with tag '{tag}':").bold());
+    println!("{table}");
     Ok(())
 }
 
 async fn update_overdue_by_tag(api: &ClickUpApi, tag: String, workspace_id: Option<String>, space_id: Option<String>, dry_run: bool) -> Result<(), ClickUpError> {
-    println!("{}", format!("Searching for overdue tasks with tag '{}'...", tag).blue());
+    println!("{}", format!("Searching for overdue tasks with tag '{tag}'...").blue());
     let tasks = api.search_tasks_by_tag(tag.clone(), workspace_id, space_id).await?;
     
     if tasks.tasks.is_empty() {
-        println!("{}", format!("No tasks found with tag '{}' to check.", tag).yellow());
+        println!("{}", format!("No tasks found with tag '{tag}' to check.").yellow());
         return Ok(());
     }
 
@@ -299,12 +339,12 @@ async fn update_overdue_by_tag(api: &ClickUpApi, tag: String, workspace_id: Opti
             let due_date_time = if let Ok(timestamp_ms) = due_date_str.parse::<i64>() {
                 // Convert milliseconds to DateTime
                 chrono::DateTime::from_timestamp_millis(timestamp_ms)
-                    .ok_or_else(|| ClickUpError::ValidationError(format!("Invalid timestamp: {}", timestamp_ms)))?
+                    .ok_or_else(|| ClickUpError::ValidationError(format!("Invalid timestamp: {timestamp_ms}")))?
             } else {
                 // Try to parse as RFC3339 string format and convert to Utc
                 chrono::DateTime::parse_from_rfc3339(due_date_str)
                     .map(|dt| dt.with_timezone(&chrono::Utc))
-                    .map_err(|e| ClickUpError::ValidationError(format!("Could not parse due date '{}': {}", due_date_str, e)))?
+                    .map_err(|e| ClickUpError::ValidationError(format!("Could not parse due date '{due_date_str}': {e}")))?
             };
             
             let today = chrono::Utc::now();
@@ -373,17 +413,17 @@ async fn update_overdue_by_tag(api: &ClickUpApi, tag: String, workspace_id: Opti
     }
 
     println!("\n{}", "Summary:".bold());
-    println!("  Tasks checked: {}", checked_count);
-    println!("  Tasks updated: {}", updated_count);
+    println!("  Tasks checked: {checked_count}");
+    println!("  Tasks updated: {updated_count}");
     
     if updated_count > 0 {
         if dry_run {
-            println!("{}", format!("[DRY RUN] Would have updated {} overdue tasks with tag '{}'.", updated_count, tag).yellow());
+            println!("{}", format!("[DRY RUN] Would have updated {updated_count} overdue tasks with tag '{tag}'.").yellow());
         } else {
-            println!("{}", format!("✓ Successfully updated {} overdue tasks with tag '{}'.", updated_count, tag).green());
+            println!("{}", format!("✓ Successfully updated {updated_count} overdue tasks with tag '{tag}'.").green());
         }
     } else {
-        println!("{}", format!("No overdue tasks found with tag '{}' to update.", tag).yellow());
+        println!("{}", format!("No overdue tasks found with tag '{tag}' to update.").yellow());
     }
     
     Ok(())
@@ -406,21 +446,21 @@ async fn show_task(api: &ClickUpApi, task_id: &str) -> Result<(), ClickUpError> 
     }
     
     if let Some(due_date) = &task.due_date {
-        println!("Due Date: {}", due_date);
+        println!("Due Date: {due_date}");
     }
     
     if let Some(start_date) = &task.start_date {
-        println!("Start Date: {}", start_date);
+        println!("Start Date: {start_date}");
     }
     
 
     
     if let Some(time_estimate) = task.time_estimate {
-        println!("Time Estimate: {} ms", time_estimate);
+        println!("Time Estimate: {time_estimate} ms");
     }
     
     if let Some(time_spent) = task.time_spent {
-        println!("Time Spent: {} ms", time_spent);
+        println!("Time Spent: {time_spent} ms");
     }
     
     if !task.assignees.is_empty() {
@@ -451,22 +491,16 @@ async fn show_task(api: &ClickUpApi, task_id: &str) -> Result<(), ClickUpError> 
 
 async fn create_task(
     api: &ClickUpApi,
-    list_id: &str,
-    name: String,
-    description: Option<String>,
-    status: Option<String>,
-    priority: Option<i64>,
-    due_date: Option<i64>,
-    time_estimate: Option<i64>,
+    params: CreateTaskParams,
 ) -> Result<(), ClickUpError> {
     let task_data = CreateTaskRequest {
-        name,
-        description,
-        status,
-        priority,
-        due_date,
-        due_date_time: due_date.is_some().then(|| true),
-        time_estimate,
+        name: params.name,
+        description: params.description,
+        status: params.status,
+        priority: params.priority,
+        due_date: params.due_date,
+        due_date_time: params.due_date.is_some().then_some(true),
+        time_estimate: params.time_estimate,
         assignees: None,
         tags: None,
         parent: None,
@@ -477,7 +511,7 @@ async fn create_task(
         notify_all: None,
     };
 
-    let task = api.create_task(list_id, task_data).await?;
+    let task = api.create_task(&params.list_id, task_data).await?;
     
     println!("{}", "✓ Task created successfully!".green());
     println!("ID: {}", task.id);
@@ -490,22 +524,16 @@ async fn create_task(
 
 async fn update_task(
     api: &ClickUpApi,
-    task_id: &str,
-    name: Option<String>,
-    description: Option<String>,
-    status: Option<String>,
-    priority: Option<i64>,
-    due_date: Option<i64>,
-    time_estimate: Option<i64>,
+    params: UpdateTaskParams,
 ) -> Result<(), ClickUpError> {
     let task_data = UpdateTaskRequest {
-        name,
-        description,
-        status,
-        priority,
-        due_date,
-        due_date_time: due_date.is_some().then(|| true),
-        time_estimate,
+        name: params.name,
+        description: params.description,
+        status: params.status,
+        priority: params.priority,
+        due_date: params.due_date,
+        due_date_time: params.due_date.is_some().then_some(true),
+        time_estimate: params.time_estimate,
         assignees: None,
         tags: None,
         parent: None,
@@ -516,7 +544,7 @@ async fn update_task(
         notify_all: None,
     };
 
-    let task = api.update_task(task_id, task_data).await?;
+    let task = api.update_task(&params.task_id, task_data).await?;
     
     println!("{}", "✓ Task updated successfully!".green());
     println!("ID: {}", task.id);
@@ -531,7 +559,7 @@ async fn delete_task(api: &ClickUpApi, task_id: &str) -> Result<(), ClickUpError
     api.delete_task(task_id).await?;
     
     println!("{}", "✓ Task deleted successfully!".green());
-    println!("Deleted task ID: {}", task_id);
+    println!("Deleted task ID: {task_id}");
     
     Ok(())
 } 

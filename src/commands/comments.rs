@@ -114,7 +114,7 @@ async fn list_comments(api: &ClickUpApi, task_id: &str) -> Result<(), ClickUpErr
         ]);
     }
 
-    println!("{}", table);
+    println!("{table}");
     Ok(())
 }
 
@@ -142,11 +142,11 @@ async fn show_comment(api: &ClickUpApi, comment_id: &str) -> Result<(), ClickUpE
                         println!("Text: {}", comment.comment_text);
                         
                         if let Some(assignee) = &comment.assignee {
-                            println!("Assignee: {:?}", assignee);
+                            println!("Assignee: {assignee:?}");
                         }
                         
                         if let Some(assignee_by) = &comment.assignee_by {
-                            println!("Assigned by: {:?}", assignee_by);
+                            println!("Assigned by: {assignee_by:?}");
                         }
                         
                         return Ok(());
@@ -156,7 +156,7 @@ async fn show_comment(api: &ClickUpApi, comment_id: &str) -> Result<(), ClickUpE
         }
     }
 
-    Err(ClickUpError::NotFoundError(format!("Comment {} not found", comment_id)))
+    Err(ClickUpError::NotFoundError(format!("Comment {comment_id} not found")))
 }
 
 async fn update_comment(
@@ -186,7 +186,7 @@ async fn delete_comment(api: &ClickUpApi, comment_id: &str) -> Result<(), ClickU
     api.delete_comment(comment_id).await?;
     
     println!("{}", "✓ Comment deleted successfully!".green());
-    println!("Deleted comment ID: {}", comment_id);
+    println!("Deleted comment ID: {comment_id}");
     
     Ok(())
 }

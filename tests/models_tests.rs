@@ -1,5 +1,5 @@
 use clickup_cli::models::*;
-use serde_json;
+
 
 #[test]
 fn test_user_data_creation() {
@@ -95,9 +95,9 @@ fn test_space_creation() {
     
     assert_eq!(space.id, "space_123");
     assert_eq!(space.name, Some("Test Space".to_string()));
-    assert_eq!(space.private, false);
-    assert_eq!(space.multiple_assignees, true);
-    assert_eq!(space.archived, false);
+    assert!(!space.private);
+    assert!(space.multiple_assignees);
+    assert!(!space.archived);
 }
 
 #[test]
@@ -420,7 +420,7 @@ fn test_comment_creation() {
     assert_eq!(comment.id, "comment_123");
     assert_eq!(comment.comment_text, "This is a comment");
     assert_eq!(comment.user.username, "testuser");
-    assert_eq!(comment.resolved, false);
+    assert!(!comment.resolved);
     assert_eq!(comment.children.len(), 0);
 }
 
@@ -946,10 +946,10 @@ fn test_due_date_features_creation() {
         remap_closed_due_date: true,
     };
     
-    assert_eq!(features.enabled, true);
-    assert_eq!(features.start_date, true);
-    assert_eq!(features.remap_due_dates, true);
-    assert_eq!(features.remap_closed_due_date, true);
+    assert!(features.enabled);
+    assert!(features.start_date);
+    assert!(features.remap_due_dates);
+    assert!(features.remap_closed_due_date);
 }
 
 #[test]
@@ -958,7 +958,7 @@ fn test_time_tracking_features_creation() {
         enabled: true,
     };
     
-    assert_eq!(features.enabled, true);
+    assert!(features.enabled);
 }
 
 #[test]
@@ -967,7 +967,7 @@ fn test_tag_features_creation() {
         enabled: true,
     };
     
-    assert_eq!(features.enabled, true);
+    assert!(features.enabled);
 }
 
 #[test]
@@ -976,7 +976,7 @@ fn test_time_estimate_features_creation() {
         enabled: true,
     };
     
-    assert_eq!(features.enabled, true);
+    assert!(features.enabled);
 }
 
 #[test]
@@ -985,7 +985,7 @@ fn test_checklist_features_creation() {
         enabled: true,
     };
     
-    assert_eq!(features.enabled, true);
+    assert!(features.enabled);
 }
 
 #[test]
@@ -994,7 +994,7 @@ fn test_custom_field_features_creation() {
         enabled: true,
     };
     
-    assert_eq!(features.enabled, true);
+    assert!(features.enabled);
 }
 
 #[test]
@@ -1003,7 +1003,7 @@ fn test_dependency_features_creation() {
         enabled: true,
     };
     
-    assert_eq!(features.enabled, true);
+    assert!(features.enabled);
 }
 
 #[test]
@@ -1012,7 +1012,7 @@ fn test_dependency_warning_features_creation() {
         enabled: true,
     };
     
-    assert_eq!(features.enabled, true);
+    assert!(features.enabled);
 }
 
 #[test]
@@ -1021,5 +1021,5 @@ fn test_portfolio_features_creation() {
         enabled: true,
     };
     
-    assert_eq!(features.enabled, true);
+    assert!(features.enabled);
 } 

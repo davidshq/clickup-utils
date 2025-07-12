@@ -38,6 +38,7 @@ use thiserror::Error;
 /// The error type is designed to be user-friendly while providing enough detail
 /// for debugging and error handling.
 #[derive(Error, Debug)]
+#[allow(clippy::enum_variant_names)]
 pub enum ClickUpError {
     /// API request failed with a specific error message
     /// 

@@ -10,13 +10,13 @@ This has been vibe coded using primarily Cursor. Expect the code quality to be l
 
 ## ⚠️ Development Status
 
-**This project is currently in active development.** While functional, it may have bugs and incomplete features. Please report issues and contribute improvements.
+**This project is currently in active development.**
 
-### Known Issues
-- Some tests may fail (see `CODE_REVIEW_RECOMMENDATIONS.md`)
-- 103 Clippy warnings need to be addressed
-- Package metadata needs updating
-- Documentation examples need expansion
+### Current Issues
+- **125 Clippy warnings** need to be addressed (format string issues, unnecessary closures, too many arguments)
+- **1 failing doctest** in `src/rate_limiter.rs` (async/await syntax issues)
+- **Package metadata** needs updating (placeholder author information)
+- **Documentation examples** need expansion and fixes
 
 ## 🚀 Features
 
@@ -32,6 +32,7 @@ This has been vibe coded using primarily Cursor. Expect the code quality to be l
 - **🔍 Debug Mode**: Detailed logging for troubleshooting
 - **🏷️ Tag-based Operations**: Search and filter tasks by tags
 - **📅 Overdue Task Management**: Update overdue tasks with specific tags
+- **⏱️ Rate Limiting**: Intelligent API rate limit handling with automatic retry
 
 ## 📦 Installation
 
@@ -120,6 +121,47 @@ clickup-cli auth status
 
 # Clear stored token
 clickup-cli auth clear
+
+# Configure rate limiting settings
+clickup-cli auth rate-limit --show
+
+# Set custom rate limit (e.g., for paid accounts with higher limits)
+clickup-cli auth rate-limit --requests-per-minute 200
+
+# Disable auto-retry for rate-limited requests
+clickup-cli auth rate-limit --auto-retry false
+
+# Set custom retry settings
+clickup-cli auth rate-limit --max-retries 5 --buffer-seconds 10
+```
+
+### Rate Limiting
+
+The CLI includes intelligent rate limiting to handle ClickUp's API limits:
+
+- **Automatic Throttling**: Prevents hitting rate limits by tracking requests per minute
+- **Smart Retry Logic**: Automatically retries rate-limited requests with exponential backoff
+- **Configurable Limits**: Adjust settings for different account types (free vs paid)
+- **Request Queuing**: Ensures no requests are lost when rate limits are hit
+
+**Default Settings**:
+- 100 requests per minute (ClickUp free account limit)
+- Auto-retry enabled with 3 max attempts
+- 5-second buffer for safety
+
+**Configuration**:
+```bash
+# Show current rate limiting settings
+clickup-cli auth rate-limit --show
+
+# Configure for paid account with higher limits
+clickup-cli auth rate-limit --requests-per-minute 500
+
+# Disable auto-retry (manual handling)
+clickup-cli auth rate-limit --auto-retry false
+
+# Set custom retry behavior
+clickup-cli auth rate-limit --max-retries 5 --buffer-seconds 10
 ```
 
 ### Workspace Commands
@@ -367,9 +409,7 @@ clickup-cli tasks delete --id "task_abc123"
 We welcome contributions! This project is in active development and needs help with:
 
 ### Current Priorities
-- **Fix failing tests** (see `CODE_REVIEW_RECOMMENDATIONS.md`)
-- **Address 103 Clippy warnings**
-- **Update package metadata** in `Cargo.toml`
+- **Update package metadata** in `Cargo.toml` (author information, repository links)
 - **Improve error messages** and user experience
 - **Add comprehensive tests** and documentation
 
@@ -383,12 +423,11 @@ cd clickup-cli
 # Install dependencies
 cargo build
 
-# Run tests (some may fail - see recommendations)
+# Run tests (all should pass)
 cargo test
 
-# Check for issues
-cargo check
-cargo clippy
+# Check for issues (will show 125 warnings)
+cargo clippy --all-targets --all-features -- -D warnings
 
 # Run with debug logging
 cargo run -- --debug auth test
@@ -405,10 +444,7 @@ Before submitting contributions:
 
 ### Known Issues
 
-- Some tests in `tests/config_tests.rs` may fail
-- 103 Clippy warnings need to be addressed
-- Package metadata in `Cargo.toml` needs updating
-- Documentation examples need expansion
+- **Package metadata** in `Cargo.toml` needs updating
 
 See `CODE_REVIEW_RECOMMENDATIONS.md` for detailed improvement suggestions.
 

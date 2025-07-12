@@ -57,7 +57,7 @@ async fn list_teams(api: &ClickUpApi) -> Result<(), ClickUpError> {
         ]);
     }
 
-    println!("{}", table);
+    println!("{table}");
     Ok(())
 }
 
@@ -67,7 +67,7 @@ async fn show_team(api: &ClickUpApi, team_id: &str) -> Result<(), ClickUpError> 
     let team = workspaces.teams
         .into_iter()
         .find(|t| t.id == team_id)
-        .ok_or_else(|| ClickUpError::NotFoundError(format!("Team {} not found", team_id)))?;
+        .ok_or_else(|| ClickUpError::NotFoundError(format!("Team {team_id} not found")))?;
 
     println!("{}", "Team Details".bold());
     println!("ID: {}", team.id);
@@ -80,9 +80,9 @@ async fn show_team(api: &ClickUpApi, team_id: &str) -> Result<(), ClickUpError> 
         println!("\n{}", "Members:".bold());
         for member in &team.members {
                 if let (Some(username), Some(email)) = (&member.user.username, &member.user.email) {
-                println!("  - {} ({})", username, email);
+                println!("  - {username} ({email})");
             } else if let Some(username) = &member.user.username {
-                println!("  - {} (no email)", username);
+                println!("  - {username} (no email)");
             } else {
                 println!("  - Unknown user");
             }

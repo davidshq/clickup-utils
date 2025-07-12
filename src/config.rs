@@ -37,6 +37,47 @@ use crate::error::ClickUpError;
 use config::{Config as ConfigFile, Environment, File};
 use serde::{Deserialize, Serialize};
 
+/// Rate limiting configuration
+/// 
+/// This struct defines how the application should handle API rate limits.
+/// It controls the maximum number of requests per minute and retry behavior.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct RateLimitConfig {
+    /// Maximum number of requests allowed per minute
+    /// 
+    /// ClickUp free accounts are limited to 100 requests per minute.
+    /// Paid accounts may have higher limits.
+    pub requests_per_minute: u32,
+    
+    /// Whether to automatically retry rate-limited requests
+    /// 
+    /// When true, rate-limited requests will be automatically retried
+    /// after waiting for the rate limit to reset.
+    pub auto_retry: bool,
+    
+    /// Maximum number of retry attempts for rate-limited requests
+    /// 
+    /// This prevents infinite retry loops in case of persistent rate limiting.
+    pub max_retries: u32,
+    
+    /// Buffer time in seconds to add to rate limit wait times
+    /// 
+    /// This provides a safety margin to ensure we don't hit rate limits
+    /// immediately after they reset.
+    pub buffer_seconds: u64,
+}
+
+impl Default for RateLimitConfig {
+    fn default() -> Self {
+        Self {
+            requests_per_minute: 100, // ClickUp free account limit
+            auto_retry: true,
+            max_retries: 3,
+            buffer_seconds: 5, // 5 second buffer
+        }
+    }
+}
+
 /// Application configuration structure
 /// 
 /// This struct holds all configuration data for the ClickUp CLI application.
@@ -68,6 +109,11 @@ pub struct Config {
     /// 
     /// The base URL for all API requests. Defaults to the ClickUp v2 API.
     pub api_base_url: String,
+    
+    /// Rate limiting configuration
+    /// 
+    /// Controls how many requests can be made per minute and how to handle rate limits.
+    pub rate_limit: RateLimitConfig,
 }
 
 impl Config {
@@ -95,7 +141,6 @@ impl Config {
     /// - `ClickUpError::ConfigError` if the config directory cannot be created
     /// - `ClickUpError::ConfigParseError` if the configuration file is invalid
     pub fn load_with_path(config_file_override: Option<&std::path::Path>) -> Result<Self, ClickUpError> {
-        use std::path::Path;
         // Get the config file path
         let config_file = if let Some(path) = config_file_override {
             path.to_path_buf()
@@ -104,7 +149,7 @@ impl Config {
                 .ok_or_else(|| ClickUpError::ConfigError("Could not find config directory".to_string()))?
                 .join("clickup-cli");
             std::fs::create_dir_all(&config_dir).map_err(|e| {
-                ClickUpError::ConfigError(format!("Failed to create config directory: {}", e))
+                ClickUpError::ConfigError(format!("Failed to create config directory: {e}"))
             })?;
             config_dir.join("config.toml")
         };
@@ -119,7 +164,21 @@ impl Config {
         builder = builder.add_source(Environment::with_prefix("CLICKUP").separator("_"));
         // Set default values for required fields
         builder = builder.set_default("api_base_url", "https://api.clickup.com/api/v2").map_err(|e| {
-            ClickUpError::ConfigError(format!("Failed to set default: {}", e))
+            ClickUpError::ConfigError(format!("Failed to set default: {e}"))
+        })?;
+        
+        // Set default values for rate limiting configuration
+        builder = builder.set_default("rate_limit.requests_per_minute", 100).map_err(|e| {
+            ClickUpError::ConfigError(format!("Failed to set rate limit default: {e}"))
+        })?;
+        builder = builder.set_default("rate_limit.auto_retry", true).map_err(|e| {
+            ClickUpError::ConfigError(format!("Failed to set auto retry default: {e}"))
+        })?;
+        builder = builder.set_default("rate_limit.max_retries", 3).map_err(|e| {
+            ClickUpError::ConfigError(format!("Failed to set max retries default: {e}"))
+        })?;
+        builder = builder.set_default("rate_limit.buffer_seconds", 5).map_err(|e| {
+            ClickUpError::ConfigError(format!("Failed to set buffer seconds default: {e}"))
         })?;
         // Build the config and deserialize
         let config = builder.build().map_err(|e| {
@@ -159,7 +218,6 @@ impl Config {
     /// - `ClickUpError::SerializationError` if the configuration cannot be serialized
     /// - `ClickUpError::IoError` if the file cannot be written
     pub fn save_with_path(&self, config_file_override: Option<&std::path::Path>) -> Result<(), ClickUpError> {
-        use std::path::Path;
         // Get the config file path
         let config_file = if let Some(path) = config_file_override {
             path.to_path_buf()
@@ -168,17 +226,17 @@ impl Config {
                 .ok_or_else(|| ClickUpError::ConfigError("Could not find config directory".to_string()))?
                 .join("clickup-cli");
             std::fs::create_dir_all(&config_dir).map_err(|e| {
-                ClickUpError::ConfigError(format!("Failed to create config directory: {}", e))
+                ClickUpError::ConfigError(format!("Failed to create config directory: {e}"))
             })?;
             config_dir.join("config.toml")
         };
         // Serialize the configuration to TOML format
         let config_str = toml::to_string_pretty(self).map_err(|e| {
-            ClickUpError::SerializationError(format!("Failed to serialize config: {}", e))
+            ClickUpError::SerializationError(format!("Failed to serialize config: {e}"))
         })?;
         // Write the configuration to the file
         std::fs::write(config_file, config_str).map_err(|e| {
-            ClickUpError::ConfigError(format!("Failed to write config file: {}", e))
+            ClickUpError::ConfigError(format!("Failed to write config file: {e}"))
         })?;
         Ok(())
     }
@@ -259,6 +317,7 @@ impl Default for Config {
             workspace_id: None,
             default_list_id: None,
             api_base_url: "https://api.clickup.com/api/v2".to_string(),
+            rate_limit: RateLimitConfig::default(),
         }
     }
 }

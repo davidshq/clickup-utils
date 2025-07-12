@@ -40,12 +40,15 @@
 use crate::config::Config;
 use crate::error::ClickUpError;
 use crate::models::*;
+use crate::rate_limiter::RateLimiter;
 use colored::Colorize;
-use log::{debug, error};
+use log::{debug, error, info};
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
 use reqwest::Client;
 use serde_json::Value;
 use std::time::Duration;
+use std::pin::Pin;
+use std::future::Future;
 
 /// ClickUp API client for making authenticated requests
 /// 
@@ -59,6 +62,8 @@ pub struct ClickUpApi {
     client: Client,
     /// Application configuration containing API token and base URL
     config: Config,
+    /// Rate limiter for managing API request limits
+    rate_limiter: RateLimiter,
 }
 
 impl ClickUpApi {
@@ -89,9 +94,12 @@ impl ClickUpApi {
             .timeout(Duration::from_secs(30))
             .default_headers(headers)
             .build()
-            .map_err(|e| ClickUpError::NetworkError(format!("Failed to create HTTP client: {}", e)))?;
+            .map_err(|e| ClickUpError::NetworkError(format!("Failed to create HTTP client: {e}")))?;
 
-        Ok(Self { client, config })
+        // Create rate limiter with configuration
+        let rate_limiter = RateLimiter::new(config.rate_limit.clone());
+
+        Ok(Self { client, config, rate_limiter })
     }
 
     /// Creates the authorization header for API requests
@@ -120,11 +128,11 @@ impl ClickUpApi {
             token.to_string()
         } else {
             // OAuth token or other token types - use with Bearer prefix
-            format!("Bearer {}", token)
+            format!("Bearer {token}")
         };
         
         HeaderValue::from_str(&auth_value).map_err(|e| {
-            ClickUpError::AuthError(format!("Invalid auth header: {}", e))
+            ClickUpError::AuthError(format!("Invalid auth header: {e}"))
         })
     }
 
@@ -150,101 +158,103 @@ impl ClickUpApi {
     /// - Authentication errors (invalid token)
     /// - API errors (4xx, 5xx responses)
     /// - Serialization errors (invalid JSON)
-    async fn make_request<T>(
-        &self,
+    fn make_request<'a, T>(
+        &'a self,
         method: reqwest::Method,
-        endpoint: &str,
+        endpoint: &'a str,
         body: Option<Value>,
         query_params: Option<Vec<(String, String)>>,
-    ) -> Result<T, ClickUpError>
+    ) -> Pin<Box<dyn Future<Output = Result<T, ClickUpError>> + Send + 'a>>
     where
-        T: for<'de> serde::Deserialize<'de>,
+        T: for<'de> serde::Deserialize<'de> + Send + 'static,
     {
-        // Construct the full URL
-        let mut url = format!("{}{}", self.config.api_base_url, endpoint);
-        
-        // Add query parameters if provided
-        if let Some(params) = query_params {
-            let query_string: String = params
-                .iter()
-                .map(|(key, value)| format!("{}={}", key, value))
-                .collect::<Vec<_>>()
-                .join("&");
-            url = format!("{}?{}", url, query_string);
-        }
-        
-        let mut request = self.client.request(method, &url);
-
-        // Add authentication header
-        let auth_header = self.get_auth_header()?;
-        request = request.header(AUTHORIZATION, auth_header);
-
-        // Add request body if provided
-        if let Some(body) = body {
-            request = request.json(&body);
-        }
-
-        debug!("Making request to: {}", url);
-
-        // Send the request
-        let response = request.send().await.map_err(|e| {
-            error!("Request failed: {}", e);
-            ClickUpError::from(e)
-        })?;
-
-        // Check for rate limiting headers
-        if let Some(retry_after) = response.headers().get("Retry-After") {
-            if let (Ok(_s), Ok(retry_seconds)) = (retry_after.to_str(), retry_after.to_str().unwrap().parse::<u64>()) {
-                debug!("Rate limited, retry after {} seconds", retry_seconds);
-                return Err(ClickUpError::RateLimitError);
+        Box::pin(async move {
+            // Reset retry count for new request
+            self.rate_limiter.reset_retry_count().await?;
+            // Wait if we're approaching rate limits
+            self.rate_limiter.wait_if_needed().await?;
+            // Construct the full URL
+            let mut url = format!("{}{}", self.config.api_base_url, endpoint);
+            // Add query parameters if provided
+            if let Some(ref params) = query_params {
+                let query_string: String = params
+                    .iter()
+                    .map(|(key, value)| format!("{key}={value}"))
+                    .collect::<Vec<_>>()
+                    .join("&");
+                url = format!("{url}?{query_string}");
             }
-        }
-
-        let status = response.status();
-        let response_text = response.text().await.map_err(|e| {
-            error!("Failed to read response: {}", e);
-            ClickUpError::NetworkError(format!("Failed to read response: {}", e))
-        })?;
-
-        debug!("Response status: {}, body: {}", status, response_text);
-
-        // Handle error responses
-        if !status.is_success() {
-            let error_msg = if !response_text.is_empty() {
-                // Try to parse ClickUp-specific error format
-                if let Ok(error_json) = serde_json::from_str::<serde_json::Value>(&response_text) {
-                    if let (Some(err_msg), Some(ecode)) = (
-                        error_json.get("err").and_then(|v| v.as_str()),
-                        error_json.get("ECODE").and_then(|v| v.as_str())
-                    ) {
-                        format!("ClickUp Error {}: {}", ecode, err_msg)
+            let mut request = self.client.request(method.clone(), &url);
+            // Add authentication header
+            let auth_header = self.get_auth_header()?;
+            request = request.header(AUTHORIZATION, auth_header);
+            // Add request body if provided
+            if let Some(ref body) = body {
+                request = request.json(&body);
+            }
+            debug!("Making request to: {url}");
+            // Send the request
+            let response = request.send().await.map_err(|e| {
+                error!("Request failed: {e}");
+                ClickUpError::from(e)
+            })?;
+            // Check for rate limiting headers
+            let retry_after_seconds = response.headers()
+                .get("Retry-After")
+                .and_then(|h| h.to_str().ok())
+                .and_then(|s| s.parse::<u64>().ok());
+            let status = response.status();
+            let response_text = response.text().await.map_err(|e| {
+                error!("Failed to read response: {e}");
+                ClickUpError::NetworkError(format!("Failed to read response: {e}"))
+            })?;
+            debug!("Response status: {status}, body: {response_text}");
+            // Handle error responses
+            if !status.is_success() {
+                let error_msg = if !response_text.is_empty() {
+                    // Try to parse ClickUp-specific error format
+                    if let Ok(error_json) = serde_json::from_str::<serde_json::Value>(&response_text) {
+                        if let (Some(err_msg), Some(ecode)) = (
+                            error_json.get("err").and_then(|v| v.as_str()),
+                            error_json.get("ECODE").and_then(|v| v.as_str())
+                        ) {
+                            format!("ClickUp Error {ecode}: {err_msg}")
+                        } else {
+                            response_text.clone()
+                        }
                     } else {
-                        response_text
+                        response_text.clone()
                     }
                 } else {
-                    response_text
-                }
-            } else {
-                format!("HTTP {}: {}", status.as_u16(), status.canonical_reason().unwrap_or("Unknown"))
-            };
-
-            return match status.as_u16() {
-                400 => Err(ClickUpError::ValidationError(format!("Bad request: {}", error_msg))),
-                401 => Err(ClickUpError::AuthError("Invalid API token".to_string())),
-                403 => Err(ClickUpError::PermissionError("Insufficient permissions".to_string())),
-                404 => Err(ClickUpError::NotFoundError("Resource not found".to_string())),
-                409 => Err(ClickUpError::ApiError(format!("Conflict: {}", error_msg))),
-                422 => Err(ClickUpError::ValidationError(format!("Validation error: {}", error_msg))),
-                429 => Err(ClickUpError::RateLimitError),
-                500..=599 => Err(ClickUpError::ApiError(format!("Server error: {}", error_msg))),
-                _ => Err(ClickUpError::ApiError(error_msg)),
-            };
-        }
-
-        // Parse the response JSON
-        serde_json::from_str(&response_text).map_err(|e| {
-            error!("Failed to parse response: {}", e);
-            ClickUpError::DeserializationError(format!("Failed to parse response: {}", e))
+                    format!("HTTP {}: {}", status.as_u16(), status.canonical_reason().unwrap_or("Unknown"))
+                };
+                return match status.as_u16() {
+                    400 => Err(ClickUpError::ValidationError(format!("Bad request: {error_msg}"))),
+                    401 => Err(ClickUpError::AuthError("Invalid API token".to_string())),
+                    403 => Err(ClickUpError::PermissionError("Insufficient permissions".to_string())),
+                    404 => Err(ClickUpError::NotFoundError("Resource not found".to_string())),
+                    409 => Err(ClickUpError::ApiError(format!("Conflict: {error_msg}"))),
+                    422 => Err(ClickUpError::ValidationError(format!("Validation error: {error_msg}"))),
+                    429 => {
+                        // Handle rate limiting with retry logic
+                        match self.rate_limiter.handle_rate_limit(retry_after_seconds).await {
+                            Ok(()) => {
+                                // Retry the request after waiting
+                                info!("Retrying request after rate limit wait");
+                                self.make_request(method, endpoint, body, query_params).await
+                            }
+                            Err(e) => Err(e),
+                        }
+                    },
+                    500..=599 => Err(ClickUpError::ApiError(format!("Server error: {error_msg}"))),
+                    _ => Err(ClickUpError::ApiError(error_msg)),
+                };
+            }
+            // Parse the response JSON
+            serde_json::from_str(&response_text).map_err(|e| {
+                error!("Failed to parse response: {e}");
+                ClickUpError::DeserializationError(format!("Failed to parse response: {e}"))
+            })
         })
     }
 
@@ -269,95 +279,85 @@ impl ClickUpApi {
     /// - Network errors (timeout, connection issues)
     /// - Authentication errors (invalid token)
     /// - API errors (4xx, 5xx responses)
-    async fn make_request_raw(
-        &self,
+    fn make_request_raw<'a>(
+        &'a self,
         method: reqwest::Method,
-        endpoint: &str,
+        endpoint: &'a str,
         body: Option<Value>,
         query_params: Option<Vec<(String, String)>>,
-    ) -> Result<String, ClickUpError> {
-        // Construct the full URL
-        let mut url = format!("{}{}", self.config.api_base_url, endpoint);
-        
-        // Add query parameters if provided
-        if let Some(params) = query_params {
-            let query_string: String = params
-                .iter()
-                .map(|(key, value)| format!("{}={}", key, value))
-                .collect::<Vec<_>>()
-                .join("&");
-            url = format!("{}?{}", url, query_string);
-        }
-        
-        let mut request = self.client.request(method, &url);
-
-        // Add authentication header
-        let auth_header = self.get_auth_header()?;
-        request = request.header(AUTHORIZATION, auth_header);
-
-        // Add request body if provided
-        if let Some(body) = body {
-            request = request.json(&body);
-        }
-
-        debug!("Making request to: {}", url);
-
-        // Send the request
-        let response = request.send().await.map_err(|e| {
-            error!("Request failed: {}", e);
-            ClickUpError::from(e)
-        })?;
-
-        // Check for rate limiting headers
-        if let Some(retry_after) = response.headers().get("Retry-After") {
-            if let (Ok(_s), Ok(retry_seconds)) = (retry_after.to_str(), retry_after.to_str().unwrap().parse::<u64>()) {
-                debug!("Rate limited, retry after {} seconds", retry_seconds);
-                return Err(ClickUpError::RateLimitError);
+    ) -> Pin<Box<dyn Future<Output = Result<String, ClickUpError>> + Send + 'a>> {
+        Box::pin(async move {
+            self.rate_limiter.reset_retry_count().await?;
+            self.rate_limiter.wait_if_needed().await?;
+            let mut url = format!("{}{}", self.config.api_base_url, endpoint);
+            if let Some(ref params) = query_params {
+                let query_string: String = params
+                    .iter()
+                    .map(|(key, value)| format!("{key}={value}"))
+                    .collect::<Vec<_>>()
+                    .join("&");
+                url = format!("{url}?{query_string}");
             }
-        }
-
-        let status = response.status();
-        let response_text = response.text().await.map_err(|e| {
-            error!("Failed to read response: {}", e);
-            ClickUpError::NetworkError(format!("Failed to read response: {}", e))
-        })?;
-
-        debug!("Response status: {}, body: {}", status, response_text);
-
-        // Handle error responses
-        if !status.is_success() {
-            let error_msg = if !response_text.is_empty() {
-                // Try to parse ClickUp-specific error format
-                if let Ok(error_json) = serde_json::from_str::<serde_json::Value>(&response_text) {
-                    if let (Some(err_msg), Some(ecode)) = (
-                        error_json.get("err").and_then(|v| v.as_str()),
-                        error_json.get("ECODE").and_then(|v| v.as_str())
-                    ) {
-                        format!("ClickUp Error {}: {}", ecode, err_msg)
+            let mut request = self.client.request(method.clone(), &url);
+            let auth_header = self.get_auth_header()?;
+            request = request.header(AUTHORIZATION, auth_header);
+            if let Some(ref body) = body {
+                request = request.json(&body);
+            }
+            debug!("Making request to: {url}");
+            let response = request.send().await.map_err(|e| {
+                error!("Request failed: {e}");
+                ClickUpError::from(e)
+            })?;
+            let retry_after_seconds = response.headers()
+                .get("Retry-After")
+                .and_then(|h| h.to_str().ok())
+                .and_then(|s| s.parse::<u64>().ok());
+            let status = response.status();
+            let response_text = response.text().await.map_err(|e| {
+                error!("Failed to read response: {e}");
+                ClickUpError::NetworkError(format!("Failed to read response: {e}"))
+            })?;
+            debug!("Response status: {status}, body: {response_text}");
+            if !status.is_success() {
+                let error_msg = if !response_text.is_empty() {
+                    if let Ok(error_json) = serde_json::from_str::<serde_json::Value>(&response_text) {
+                        if let (Some(err_msg), Some(ecode)) = (
+                            error_json.get("err").and_then(|v| v.as_str()),
+                            error_json.get("ECODE").and_then(|v| v.as_str())
+                        ) {
+                            format!("ClickUp Error {ecode}: {err_msg}")
+                        } else {
+                            response_text.clone()
+                        }
                     } else {
-                        response_text
+                        response_text.clone()
                     }
                 } else {
-                    response_text
-                }
-            } else {
-                format!("HTTP {}: {}", status.as_u16(), status.canonical_reason().unwrap_or("Unknown"))
-            };
-
-            return match status.as_u16() {
-                400 => Err(ClickUpError::ValidationError(format!("Bad request: {}", error_msg))),
-                401 => Err(ClickUpError::AuthError("Invalid API token".to_string())),
-                403 => Err(ClickUpError::PermissionError("Insufficient permissions".to_string())),
-                404 => Err(ClickUpError::NotFoundError("Resource not found".to_string())),
-                409 => Err(ClickUpError::ApiError(format!("Conflict: {}", error_msg))),
-                422 => Err(ClickUpError::ValidationError(format!("Validation error: {}", error_msg))),
-                429 => Err(ClickUpError::RateLimitError),
-                500..=599 => Err(ClickUpError::ApiError(format!("Server error: {}", error_msg))),
-                _ => Err(ClickUpError::ApiError(error_msg)),
-            };
-        }
-
-        Ok(response_text)
+                    format!("HTTP {}: {}", status.as_u16(), status.canonical_reason().unwrap_or("Unknown"))
+                };
+                return match status.as_u16() {
+                    400 => Err(ClickUpError::ValidationError(format!("Bad request: {error_msg}"))),
+                    401 => Err(ClickUpError::AuthError("Invalid API token".to_string())),
+                    403 => Err(ClickUpError::PermissionError("Insufficient permissions".to_string())),
+                    404 => Err(ClickUpError::NotFoundError("Resource not found".to_string())),
+                    409 => Err(ClickUpError::ApiError(format!("Conflict: {error_msg}"))),
+                    422 => Err(ClickUpError::ValidationError(format!("Validation error: {error_msg}"))),
+                    429 => {
+                        match self.rate_limiter.handle_rate_limit(retry_after_seconds).await {
+                            Ok(()) => {
+                                info!("Retrying request after rate limit wait");
+                                self.make_request_raw(method, endpoint, body, query_params).await
+                            }
+                            Err(e) => Err(e),
+                        }
+                    },
+                    500..=599 => Err(ClickUpError::ApiError(format!("Server error: {error_msg}"))),
+                    _ => Err(ClickUpError::ApiError(error_msg)),
+                };
+            }
+            Ok(response_text)
+        })
     }
 
     // User endpoints
@@ -396,8 +396,8 @@ impl ClickUpApi {
         let response_text = self.make_request_raw(reqwest::Method::GET, "/team", None, None).await?;
         println!("DEBUG: Raw workspace response (first 500 chars): {}", &response_text[..response_text.len().min(500)]);
         serde_json::from_str(&response_text).map_err(|e| {
-            error!("Failed to parse workspace response: {}", e);
-            ClickUpError::DeserializationError(format!("Failed to parse workspace response: {}", e))
+            error!("Failed to parse workspace response: {e}");
+            ClickUpError::DeserializationError(format!("Failed to parse workspace response: {e}"))
         })
     }
 
@@ -417,7 +417,7 @@ impl ClickUpApi {
     /// 
     /// This function can return authentication, permission, or network errors.
     pub async fn get_spaces(&self, workspace_id: &str) -> Result<SpacesResponse, ClickUpError> {
-        let endpoint = format!("/team/{}/space", workspace_id);
+        let endpoint = format!("/team/{workspace_id}/space");
         self.make_request(reqwest::Method::GET, &endpoint, None, None).await
     }
 
@@ -437,7 +437,7 @@ impl ClickUpApi {
     /// 
     /// This function can return authentication, permission, or network errors.
     pub async fn get_lists(&self, space_id: &str) -> Result<ListsResponse, ClickUpError> {
-        let endpoint = format!("/space/{}/list", space_id);
+        let endpoint = format!("/space/{space_id}/list");
         self.make_request(reqwest::Method::GET, &endpoint, None, None).await
     }
 
@@ -457,7 +457,7 @@ impl ClickUpApi {
     /// 
     /// This function can return authentication, permission, or network errors.
     pub async fn get_folders(&self, space_id: &str) -> Result<FoldersResponse, ClickUpError> {
-        let endpoint = format!("/space/{}/folder", space_id);
+        let endpoint = format!("/space/{space_id}/folder");
         self.make_request(reqwest::Method::GET, &endpoint, None, None).await
     }
 
@@ -475,7 +475,7 @@ impl ClickUpApi {
     /// 
     /// This function can return authentication, permission, or network errors.
     pub async fn get_folder_lists(&self, folder_id: &str) -> Result<ListsResponse, ClickUpError> {
-        let endpoint = format!("/folder/{}/list", folder_id);
+        let endpoint = format!("/folder/{folder_id}/list");
         self.make_request(reqwest::Method::GET, &endpoint, None, None).await
     }
 
@@ -506,7 +506,7 @@ impl ClickUpApi {
                 ("subtasks".to_string(), "true".to_string()),
             ];
             
-            let endpoint = format!("/list/{}/task", list_id);
+            let endpoint = format!("/list/{list_id}/task");
             let response: TasksResponse = self.make_request(reqwest::Method::GET, &endpoint, None, Some(query_params)).await?;
             
             let tasks_count = response.tasks.len();
@@ -589,10 +589,10 @@ impl ClickUpApi {
             }
             
             print!("Select workspace (enter number): ");
-            io::stdout().flush().map_err(|e| ClickUpError::ApiError(format!("Failed to flush stdout: {}", e)))?;
+            io::stdout().flush().map_err(|e| ClickUpError::ApiError(format!("Failed to flush stdout: {e}")))?;
             
             let mut input = String::new();
-            io::stdin().read_line(&mut input).map_err(|e| ClickUpError::ApiError(format!("Failed to read input: {}", e)))?;
+            io::stdin().read_line(&mut input).map_err(|e| ClickUpError::ApiError(format!("Failed to read input: {e}")))?;
             
             let selection: usize = input.trim().parse().map_err(|_| ClickUpError::ValidationError("Invalid workspace selection".to_string()))?;
             
@@ -614,10 +614,10 @@ impl ClickUpApi {
             }
             
             print!("Select space (enter number): ");
-            io::stdout().flush().map_err(|e| ClickUpError::ApiError(format!("Failed to flush stdout: {}", e)))?;
+            io::stdout().flush().map_err(|e| ClickUpError::ApiError(format!("Failed to flush stdout: {e}")))?;
             
             let mut input = String::new();
-            io::stdin().read_line(&mut input).map_err(|e| ClickUpError::ApiError(format!("Failed to read input: {}", e)))?;
+            io::stdin().read_line(&mut input).map_err(|e| ClickUpError::ApiError(format!("Failed to read input: {e}")))?;
             
             let selection: usize = input.trim().parse().map_err(|_| ClickUpError::ValidationError("Invalid space selection".to_string()))?;
             
@@ -662,7 +662,7 @@ impl ClickUpApi {
         for list in &all_lists {
             let list_name = list.name.as_deref().unwrap_or("");
             let folder_info = list.folder.as_ref().map(|f| format!(" (in folder: {})", f.name)).unwrap_or_default();
-            println!("  Checking list: {}{}", list_name, folder_info);
+            println!("  Checking list: {list_name}{folder_info}");
             
             match self.get_tasks(&list.id).await {
                 Ok(tasks_response) => {
@@ -674,7 +674,7 @@ impl ClickUpApi {
                         // Process current task
                         let task_name = task.name.as_deref().unwrap_or("Unnamed Task");
                         let tag_names: Vec<String> = task.tags.iter()
-                            .filter_map(|t| t.name.as_ref().map(|n| n.clone()))
+                            .filter_map(|t| t.name.clone())
                             .collect();
                         
                         if tag_names.is_empty() {
@@ -688,8 +688,7 @@ impl ClickUpApi {
                         let has_tag = task.tags.iter().any(|task_tag| {
                             let tag_matches = task_tag.name.as_deref() == Some(tag);
                             if tag_matches {
-                                println!("{}✓ Found matching tag '{}' on task '{}'", 
-                                    indent, tag, task_name);
+                                println!("{indent}✓ Found matching tag '{tag}' on task '{task_name}'");
                             }
                             tag_matches
                         });
@@ -708,7 +707,7 @@ impl ClickUpApi {
                                 matching_tasks.extend(subtask_matches);
                             }
                         } else {
-                            println!("{}No subtasks found for task '{}'", indent, task_name);
+                            println!("{indent}No subtasks found for task '{task_name}'");
                         }
                         
                         Ok(matching_tasks)
@@ -751,7 +750,7 @@ impl ClickUpApi {
     /// 
     /// This function can return authentication, permission, or network errors.
     pub async fn get_task(&self, task_id: &str) -> Result<Task, ClickUpError> {
-        let endpoint = format!("/task/{}", task_id);
+        let endpoint = format!("/task/{task_id}");
         self.make_request(reqwest::Method::GET, &endpoint, None, None).await
     }
 
@@ -770,9 +769,9 @@ impl ClickUpApi {
     /// 
     /// This function can return authentication, permission, validation, or network errors.
     pub async fn create_task(&self, list_id: &str, task_data: CreateTaskRequest) -> Result<Task, ClickUpError> {
-        let endpoint = format!("/list/{}/task", list_id);
+        let endpoint = format!("/list/{list_id}/task");
         let body = serde_json::to_value(task_data).map_err(|e| {
-            ClickUpError::SerializationError(format!("Failed to serialize task data: {}", e))
+            ClickUpError::SerializationError(format!("Failed to serialize task data: {e}"))
         })?;
         self.make_request(reqwest::Method::POST, &endpoint, Some(body), None).await
     }
@@ -792,9 +791,9 @@ impl ClickUpApi {
     /// 
     /// This function can return authentication, permission, validation, or network errors.
     pub async fn update_task(&self, task_id: &str, task_data: UpdateTaskRequest) -> Result<Task, ClickUpError> {
-        let endpoint = format!("/task/{}", task_id);
+        let endpoint = format!("/task/{task_id}");
         let body = serde_json::to_value(task_data).map_err(|e| {
-            ClickUpError::SerializationError(format!("Failed to serialize task data: {}", e))
+            ClickUpError::SerializationError(format!("Failed to serialize task data: {e}"))
         })?;
         self.make_request(reqwest::Method::PUT, &endpoint, Some(body), None).await
     }
@@ -813,7 +812,7 @@ impl ClickUpApi {
     /// 
     /// This function can return authentication, permission, or network errors.
     pub async fn delete_task(&self, task_id: &str) -> Result<(), ClickUpError> {
-        let endpoint = format!("/task/{}", task_id);
+        let endpoint = format!("/task/{task_id}");
         let _: Value = self.make_request(reqwest::Method::DELETE, &endpoint, None, None).await?;
         Ok(())
     }
@@ -834,7 +833,7 @@ impl ClickUpApi {
     /// 
     /// This function can return authentication, permission, or network errors.
     pub async fn get_comments(&self, task_id: &str) -> Result<CommentsResponse, ClickUpError> {
-        let endpoint = format!("/task/{}/comment", task_id);
+        let endpoint = format!("/task/{task_id}/comment");
         self.make_request(reqwest::Method::GET, &endpoint, None, None).await
     }
 
@@ -853,9 +852,9 @@ impl ClickUpApi {
     /// 
     /// This function can return authentication, permission, validation, or network errors.
     pub async fn create_comment(&self, task_id: &str, comment_data: CreateCommentRequest) -> Result<Comment, ClickUpError> {
-        let endpoint = format!("/task/{}/comment", task_id);
+        let endpoint = format!("/task/{task_id}/comment");
         let body = serde_json::to_value(comment_data).map_err(|e| {
-            ClickUpError::SerializationError(format!("Failed to serialize comment data: {}", e))
+            ClickUpError::SerializationError(format!("Failed to serialize comment data: {e}"))
         })?;
         self.make_request(reqwest::Method::POST, &endpoint, Some(body), None).await
     }
@@ -876,7 +875,7 @@ impl ClickUpApi {
     /// 
     /// This function can return authentication, permission, or network errors.
     pub async fn get_workspace(&self, workspace_id: &str) -> Result<Workspace, ClickUpError> {
-        let endpoint = format!("/team/{}", workspace_id);
+        let endpoint = format!("/team/{workspace_id}");
         self.make_request(reqwest::Method::GET, &endpoint, None, None).await
     }
 
@@ -895,9 +894,9 @@ impl ClickUpApi {
     /// 
     /// This function can return authentication, permission, validation, or network errors.
     pub async fn update_comment(&self, comment_id: &str, comment_data: CreateCommentRequest) -> Result<Comment, ClickUpError> {
-        let endpoint = format!("/comment/{}", comment_id);
+        let endpoint = format!("/comment/{comment_id}");
         let body = serde_json::to_value(comment_data).map_err(|e| {
-            ClickUpError::SerializationError(format!("Failed to serialize comment data: {}", e))
+            ClickUpError::SerializationError(format!("Failed to serialize comment data: {e}"))
         })?;
         self.make_request(reqwest::Method::PUT, &endpoint, Some(body), None).await
     }
@@ -916,8 +915,29 @@ impl ClickUpApi {
     /// 
     /// This function can return authentication, permission, or network errors.
     pub async fn delete_comment(&self, comment_id: &str) -> Result<(), ClickUpError> {
-        let endpoint = format!("/comment/{}", comment_id);
+        let endpoint = format!("/comment/{comment_id}");
         let _: Value = self.make_request(reqwest::Method::DELETE, &endpoint, None, None).await?;
         Ok(())
+    }
+    
+    /// Gets rate limiting statistics
+    /// 
+    /// This method returns information about the current rate limiting state,
+    /// including the number of requests made in the last minute and current
+    /// retry count. This is useful for debugging and monitoring.
+    /// 
+    /// # Returns
+    /// 
+    /// Returns a tuple of (requests_in_last_minute, current_retry_count) on success,
+    /// or a `ClickUpError` on failure.
+    /// 
+    /// # Errors
+    /// 
+    /// This function can return errors if the rate limiter state cannot be accessed.
+    #[allow(dead_code)]
+    pub async fn get_rate_limit_stats(&self) -> Result<(u32, u32), ClickUpError> {
+        let request_count = self.rate_limiter.get_current_request_count().await?;
+        let retry_count = self.rate_limiter.get_current_retry_count().await?;
+        Ok((request_count, retry_count))
     }
 } 

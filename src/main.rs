@@ -43,6 +43,7 @@ mod commands;
 mod config;
 mod error;
 mod models;
+mod rate_limiter;
 
 use crate::commands::{
     auth, comments, lists, spaces, tasks, teams, workspaces,
@@ -153,7 +154,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Load application configuration
     let mut config = Config::load().map_err(|e| {
-        error!("Failed to load configuration: {}", e);
+        error!("Failed to load configuration: {e}");
         e
     })?;
 

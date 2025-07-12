@@ -86,7 +86,7 @@ fn test_config_parse_error_conversion() {
 #[test]
 fn test_error_debug() {
     let error = ClickUpError::ApiError("Test error".to_string());
-    let debug_str = format!("{:?}", error);
+    let debug_str = format!("{error:?}");
     assert!(debug_str.contains("ApiError"));
     assert!(debug_str.contains("Test error"));
 }
@@ -127,6 +127,6 @@ fn test_multiple_error_types() {
     for error in errors {
         let error_str = error.to_string();
         assert!(!error_str.is_empty());
-        assert!(error_str.len() > 0);
+        assert!(!error_str.is_empty());
     }
 } 

@@ -1029,6 +1029,7 @@ pub struct TaskSpace {
 /// This struct contains the data needed to create a new task in ClickUp.
 /// All fields except `name` are optional.
 #[derive(Debug, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct CreateTaskRequest {
     /// Task display name (required)
     pub name: String,
@@ -1062,27 +1063,6 @@ pub struct CreateTaskRequest {
     pub notify_all: Option<bool>,
 }
 
-impl Default for CreateTaskRequest {
-    fn default() -> Self {
-        Self {
-            name: String::new(),
-            description: None,
-            status: None,
-            priority: None,
-            due_date: None,
-            due_date_time: None,
-            time_estimate: None,
-            assignees: None,
-            tags: None,
-            parent: None,
-            custom_fields: None,
-            start_date: None,
-            start_date_time: None,
-            points: None,
-            notify_all: None,
-        }
-    }
-}
 
 /// Request data for updating an existing task
 /// 

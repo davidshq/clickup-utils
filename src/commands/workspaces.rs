@@ -59,7 +59,7 @@ async fn list_workspaces(api: &ClickUpApi) -> Result<(), ClickUpError> {
         ]);
     }
 
-    println!("{}", table);
+    println!("{table}");
     Ok(())
 }
 
@@ -77,9 +77,9 @@ async fn show_workspace(api: &ClickUpApi, workspace_id: &str) -> Result<(), Clic
         println!("\n{}", "Members:".bold());
         for member in &workspace.members {
             if let (Some(username), Some(email)) = (&member.user.username, &member.user.email) {
-                println!("  - {} ({})", username, email);
+                println!("  - {username} ({email})");
             } else if let Some(username) = &member.user.username {
-                println!("  - {} (no email)", username);
+                println!("  - {username} (no email)");
             } else {
                 println!("  - Unknown user");
             }
