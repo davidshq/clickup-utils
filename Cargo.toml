@@ -2,7 +2,7 @@
 name = "clickup-cli"
 version = "0.1.0"
 edition = "2021"
-authors = ["Your Name <your.email@example.com>"]
+authors = ["Dave Mackey <dave@davemackey.net>"]
 description = "A command-line interface for ClickUp API"
 license = "MIT"
 repository = "https://github.com/davidshq/clickup-cli"
