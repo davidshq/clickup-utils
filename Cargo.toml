@@ -83,3 +83,8 @@ path = "src/lib.rs"
 [dev-dependencies]
 # Temporary file and directory utilities for testing
 tempfile = "3.8"
+# CLI testing utilities
+assert_cmd = "2.0"
+predicates = "3.0"
+# Serial test execution for integration tests
+serial_test = "2.0"
