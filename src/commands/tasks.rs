@@ -123,7 +123,7 @@ pub enum TaskCommands {
         #[arg(short, long)]
         name: String,
         /// Task description
-        #[arg(short, long)]
+        #[arg(long)]
         description: Option<String>,
         /// Task status
         #[arg(short, long)]
@@ -147,7 +147,7 @@ pub enum TaskCommands {
         #[arg(short, long)]
         name: Option<String>,
         /// New task description
-        #[arg(short, long)]
+        #[arg(long)]
         description: Option<String>,
         /// New task status
         #[arg(short, long)]

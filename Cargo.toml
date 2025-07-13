@@ -88,3 +88,5 @@ assert_cmd = "2.0"
 predicates = "3.0"
 # Serial test execution for integration tests
 serial_test = "2.0"
+# Regular expressions for pattern matching in tests
+regex = "1.0"

@@ -215,6 +215,15 @@ impl Config {
             ClickUpError::ConfigParseError(config::ConfigError::NotFound("Failed to parse config".to_string()))
         })?;
         
+        // Load API tokens from environment variables if not already set
+        if config.api_token.is_none() {
+            if let Ok(token) = std::env::var("CLICKUP_API_TOKEN") {
+                if !token.trim().is_empty() {
+                    config.api_token = Some(token);
+                }
+            }
+        }
+        
         // When running tests, load the test API token if available
         #[cfg(test)]
         {
@@ -368,8 +377,10 @@ impl Config {
     /// This function returns a reference to the stored API token. If no token
     /// is configured, it returns an authentication error.
     /// 
-    /// When running tests, this function will first check for a `CLICKUP_API_TOKEN_TEST`
-    /// environment variable before falling back to the regular API token.
+    /// The function checks for tokens in the following order:
+    /// 1. Environment variable `CLICKUP_API_TOKEN_TEST` (when running tests)
+    /// 2. Environment variable `CLICKUP_API_TOKEN` (for regular use)
+    /// 3. Stored API token in configuration
     /// 
     /// # Returns
     /// 
@@ -391,6 +402,7 @@ impl Config {
             }
         }
         
+        // Fall back to stored token in configuration
         self.api_token
             .as_deref()
             .ok_or_else(|| ClickUpError::AuthError("API token not configured".to_string()))

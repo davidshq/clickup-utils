@@ -7,6 +7,7 @@
 .env.development
 .env.staging
 .env.production
+.env.test
 .env.*.local
 
 # IDE and editor files
