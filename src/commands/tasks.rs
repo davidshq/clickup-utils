@@ -5,6 +5,7 @@ use crate::models::{CreateTaskRequest, UpdateTaskRequest};
 use clap::Subcommand;
 use colored::*;
 use comfy_table::{Table, Cell};
+use chrono::NaiveTime;
 
 /// Parameters for creating a task
 struct CreateTaskParams {
@@ -357,16 +358,27 @@ async fn update_overdue_by_tag(api: &ClickUpApi, tag: String, workspace_id: Opti
                 ).red());
                 
                 if !dry_run {
-                    // Convert today's date to Unix timestamp in milliseconds
-                    let today_timestamp = today.timestamp_millis();
+                    // Preserve the original time from the due date, but set the date to today
+                    let today_date = chrono::Utc::now().date_naive();
+                    let original_time = due_date_time.time();
+                    
+                    // Create new datetime with today's date and original time
+                    let new_due_date = chrono::NaiveDateTime::new(today_date, original_time);
+                    let new_due_date_utc = chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(new_due_date, chrono::Utc);
+                    let new_due_timestamp = new_due_date_utc.timestamp_millis();
+                    
+                    // Determine if the original due date had time (not just date)
+                    // Check if the time is not midnight (00:00:00)
+                    let original_time = due_date_time.time();
+                    let original_had_time = original_time != NaiveTime::from_hms_opt(0, 0, 0).unwrap();
                     
                     let update_data = UpdateTaskRequest {
                         name: None,
                         description: None,
                         status: Some(task.status.status.clone()), // Required by API
                         priority: None,
-                        due_date: Some(today_timestamp), // Only field we want to change
-                        due_date_time: Some(true), // Required for due date updates
+                        due_date: Some(new_due_timestamp), // Today's date with original time
+                        due_date_time: Some(original_had_time), // Only true if original had time
                         time_estimate: None,
                         assignees: None,
                         tags: None,
