@@ -15,16 +15,31 @@
 //! 
 //! The configuration is loaded from multiple sources in order of precedence:
 //! 1. Environment variables (highest priority)
-//! 2. Configuration file (`config.toml`)
-//! 3. Default values (lowest priority)
+//! 2. `.env` file (loaded automatically if present)
+//! 3. Configuration file (`config.toml`)
+//! 4. Default values (lowest priority)
 //! 
-//! ## Environment Variables
+//! ## Environment Variables and .env Files
 //! 
-//! The following environment variables are supported:
+//! The following environment variables are supported (can be set in `.env` file or system environment):
 //! - `CLICKUP_API_TOKEN` - Your ClickUp API token
+//! - `CLICKUP_API_TOKEN_TEST` - Test API token (used when running tests)
 //! - `CLICKUP_WORKSPACE_ID` - Default workspace ID
 //! - `CLICKUP_DEFAULT_LIST_ID` - Default list ID
 //! - `CLICKUP_API_BASE_URL` - API base URL (defaults to ClickUp v2 API)
+//! - `CLICKUP_RATE_LIMIT__REQUESTS_PER_MINUTE` - Rate limit requests per minute
+//! - `CLICKUP_RATE_LIMIT__AUTO_RETRY` - Whether to auto-retry rate-limited requests
+//! - `CLICKUP_RATE_LIMIT__MAX_RETRIES` - Maximum retry attempts
+//! - `CLICKUP_RATE_LIMIT__BUFFER_SECONDS` - Buffer time for rate limiting
+//! 
+//! ## .env Files
+//! 
+//! For local development, you can use a `.env` file in your project root:
+//! 1. Copy `.env.example` to `.env`
+//! 2. Fill in your configuration values
+//! 3. The `.env` file will be loaded automatically
+//! 
+//! **Note**: `.env` files are ignored by git for security. Never commit your `.env` file.
 //! 
 //! ## Configuration File
 //! 
@@ -36,6 +51,7 @@
 use crate::error::ClickUpError;
 use config::{Config as ConfigFile, Environment, File};
 use serde::{Deserialize, Serialize};
+use dotenvy::dotenv;
 
 /// Rate limiting configuration
 /// 
@@ -93,6 +109,13 @@ pub struct Config {
     /// via the configuration file, environment variable, or CLI command.
     pub api_token: Option<String>,
     
+    /// Test API token for testing purposes
+    /// 
+    /// This token is used when running tests and is loaded from the
+    /// CLICKUP_API_TOKEN_TEST environment variable.
+    #[cfg(test)]
+    pub test_api_token: Option<String>,
+    
     /// Default workspace ID for convenience
     /// 
     /// When specified, this workspace ID will be used as the default for
@@ -141,6 +164,9 @@ impl Config {
     /// - `ClickUpError::ConfigError` if the config directory cannot be created
     /// - `ClickUpError::ConfigParseError` if the configuration file is invalid
     pub fn load_with_path(config_file_override: Option<&std::path::Path>) -> Result<Self, ClickUpError> {
+        // Load .env file if it exists (highest priority)
+        dotenv().ok();
+        
         // Get the config file path
         let config_file = if let Some(path) = config_file_override {
             path.to_path_buf()
@@ -184,9 +210,21 @@ impl Config {
         let config = builder.build().map_err(|e| {
             ClickUpError::ConfigParseError(e)
         })?;
-        let config: Config = config.try_deserialize().map_err(|_| {
+        #[allow(unused_mut)]
+        let mut config: Config = config.try_deserialize().map_err(|_| {
             ClickUpError::ConfigParseError(config::ConfigError::NotFound("Failed to parse config".to_string()))
         })?;
+        
+        // When running tests, load the test API token if available
+        #[cfg(test)]
+        {
+            if let Ok(test_token) = std::env::var("CLICKUP_API_TOKEN_TEST") {
+                if !test_token.trim().is_empty() {
+                    config.test_api_token = Some(test_token);
+                }
+            }
+        }
+        
         Ok(config)
     }
 
@@ -248,6 +286,59 @@ impl Config {
         self.save_with_path(None)
     }
 
+    /// Creates a .env file from the .env.example template
+    ///
+    /// This is useful for first-time setup. The method copies the .env.example
+    /// file to .env if it doesn't already exist.
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(())` if the file was created successfully, or a `ClickUpError`
+    /// if the operation fails.
+    pub fn create_env_file() -> Result<(), ClickUpError> {
+        let env_file = std::path::Path::new(".env");
+        let example_file = std::path::Path::new(".env.example");
+        
+        if env_file.exists() {
+            return Ok(()); // .env already exists
+        }
+        
+        if !example_file.exists() {
+            return Err(ClickUpError::ConfigError(
+                ".env.example file not found. Please create it first.".to_string()
+            ));
+        }
+        
+        std::fs::copy(example_file, env_file).map_err(|e| {
+            ClickUpError::ConfigError(format!("Failed to create .env file: {e}"))
+        })?;
+        
+        Ok(())
+    }
+
+    /// Checks if a .env file exists and provides helpful setup instructions
+    ///
+    /// This method is useful for providing better error messages when
+    /// configuration is missing.
+    pub fn check_env_setup() -> Result<(), ClickUpError> {
+        let env_file = std::path::Path::new(".env");
+        let example_file = std::path::Path::new(".env.example");
+        
+        if !env_file.exists() {
+            if example_file.exists() {
+                return Err(ClickUpError::ConfigError(
+                    "No .env file found. Please copy .env.example to .env and configure your settings.".to_string()
+                ));
+            } else {
+                return Err(ClickUpError::ConfigError(
+                    "No .env file found and no .env.example template available.".to_string()
+                ));
+            }
+        }
+        
+        Ok(())
+    }
+
     /// Sets the API token and saves the configuration
     /// 
     /// This function updates the API token in the configuration and immediately
@@ -277,6 +368,9 @@ impl Config {
     /// This function returns a reference to the stored API token. If no token
     /// is configured, it returns an authentication error.
     /// 
+    /// When running tests, this function will first check for a `CLICKUP_API_TOKEN_TEST`
+    /// environment variable before falling back to the regular API token.
+    /// 
     /// # Returns
     /// 
     /// Returns a reference to the API token string, or a `ClickUpError` if
@@ -287,6 +381,16 @@ impl Config {
     /// This function can return:
     /// - `ClickUpError::AuthError` if no API token is configured
     pub fn get_api_token(&self) -> Result<&str, ClickUpError> {
+        // When running tests, check for test-specific token first
+        #[cfg(test)]
+        {
+            if let Some(test_token) = &self.test_api_token {
+                if !test_token.trim().is_empty() {
+                    return Ok(test_token.as_str());
+                }
+            }
+        }
+        
         self.api_token
             .as_deref()
             .ok_or_else(|| ClickUpError::AuthError("API token not configured".to_string()))
@@ -314,6 +418,8 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             api_token: None,
+            #[cfg(test)]
+            test_api_token: None,
             workspace_id: None,
             default_list_id: None,
             api_base_url: "https://api.clickup.com/api/v2".to_string(),

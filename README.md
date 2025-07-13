@@ -275,6 +275,13 @@ clickup-cli comments delete --id <comment-id>
 
 ## ⚙️ Configuration
 
+The CLI supports multiple configuration sources with the following precedence (highest to lowest):
+
+1. **Environment variables** (highest priority)
+2. **`.env` file** (loaded automatically if present)
+3. **Configuration file** (`config.toml`)
+4. **Default values** (lowest priority)
+
 The CLI stores configuration in your system's config directory:
 
 - **Windows**: `%APPDATA%\clickup-cli\config.toml`
@@ -307,6 +314,40 @@ export CLICKUP_WORKSPACE_ID="workspace-id"
 export CLICKUP_DEFAULT_LIST_ID="list-id"
 export CLICKUP_API_BASE_URL="https://api.clickup.com/api/v2"
 ```
+
+### .env Files (Recommended for Development)
+
+For local development, you can use a `.env` file in your project root:
+
+1. **Copy the template**:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. **Edit the `.env` file** with your settings:
+   ```bash
+   # Required: Your ClickUp API token
+   CLICKUP_API_TOKEN=your_api_token_here
+   
+   # Optional: Test API token for running tests
+   CLICKUP_API_TOKEN_TEST=your_test_api_token_here
+   
+   # Optional: Default workspace ID
+   CLICKUP_WORKSPACE_ID=your_workspace_id_here
+   
+   # Optional: Default list ID
+   CLICKUP_DEFAULT_LIST_ID=your_list_id_here
+   
+   # Optional: Rate limiting settings
+   CLICKUP_RATE_LIMIT__REQUESTS_PER_MINUTE=100
+   CLICKUP_RATE_LIMIT__AUTO_RETRY=true
+   CLICKUP_RATE_LIMIT__MAX_RETRIES=3
+   CLICKUP_RATE_LIMIT__BUFFER_SECONDS=5
+   ```
+
+3. **The `.env` file will be loaded automatically** when you run the CLI
+
+**Note**: `.env` files are ignored by git for security. Never commit your `.env` file.
 
 ## 🔑 Getting Your ClickUp API Token
 
@@ -451,6 +492,23 @@ cargo test test_name
 # Check for issues
 cargo clippy --all-targets --all-features -- -D warnings
 ```
+
+#### Test Configuration
+
+When running tests, the CLI will automatically use the `CLICKUP_API_TOKEN_TEST` environment variable if available:
+
+```bash
+# Set test token for running tests
+export CLICKUP_API_TOKEN_TEST=your_test_api_token
+
+# Or add to your .env file
+echo "CLICKUP_API_TOKEN_TEST=your_test_api_token" >> .env
+
+# Run tests
+cargo test
+```
+
+This allows you to use a separate API token for testing without affecting your regular configuration.
 
 ### Documentation
 
