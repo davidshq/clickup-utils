@@ -1,25 +1,25 @@
 //! # API Tests
-//! 
+//!
 //! This module contains comprehensive tests for the ClickUp API client functionality.
 //! It tests API client creation, configuration handling, authentication, and various
 //! edge cases to ensure robust operation.
-//! 
+//!
 //! ## Test Categories
-//! 
+//!
 //! - **Client Creation**: Tests for API client instantiation with various configurations
 //! - **Token Handling**: Tests for different token types and formats
 //! - **Configuration**: Tests for config validation and edge cases
 //! - **Task Operations**: Tests for task-related functionality including overdue task handling
-//! 
+//!
 //! ## Test Environment
-//! 
+//!
 //! Tests use a temporary configuration directory to avoid interfering with
 //! the user's actual configuration files.
 
 use clickup_cli::api::ClickUpApi;
 use clickup_cli::config::{Config, RateLimitConfig};
-use tempfile::TempDir;
 use std::sync::Once;
+use tempfile::TempDir;
 
 /// Global test initialization state
 static INIT: Once = Once::new();
@@ -27,7 +27,7 @@ static INIT: Once = Once::new();
 static mut TEMP_DIR: Option<TempDir> = None;
 
 /// Sets up the test environment with a temporary configuration directory
-/// 
+///
 /// This function ensures that tests don't interfere with the user's actual
 /// configuration by using a temporary directory for all config operations.
 /// It's called once per test run using the `Once` synchronization primitive.
@@ -44,7 +44,7 @@ fn setup_test_env() {
 }
 
 /// Tests API client creation with a valid configuration
-/// 
+///
 /// This test verifies that the API client can be created successfully
 /// when provided with a complete, valid configuration including token,
 /// workspace ID, and list ID.
@@ -58,13 +58,13 @@ fn test_api_client_creation_with_valid_config() {
         api_base_url: "https://api.clickup.com/api/v2".to_string(),
         rate_limit: RateLimitConfig::default(),
     };
-    
+
     let api = ClickUpApi::new(config);
     assert!(api.is_ok());
 }
 
 /// Tests API client creation without an authentication token
-/// 
+///
 /// This test verifies that the API client can be created successfully
 /// even when no authentication token is provided, as the client should
 /// be able to handle unauthenticated operations.
@@ -78,13 +78,13 @@ fn test_api_client_creation_without_token() {
         api_base_url: "https://api.clickup.com/api/v2".to_string(),
         rate_limit: RateLimitConfig::default(),
     };
-    
+
     let api = ClickUpApi::new(config);
     assert!(api.is_ok()); // API client can be created without token
 }
 
 /// Tests API client creation with a personal token (pk_ prefix)
-/// 
+///
 /// This test verifies that the API client can handle personal tokens
 /// which start with 'pk_' and are used directly without Bearer prefix.
 #[test]
@@ -97,13 +97,13 @@ fn test_api_client_with_personal_token() {
         api_base_url: "https://api.clickup.com/api/v2".to_string(),
         rate_limit: RateLimitConfig::default(),
     };
-    
+
     let api = ClickUpApi::new(config);
     assert!(api.is_ok());
 }
 
 /// Tests API client creation with an OAuth token
-/// 
+///
 /// This test verifies that the API client can handle OAuth tokens
 /// which are used with the Bearer prefix in authentication headers.
 #[test]
@@ -116,13 +116,13 @@ fn test_api_client_with_oauth_token() {
         api_base_url: "https://api.clickup.com/api/v2".to_string(),
         rate_limit: RateLimitConfig::default(),
     };
-    
+
     let api = ClickUpApi::new(config);
     assert!(api.is_ok());
 }
 
 /// Tests API client creation with a custom API base URL
-/// 
+///
 /// This test verifies that the API client can be configured with
 /// custom base URLs for different environments or API versions.
 #[test]
@@ -135,13 +135,13 @@ fn test_api_client_with_custom_base_url() {
         api_base_url: "https://custom.api.clickup.com/api/v2".to_string(),
         rate_limit: RateLimitConfig::default(),
     };
-    
+
     let api = ClickUpApi::new(config);
     assert!(api.is_ok());
 }
 
 /// Tests API client creation with potentially invalid configuration
-/// 
+///
 /// This test verifies that the API client can handle invalid or malformed
 /// configuration values gracefully without failing during creation.
 #[test]
@@ -154,13 +154,13 @@ fn test_api_client_creation_failure() {
         api_base_url: "invalid-url".to_string(),
         rate_limit: RateLimitConfig::default(),
     };
-    
+
     let api = ClickUpApi::new(config);
     assert!(api.is_ok()); // The client creation itself should succeed
 }
 
 /// Tests API client creation with cloned configuration
-/// 
+///
 /// This test verifies that the API client can be created multiple times
 /// using the same configuration object, ensuring proper cloning behavior.
 #[test]
@@ -173,17 +173,17 @@ fn test_api_client_config_clone() {
         api_base_url: "https://api.clickup.com/api/v2".to_string(),
         rate_limit: RateLimitConfig::default(),
     };
-    
+
     let api1 = ClickUpApi::new(config.clone());
     let api2 = ClickUpApi::new(config);
-    
+
     // Both should be created successfully
     assert!(api1.is_ok());
     assert!(api2.is_ok());
 }
 
 /// Tests API client creation with an empty token string
-/// 
+///
 /// This test verifies that the API client can handle empty token strings
 /// gracefully without failing during creation.
 #[test]
@@ -196,13 +196,13 @@ fn test_api_client_with_empty_token() {
         api_base_url: "https://api.clickup.com/api/v2".to_string(),
         rate_limit: RateLimitConfig::default(),
     };
-    
+
     let api = ClickUpApi::new(config);
     assert!(api.is_ok()); // Client creation should succeed even with empty token
 }
 
 /// Tests API client creation with a whitespace-only token
-/// 
+///
 /// This test verifies that the API client can handle tokens containing
 /// only whitespace characters without failing during creation.
 #[test]
@@ -215,13 +215,13 @@ fn test_api_client_with_whitespace_token() {
         api_base_url: "https://api.clickup.com/api/v2".to_string(),
         rate_limit: RateLimitConfig::default(),
     };
-    
+
     let api = ClickUpApi::new(config);
     assert!(api.is_ok()); // Client creation should succeed even with whitespace token
 }
 
 /// Tests creation of multiple API client instances
-/// 
+///
 /// This test verifies that multiple API client instances can be created
 /// simultaneously with different configurations without conflicts.
 #[test]
@@ -234,7 +234,7 @@ fn test_api_client_multiple_instances() {
         api_base_url: "https://api.clickup.com/api/v2".to_string(),
         rate_limit: RateLimitConfig::default(),
     };
-    
+
     let config2 = Config {
         api_token: Some("token2".to_string()),
         workspace_id: None,
@@ -242,16 +242,16 @@ fn test_api_client_multiple_instances() {
         api_base_url: "https://api.clickup.com/api/v2".to_string(),
         rate_limit: RateLimitConfig::default(),
     };
-    
+
     let api1 = ClickUpApi::new(config1);
     let api2 = ClickUpApi::new(config2);
-    
+
     assert!(api1.is_ok());
     assert!(api2.is_ok());
 }
 
 /// Tests API client creation with all None values
-/// 
+///
 /// This test verifies that the API client can be created with a minimal
 /// configuration where all optional fields are set to None.
 #[test]
@@ -264,13 +264,13 @@ fn test_api_client_with_none_values() {
         api_base_url: "https://api.clickup.com/api/v2".to_string(),
         rate_limit: RateLimitConfig::default(),
     };
-    
+
     let api = ClickUpApi::new(config);
     assert!(api.is_ok());
 }
 
 /// Tests API client creation with a very long token
-/// 
+///
 /// This test verifies that the API client can handle extremely long
 /// authentication tokens without memory or performance issues.
 #[test]
@@ -284,13 +284,13 @@ fn test_api_client_with_long_token() {
         api_base_url: "https://api.clickup.com/api/v2".to_string(),
         rate_limit: RateLimitConfig::default(),
     };
-    
+
     let api = ClickUpApi::new(config);
     assert!(api.is_ok());
 }
 
 /// Tests API client creation with special characters in token
-/// 
+///
 /// This test verifies that the API client can handle tokens containing
 /// special characters, symbols, and punctuation marks.
 #[test]
@@ -304,21 +304,21 @@ fn test_api_client_with_special_characters_in_token() {
         api_base_url: "https://api.clickup.com/api/v2".to_string(),
         rate_limit: RateLimitConfig::default(),
     };
-    
+
     let api = ClickUpApi::new(config);
     assert!(api.is_ok());
-} 
+}
 
 /// Tests the overdue task update functionality with tag filtering
-/// 
+///
 /// This test verifies the logic for identifying and updating overdue tasks
 /// that have specific tags. It creates a mock task that is overdue and
 /// has the 'urgent' tag to test the filtering and update logic.
 #[test]
 fn test_update_overdue_by_tag_functionality() {
     use chrono::{DateTime, Utc};
-    use clickup_cli::models::{Task, TaskStatus, TaskCreator, TaskList, TaskSpace, TaskTag};
-    
+    use clickup_cli::models::{Task, TaskCreator, TaskList, TaskSpace, TaskStatus, TaskTag};
+
     // Create a mock task that is overdue
     let overdue_task = Task {
         id: "task_123".to_string(),
@@ -376,32 +376,33 @@ fn test_update_overdue_by_tag_functionality() {
         url: "https://app.clickup.com/t/123".to_string(),
         subtasks: None,
     };
-    
+
     // Verify the task is overdue
     let due_date = DateTime::parse_from_rfc3339("2023-01-01T00:00:00Z").unwrap();
     let now = Utc::now();
     assert!(due_date < now, "Task should be overdue");
-    
+
     // Verify the task has the correct tag
-    let has_urgent_tag = overdue_task.tags.iter().any(|tag| {
-        tag.name.as_deref() == Some("urgent")
-    });
+    let has_urgent_tag = overdue_task
+        .tags
+        .iter()
+        .any(|tag| tag.name.as_deref() == Some("urgent"));
     assert!(has_urgent_tag, "Task should have 'urgent' tag");
-    
+
     println!("✓ Test task is properly configured as overdue with 'urgent' tag");
-} 
+}
 
 /// Tests time preservation in overdue task updates
-/// 
+///
 /// This test verifies that when updating overdue tasks, the original
 /// time component is preserved while the date is updated to today.
 /// It ensures that tasks with specific times (not midnight) maintain
 /// their time when rescheduled.
 #[test]
 fn test_update_overdue_by_tag_time_preservation() {
-    use chrono::{DateTime, Utc, NaiveTime};
-    use clickup_cli::models::{Task, TaskStatus, TaskCreator, TaskList, TaskSpace, TaskTag};
-    
+    use chrono::{DateTime, NaiveTime, Utc};
+    use clickup_cli::models::{Task, TaskCreator, TaskList, TaskSpace, TaskStatus, TaskTag};
+
     // Create a mock task that is overdue with a specific time (not midnight)
     let overdue_task = Task {
         id: "task_123".to_string(),
@@ -459,35 +460,48 @@ fn test_update_overdue_by_tag_time_preservation() {
         url: "https://app.clickup.com/t/123".to_string(),
         subtasks: None,
     };
-    
+
     // Verify the task is overdue
     let due_date = DateTime::parse_from_rfc3339("2023-01-01T14:30:00Z").unwrap();
     let now = Utc::now();
     assert!(due_date < now, "Task should be overdue");
-    
+
     // Verify the task has the correct tag
-    let has_urgent_tag = overdue_task.tags.iter().any(|tag| {
-        tag.name.as_deref() == Some("urgent")
-    });
+    let has_urgent_tag = overdue_task
+        .tags
+        .iter()
+        .any(|tag| tag.name.as_deref() == Some("urgent"));
     assert!(has_urgent_tag, "Task should have 'urgent' tag");
-    
+
     // Test time preservation logic
     let original_time = due_date.time();
     let today_date = Utc::now().date_naive();
-    
+
     // Create new datetime with today's date and original time
     let new_due_date = chrono::NaiveDateTime::new(today_date, original_time);
-    let new_due_date_utc = chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(new_due_date, chrono::Utc);
-    
+    let new_due_date_utc =
+        chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(new_due_date, chrono::Utc);
+
     // Verify that the time component is preserved
-    assert_eq!(new_due_date_utc.time(), original_time, "Time should be preserved");
-    
+    assert_eq!(
+        new_due_date_utc.time(),
+        original_time,
+        "Time should be preserved"
+    );
+
     // Verify that the date is today
-    assert_eq!(new_due_date_utc.date_naive(), today_date, "Date should be today");
-    
+    assert_eq!(
+        new_due_date_utc.date_naive(),
+        today_date,
+        "Date should be today"
+    );
+
     // Test that due_date_time is correctly set based on whether original had time
     let original_had_time = original_time != NaiveTime::from_hms_opt(0, 0, 0).unwrap();
-    assert!(original_had_time, "Original due date should have time (not midnight)");
-    
+    assert!(
+        original_had_time,
+        "Original due date should have time (not midnight)"
+    );
+
     println!("✓ Test time preservation logic works correctly");
-} 
+}

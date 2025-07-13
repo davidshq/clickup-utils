@@ -1,35 +1,35 @@
 //! # ClickUp CLI
-//! 
+//!
 //! A command-line interface for interacting with the ClickUp API.
-//! 
+//!
 //! This application provides a comprehensive CLI tool for managing ClickUp workspaces,
 //! teams, spaces, lists, tasks, and comments. It supports authentication, workspace
 //! management, task creation and updates, and comment management.
-//! 
+//!
 //! ## Features
-//! 
+//!
 //! - **Authentication**: Secure API token management with local storage
 //! - **Workspace Management**: List and manage workspaces and teams
 //! - **Space Management**: Navigate and manage spaces within workspaces
 //! - **List Management**: View and manage lists within spaces
 //! - **Task Management**: Create, read, update, and delete tasks
 //! - **Comment Management**: Add and view comments on tasks
-//! 
+//!
 //! ## Usage
-//! 
+//!
 //! ```bash
 //! # Set up authentication
 //! clickup-cli auth set
-//! 
+//!
 //! # List workspaces
 //! clickup-cli workspaces list
-//! 
+//!
 //! # Create a task
 //! clickup-cli tasks create --list-id <list-id> --name "My Task"
 //! ```
-//! 
+//!
 //! ## Configuration
-//! 
+//!
 //! The application stores configuration in the user's config directory:
 //! - Windows: `%APPDATA%\clickup-cli\config.toml`
 //! - macOS: `~/Library/Application Support/clickup-cli/config.toml`
@@ -45,13 +45,11 @@ mod error;
 mod models;
 mod rate_limiter;
 
-use crate::commands::{
-    auth, comments, lists, spaces, tasks, teams, workspaces,
-};
+use crate::commands::{auth, comments, lists, spaces, tasks, teams, workspaces};
 use crate::config::Config;
 
 /// Main CLI application structure
-/// 
+///
 /// This struct defines the command-line interface using clap for argument parsing.
 /// It supports various subcommands for different ClickUp operations and includes
 /// global options like debug logging.
@@ -73,7 +71,7 @@ struct Cli {
 }
 
 /// Available subcommands for the ClickUp CLI
-/// 
+///
 /// Each variant represents a different category of operations that can be
 /// performed on the ClickUp API.
 #[derive(Subcommand)]
@@ -123,16 +121,16 @@ enum Commands {
 }
 
 /// Main application entry point
-/// 
+///
 /// This function initializes the CLI application, sets up logging,
 /// loads configuration, and routes commands to their appropriate handlers.
-/// 
+///
 /// # Returns
-/// 
+///
 /// Returns `Ok(())` on successful execution, or an error wrapped in a box.
-/// 
+///
 /// # Errors
-/// 
+///
 /// This function can return various errors including:
 /// - Configuration loading errors
 /// - Command execution errors
@@ -184,4 +182,4 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     Ok(())
-} 
+}

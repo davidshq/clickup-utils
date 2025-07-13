@@ -1,18 +1,18 @@
 //! # Error Handling Tests
-//! 
+//!
 //! This module contains comprehensive tests for the error handling system.
 //! It tests all error types, their string representations, conversions,
 //! and various error scenarios to ensure robust error handling.
-//! 
+//!
 //! ## Test Categories
-//! 
+//!
 //! - **Error Types**: Tests for all ClickUpError variants
 //! - **String Representations**: Tests for error message formatting
 //! - **Error Conversions**: Tests for automatic conversion from external error types
 //! - **Error Context**: Tests for error context and debugging information
-//! 
+//!
 //! ## Error Coverage
-//! 
+//!
 //! Tests cover all error variants including API errors, authentication errors,
 //! configuration errors, validation errors, network errors, and more.
 
@@ -20,7 +20,7 @@ use clickup_cli::error::ClickUpError;
 use std::io;
 
 /// Tests API error creation and string representation
-/// 
+///
 /// This test verifies that API errors are created correctly and
 /// have the expected string representation.
 #[test]
@@ -30,7 +30,7 @@ fn test_api_error() {
 }
 
 /// Tests authentication error creation and string representation
-/// 
+///
 /// This test verifies that authentication errors are created correctly and
 /// have the expected string representation.
 #[test]
@@ -40,17 +40,20 @@ fn test_auth_error() {
 }
 
 /// Tests configuration error creation and string representation
-/// 
+///
 /// This test verifies that configuration errors are created correctly and
 /// have the expected string representation.
 #[test]
 fn test_config_error() {
     let error = ClickUpError::ConfigError("Config file not found".to_string());
-    assert_eq!(error.to_string(), "Configuration error: Config file not found");
+    assert_eq!(
+        error.to_string(),
+        "Configuration error: Config file not found"
+    );
 }
 
 /// Tests validation error creation and string representation
-/// 
+///
 /// This test verifies that validation errors are created correctly and
 /// have the expected string representation.
 #[test]
@@ -60,7 +63,7 @@ fn test_validation_error() {
 }
 
 /// Tests network error creation and string representation
-/// 
+///
 /// This test verifies that network errors are created correctly and
 /// have the expected string representation.
 #[test]
@@ -70,7 +73,7 @@ fn test_network_error() {
 }
 
 /// Tests rate limit error creation and string representation
-/// 
+///
 /// This test verifies that rate limit errors are created correctly and
 /// have the expected string representation.
 #[test]
@@ -80,7 +83,7 @@ fn test_rate_limit_error() {
 }
 
 /// Tests not found error creation and string representation
-/// 
+///
 /// This test verifies that not found errors are created correctly and
 /// have the expected string representation.
 #[test]
@@ -90,7 +93,7 @@ fn test_not_found_error() {
 }
 
 /// Tests permission error creation and string representation
-/// 
+///
 /// This test verifies that permission errors are created correctly and
 /// have the expected string representation.
 #[test]
@@ -100,7 +103,7 @@ fn test_permission_error() {
 }
 
 /// Tests serialization error creation and string representation
-/// 
+///
 /// This test verifies that serialization errors are created correctly and
 /// have the expected string representation.
 #[test]
@@ -110,7 +113,7 @@ fn test_serialization_error() {
 }
 
 /// Tests deserialization error creation and string representation
-/// 
+///
 /// This test verifies that deserialization errors are created correctly and
 /// have the expected string representation.
 #[test]
@@ -120,7 +123,7 @@ fn test_deserialization_error() {
 }
 
 /// Tests automatic conversion from IO errors
-/// 
+///
 /// This test verifies that IO errors are automatically converted
 /// to ClickUpError::IoError when using the `?` operator.
 #[test]
@@ -131,7 +134,7 @@ fn test_io_error_conversion() {
 }
 
 /// Tests automatic conversion from JSON errors
-/// 
+///
 /// This test verifies that JSON parsing errors are automatically converted
 /// to ClickUpError::JsonError when using the `?` operator.
 #[test]
@@ -143,7 +146,7 @@ fn test_json_error_conversion() {
 }
 
 /// Tests automatic conversion from configuration parsing errors
-/// 
+///
 /// This test verifies that configuration parsing errors are automatically converted
 /// to ClickUpError::ConfigParseError when using the `?` operator.
 #[test]
@@ -154,7 +157,7 @@ fn test_config_parse_error_conversion() {
 }
 
 /// Tests error debug formatting
-/// 
+///
 /// This test verifies that errors can be formatted for debugging
 /// and contain the expected information.
 #[test]
@@ -166,7 +169,7 @@ fn test_error_debug() {
 }
 
 /// Tests error equality and string comparison
-/// 
+///
 /// This test verifies that errors with the same content have equal
 /// string representations and different errors have different representations.
 #[test]
@@ -174,13 +177,13 @@ fn test_error_equality() {
     let error1 = ClickUpError::ApiError("Test error".to_string());
     let error2 = ClickUpError::ApiError("Test error".to_string());
     let error3 = ClickUpError::ApiError("Different error".to_string());
-    
+
     assert_eq!(error1.to_string(), error2.to_string());
     assert_ne!(error1.to_string(), error3.to_string());
 }
 
 /// Tests error context and message content
-/// 
+///
 /// This test verifies that error messages contain the expected
 /// context information and error details.
 #[test]
@@ -192,7 +195,7 @@ fn test_error_context() {
 }
 
 /// Tests all error types for completeness
-/// 
+///
 /// This test verifies that all error variants can be created and
 /// have non-empty string representations.
 #[test]
@@ -209,10 +212,10 @@ fn test_multiple_error_types() {
         ClickUpError::SerializationError("Serialization error".to_string()),
         ClickUpError::DeserializationError("Deserialization error".to_string()),
     ];
-    
+
     for error in errors {
         let error_str = error.to_string();
         assert!(!error_str.is_empty());
         assert!(!error_str.is_empty());
     }
-} 
+}

@@ -1,11 +1,11 @@
 //! # Data Models
-//! 
+//!
 //! This module defines all the data structures used for communicating with the ClickUp API.
 //! It includes models for users, workspaces, spaces, lists, tasks, comments, and various
 //! related entities.
-//! 
+//!
 //! ## Model Categories
-//! 
+//!
 //! The models are organized into logical categories:
 //! - **User Models**: User information and authentication data
 //! - **Workspace Models**: Workspace and team management
@@ -14,19 +14,19 @@
 //! - **Task Models**: Task data and metadata
 //! - **Comment Models**: Comment system and threading
 //! - **Request Models**: Data structures for API requests
-//! 
+//!
 //! ## Serialization
-//! 
+//!
 //! All models implement `Serialize` and `Deserialize` traits for JSON communication
 //! with the ClickUp API. The models are designed to match the ClickUp API response
 //! format exactly.
-//! 
+//!
 //! ## Usage
-//! 
+//!
 //! ```rust
 //! use clickup_cli::models::{User, Task, CreateTaskRequest};
 //! use serde_json;
-//! 
+//!
 //! fn main() -> Result<(), Box<dyn std::error::Error>> {
 //!     // Example JSON for a user
 //!     let json_data = r#"{"user":{"id":1,"username":"test","email":"test@example.com"}}"#;
@@ -42,7 +42,7 @@
 //! }
 //! ```
 
-use serde::{Deserialize, Serialize, Deserializer};
+use serde::{Deserialize, Deserializer, Serialize};
 
 // Custom deserializers for handling ClickUp API type inconsistencies
 
@@ -108,8 +108,14 @@ where
         {
             let val: serde_json::Value = Deserialize::deserialize(deserializer)?;
             match val {
-                serde_json::Value::Number(n) => n.as_i64().map(Some).ok_or_else(|| serde::de::Error::custom("invalid number for i64")),
-                serde_json::Value::String(s) => s.parse::<i64>().map(Some).map_err(|_| serde::de::Error::custom("invalid string for i64")),
+                serde_json::Value::Number(n) => n
+                    .as_i64()
+                    .map(Some)
+                    .ok_or_else(|| serde::de::Error::custom("invalid number for i64")),
+                serde_json::Value::String(s) => s
+                    .parse::<i64>()
+                    .map(Some)
+                    .map_err(|_| serde::de::Error::custom("invalid string for i64")),
                 _ => Err(serde::de::Error::custom("unexpected type for Option<i64>")),
             }
         }
@@ -144,13 +150,17 @@ where
         where
             E: serde::de::Error,
         {
-            value.parse::<i64>().map_err(|_| serde::de::Error::custom("invalid string for i64"))
+            value
+                .parse::<i64>()
+                .map_err(|_| serde::de::Error::custom("invalid string for i64"))
         }
         fn visit_string<E>(self, value: String) -> Result<Self::Value, E>
         where
             E: serde::de::Error,
         {
-            value.parse::<i64>().map_err(|_| serde::de::Error::custom("invalid string for i64"))
+            value
+                .parse::<i64>()
+                .map_err(|_| serde::de::Error::custom("invalid string for i64"))
         }
     }
     deserializer.deserialize_any(I64Visitor)
@@ -181,7 +191,9 @@ where
             match val {
                 serde_json::Value::String(s) => Ok(Some(s)),
                 serde_json::Value::Number(n) => Ok(Some(n.to_string())),
-                _ => Err(serde::de::Error::custom("unexpected type for Option<String>")),
+                _ => Err(serde::de::Error::custom(
+                    "unexpected type for Option<String>",
+                )),
             }
         }
     }
@@ -279,7 +291,7 @@ where
 // User models
 
 /// Complete user information response from ClickUp API
-/// 
+///
 /// This struct represents the top-level response when fetching user information.
 /// It contains a single `UserData` struct with all user details.
 #[derive(Debug, Serialize, Deserialize)]
@@ -289,7 +301,7 @@ pub struct User {
 }
 
 /// Detailed user information
-/// 
+///
 /// This struct contains all the information about a ClickUp user including
 /// their profile, authentication details, and account settings.
 #[derive(Debug, Serialize, Deserialize)]
@@ -321,7 +333,7 @@ pub struct UserData {
 // Workspace models
 
 /// Response containing a list of workspaces
-/// 
+///
 /// This struct represents the API response when fetching all accessible workspaces.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct WorkspacesResponse {
@@ -330,7 +342,7 @@ pub struct WorkspacesResponse {
 }
 
 /// Workspace (team) information
-/// 
+///
 /// A workspace represents a top-level organizational unit in ClickUp.
 /// It contains spaces, members, and role definitions.
 #[derive(Debug, Serialize, Deserialize)]
@@ -351,7 +363,7 @@ pub struct Workspace {
 }
 
 /// Workspace member information
-/// 
+///
 /// This struct represents a user who is a member of a workspace.
 /// The API response nests user data under a 'user' field.
 #[derive(Debug, Serialize, Deserialize)]
@@ -363,7 +375,7 @@ pub struct WorkspaceMember {
 }
 
 /// Workspace member user information
-/// 
+///
 /// This struct contains the actual user data within a workspace member.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct WorkspaceMemberUser {
@@ -402,7 +414,7 @@ pub struct WorkspaceMemberUser {
 }
 
 /// Workspace role definition
-/// 
+///
 /// This struct defines a role that can be assigned to users within a workspace.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct WorkspaceRole {
@@ -419,7 +431,7 @@ pub struct WorkspaceRole {
 // Space models
 
 /// Response containing a list of spaces
-/// 
+///
 /// This struct represents the API response when fetching spaces within a workspace.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SpacesResponse {
@@ -428,7 +440,7 @@ pub struct SpacesResponse {
 }
 
 /// Space information
-/// 
+///
 /// A space represents a project or team within a workspace.
 /// It contains lists, folders, and task organization.
 #[derive(Debug, Serialize, Deserialize)]
@@ -456,7 +468,7 @@ pub struct Space {
 }
 
 /// Space features configuration
-/// 
+///
 /// This struct defines the features enabled for a space.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SpaceFeatures {
@@ -550,7 +562,7 @@ pub struct PortfolioFeatures {
 }
 
 /// Space status information
-/// 
+///
 /// This struct represents a status that can be assigned to tasks in a space.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SpaceStatus {
@@ -571,7 +583,7 @@ pub struct SpaceStatus {
 // Folder models
 
 /// Response containing a list of folders
-/// 
+///
 /// This struct represents the API response when fetching folders within a space.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FoldersResponse {
@@ -580,7 +592,7 @@ pub struct FoldersResponse {
 }
 
 /// Folder information
-/// 
+///
 /// A folder represents a collection of lists within a space.
 /// It provides organization for lists and can contain multiple lists.
 #[derive(Debug, Serialize, Deserialize)]
@@ -622,7 +634,7 @@ pub struct FolderSpace {
 // List models
 
 /// Response containing a list of lists
-/// 
+///
 /// This struct represents the API response when fetching lists within a space.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ListsResponse {
@@ -631,7 +643,7 @@ pub struct ListsResponse {
 }
 
 /// List information
-/// 
+///
 /// A list represents a collection of tasks within a space.
 /// It can be organized in folders or directly in the space.
 #[derive(Debug, Serialize, Deserialize)]
@@ -734,7 +746,7 @@ pub struct ListSpace {
 // Task models
 
 /// Response containing a list of tasks
-/// 
+///
 /// This struct represents the API response when fetching tasks from a list.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TasksResponse {
@@ -743,7 +755,7 @@ pub struct TasksResponse {
 }
 
 /// Task information
-/// 
+///
 /// This struct represents a task in ClickUp with all its properties,
 /// metadata, and relationships.
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -878,7 +890,7 @@ pub struct TaskWatcher {
 }
 
 /// Task checklist information
-/// 
+///
 /// This struct represents a checklist within a task.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TaskChecklist {
@@ -903,7 +915,7 @@ pub struct TaskChecklist {
 }
 
 /// Task checklist item information
-/// 
+///
 /// This struct represents an individual item within a task checklist.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TaskChecklistItem {
@@ -928,7 +940,7 @@ pub struct TaskChecklistItem {
 }
 
 /// Task tag information
-/// 
+///
 /// This struct represents a tag assigned to a task.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TaskTag {
@@ -943,7 +955,7 @@ pub struct TaskTag {
 }
 
 /// Task priority information
-/// 
+///
 /// This struct defines the priority level of a task.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TaskPriority {
@@ -960,7 +972,7 @@ pub struct TaskPriority {
 }
 
 /// Task custom field information
-/// 
+///
 /// This struct represents a custom field value on a task.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TaskCustomField {
@@ -978,7 +990,7 @@ pub struct TaskCustomField {
 }
 
 /// Task list information
-/// 
+///
 /// This struct contains information about the list containing the task.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TaskList {
@@ -993,7 +1005,7 @@ pub struct TaskList {
 }
 
 /// Task folder information
-/// 
+///
 /// This struct contains information about the folder containing the task's list.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TaskFolder {
@@ -1011,7 +1023,7 @@ pub struct TaskFolder {
 }
 
 /// Task space information
-/// 
+///
 /// This struct contains information about the space containing the task.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TaskSpace {
@@ -1025,11 +1037,10 @@ pub struct TaskSpace {
 // Request models
 
 /// Request data for creating a new task
-/// 
+///
 /// This struct contains the data needed to create a new task in ClickUp.
 /// All fields except `name` are optional.
-#[derive(Debug, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 pub struct CreateTaskRequest {
     /// Task display name (required)
     pub name: String,
@@ -1063,9 +1074,8 @@ pub struct CreateTaskRequest {
     pub notify_all: Option<bool>,
 }
 
-
 /// Request data for updating an existing task
-/// 
+///
 /// This struct contains the data needed to update an existing task in ClickUp.
 /// All fields are optional, allowing partial updates.
 #[derive(Debug, Serialize, Deserialize)]
@@ -1103,7 +1113,7 @@ pub struct UpdateTaskRequest {
 }
 
 /// Custom field value for task requests
-/// 
+///
 /// This struct represents a custom field value when creating or updating tasks.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CustomFieldValue {
@@ -1116,7 +1126,7 @@ pub struct CustomFieldValue {
 // Comment models
 
 /// Response containing a list of comments
-/// 
+///
 /// This struct represents the API response when fetching comments for a task.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CommentsResponse {
@@ -1125,7 +1135,7 @@ pub struct CommentsResponse {
 }
 
 /// Comment information
-/// 
+///
 /// This struct represents a comment on a task, including its content,
 /// author, and metadata.
 #[derive(Debug, Serialize, Deserialize)]
@@ -1157,7 +1167,7 @@ pub struct Comment {
 }
 
 /// Comment text segment
-/// 
+///
 /// This struct represents a segment of rich text within a comment.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CommentText {
@@ -1169,7 +1179,7 @@ pub struct CommentText {
 }
 
 /// Comment user information
-/// 
+///
 /// This struct contains information about the user who wrote the comment.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CommentUser {
@@ -1184,7 +1194,7 @@ pub struct CommentUser {
 }
 
 /// Request data for creating a new comment
-/// 
+///
 /// This struct contains the data needed to create a new comment on a task.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateCommentRequest {
@@ -1194,4 +1204,4 @@ pub struct CreateCommentRequest {
     pub assignee: Option<i64>,
     /// Whether to notify assignee
     pub notify_all: Option<bool>,
-} 
+}
