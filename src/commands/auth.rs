@@ -10,6 +10,7 @@
 //! - **Test**: Verify current authentication with ClickUp API
 //! - **Status**: Display current authentication status
 //! - **Clear**: Remove stored API token
+//! - **RateLimit**: Configure rate limiting settings
 //! 
 //! ## Security
 //! 
@@ -106,6 +107,7 @@ pub enum AuthCommands {
 /// - Configuration errors when saving tokens
 /// - Network errors when testing authentication
 /// - Validation errors for invalid tokens
+/// - Rate limiting configuration errors
 pub async fn execute(command: AuthCommands, config: &mut Config) -> Result<(), ClickUpError> {
     match command {
         AuthCommands::Set { token } => {
@@ -130,7 +132,8 @@ pub async fn execute(command: AuthCommands, config: &mut Config) -> Result<(), C
 /// Configure rate limiting settings
 /// 
 /// This function handles configuring rate limiting parameters either from
-/// command-line arguments or by displaying current settings.
+/// command-line arguments or by displaying current settings. When `show` is true,
+/// it displays the current configuration without making changes.
 /// 
 /// # Arguments
 /// 
@@ -215,7 +218,7 @@ fn configure_rate_limit(
 /// 
 /// This function handles setting the API token either from command-line arguments
 /// or through interactive input. It validates the token and saves it to the
-/// configuration file.
+/// configuration file. For security, interactive input is recommended.
 /// 
 /// # Arguments
 /// 

@@ -1,3 +1,19 @@
+//! # List Commands
+//! 
+//! This module handles all list-related operations for the ClickUp CLI.
+//! It provides commands for listing and viewing details of lists within
+//! ClickUp spaces.
+//! 
+//! ## Commands
+//! 
+//! - **List**: Display all lists in a specific space
+//! - **Show**: Show detailed information about a specific list
+//! 
+//! ## Features
+//! 
+//! Lists are displayed in a formatted table showing key information
+//! including task counts, folder organization, and content descriptions.
+
 use crate::api::ClickUpApi;
 use crate::config::Config;
 use crate::error::ClickUpError;
@@ -5,6 +21,10 @@ use clap::Subcommand;
 use colored::*;
 use comfy_table::{Table, Cell};
 
+/// List command variants
+/// 
+/// This enum defines all available list subcommands with their
+/// associated parameters and help text.
 #[derive(Subcommand)]
 pub enum ListCommands {
     /// List all lists in a space
@@ -21,6 +41,27 @@ pub enum ListCommands {
     },
 }
 
+/// Execute list commands
+/// 
+/// This function routes list commands to their appropriate handlers
+/// and manages the overall list operations flow.
+/// 
+/// # Arguments
+/// 
+/// * `command` - The list command to execute
+/// * `config` - Reference to the application configuration
+/// 
+/// # Returns
+/// 
+/// Returns `Ok(())` on successful execution, or a `ClickUpError` on failure.
+/// 
+/// # Errors
+/// 
+/// This function can return various errors including:
+/// - Network errors when communicating with the API
+/// - Authentication errors if not properly authenticated
+/// - Validation errors for invalid parameters
+/// - Not found errors for missing lists or spaces
 pub async fn execute(command: ListCommands, config: &Config) -> Result<(), ClickUpError> {
     let api = ClickUpApi::new(config.clone())?;
 
@@ -35,6 +76,26 @@ pub async fn execute(command: ListCommands, config: &Config) -> Result<(), Click
     Ok(())
 }
 
+/// List all lists in a space
+/// 
+/// This function retrieves and displays all lists for a specific space
+/// in a formatted table showing key information like task counts and
+/// folder organization.
+/// 
+/// # Arguments
+/// 
+/// * `api` - Reference to the ClickUp API client
+/// * `space_id` - The ID of the space to list lists for
+/// 
+/// # Returns
+/// 
+/// Returns `Ok(())` on successful listing, or a `ClickUpError` on failure.
+/// 
+/// # Errors
+/// 
+/// This function can return:
+/// - `ClickUpError::NetworkError` if the API request fails
+/// - `ClickUpError::NotFoundError` if the space doesn't exist
 async fn list_lists(api: &ClickUpApi, space_id: &str) -> Result<(), ClickUpError> {
     let lists = api.get_lists(space_id).await?;
     
@@ -70,6 +131,26 @@ async fn list_lists(api: &ClickUpApi, space_id: &str) -> Result<(), ClickUpError
     Ok(())
 }
 
+/// Show detailed information about a specific list
+/// 
+/// This function searches for a list across all accessible workspaces
+/// and displays its detailed information. Note that this operation may
+/// be slow as it searches through all spaces.
+/// 
+/// # Arguments
+/// 
+/// * `api` - Reference to the ClickUp API client
+/// * `list_id` - The ID of the list to show
+/// 
+/// # Returns
+/// 
+/// Returns `Ok(())` on successful display, or a `ClickUpError` on failure.
+/// 
+/// # Errors
+/// 
+/// This function can return:
+/// - `ClickUpError::NetworkError` if the API request fails
+/// - `ClickUpError::NotFoundError` if the list doesn't exist
 async fn show_list(api: &ClickUpApi, list_id: &str) -> Result<(), ClickUpError> {
     // For now, we'll need to search through spaces to find the list
     // In a real implementation, you might want to store space_id in config

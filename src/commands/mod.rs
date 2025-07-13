@@ -7,7 +7,7 @@
 //! ## Command Categories
 //! 
 //! The commands are organized into logical categories:
-//! - **Auth**: Authentication and API token management
+//! - **Auth**: Authentication, API token management, and rate limiting configuration
 //! - **Workspaces**: Workspace and team management
 //! - **Teams**: Team-specific operations within workspaces
 //! - **Spaces**: Space management and navigation
@@ -18,15 +18,16 @@
 //! ## Command Structure
 //! 
 //! Each command module follows a consistent pattern:
-//! 1. Command enum definition with clap attributes
+//! 1. Command enum definition with clap attributes and comprehensive help text
 //! 2. Main execution function that routes to specific handlers
-//! 3. Individual handler functions for each subcommand
-//! 4. Error handling and user feedback
+//! 3. Individual handler functions for each subcommand with detailed documentation
+//! 4. Error handling and user feedback with colored output
 //! 
 //! ## Usage
 //! 
 //! Commands are executed through the main CLI application and automatically
-//! handle authentication, error reporting, and user feedback.
+//! handle authentication, error reporting, and user feedback. All commands
+//! support help text and provide detailed error messages when operations fail.
 
 pub mod auth;
 pub mod comments;

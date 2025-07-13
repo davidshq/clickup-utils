@@ -1,3 +1,22 @@
+//! # Space Commands
+//! 
+//! This module handles all space-related operations for the ClickUp CLI.
+//! It provides commands for listing, viewing, and backing up spaces and
+//! their contents including folders, lists, tasks, and comments.
+//! 
+//! ## Commands
+//! 
+//! - **List**: Display all spaces in a workspace
+//! - **Show**: Show detailed information about a specific space
+//! - **ListFolders**: Display all folders in a space
+//! - **Backup**: Create a comprehensive backup of a space with all content
+//! 
+//! ## Features
+//! 
+//! Spaces are displayed in formatted tables showing key information.
+//! The backup feature creates complete JSON backups including all nested
+//! content with optional comment inclusion.
+
 use crate::api::ClickUpApi;
 use crate::config::Config;
 use crate::error::ClickUpError;
@@ -11,6 +30,11 @@ use std::path::Path;
 use chrono::Utc;
 use std::io::{self, Write};
 
+/// Space command variants
+/// 
+/// This enum defines all available space subcommands with their
+/// associated parameters and help text. Each command variant includes
+/// comprehensive help documentation for CLI usage.
 #[derive(Subcommand)]
 pub enum SpaceCommands {
     /// List all spaces in a workspace
@@ -45,6 +69,28 @@ pub enum SpaceCommands {
     },
 }
 
+/// Execute space commands
+/// 
+/// This function routes space commands to their appropriate handlers
+/// and manages the overall space operations flow.
+/// 
+/// # Arguments
+/// 
+/// * `command` - The space command to execute
+/// * `config` - Reference to the application configuration
+/// 
+/// # Returns
+/// 
+/// Returns `Ok(())` on successful execution, or a `ClickUpError` on failure.
+/// 
+/// # Errors
+/// 
+/// This function can return various errors including:
+/// - Network errors when communicating with the API
+/// - Authentication errors if not properly authenticated
+/// - Validation errors for invalid parameters
+/// - Not found errors for missing spaces or workspaces
+/// - File system errors during backup operations
 pub async fn execute(command: SpaceCommands, config: &Config) -> Result<(), ClickUpError> {
     let api = ClickUpApi::new(config.clone())?;
 
@@ -69,6 +115,26 @@ pub async fn execute(command: SpaceCommands, config: &Config) -> Result<(), Clic
     Ok(())
 }
 
+/// List all spaces in a workspace
+/// 
+/// This function retrieves and displays all spaces for a specific workspace
+/// in a formatted table showing key information like privacy settings and
+/// feature configurations.
+/// 
+/// # Arguments
+/// 
+/// * `api` - Reference to the ClickUp API client
+/// * `workspace_id` - The ID of the workspace to list spaces for
+/// 
+/// # Returns
+/// 
+/// Returns `Ok(())` on successful listing, or a `ClickUpError` on failure.
+/// 
+/// # Errors
+/// 
+/// This function can return:
+/// - `ClickUpError::NetworkError` if the API request fails
+/// - `ClickUpError::NotFoundError` if the workspace doesn't exist
 async fn list_spaces(api: &ClickUpApi, workspace_id: &str) -> Result<(), ClickUpError> {
     let spaces = api.get_spaces(workspace_id).await?;
     
@@ -100,6 +166,26 @@ async fn list_spaces(api: &ClickUpApi, workspace_id: &str) -> Result<(), ClickUp
     Ok(())
 }
 
+/// Show detailed information about a specific space
+/// 
+/// This function searches for a space across all accessible workspaces
+/// and displays its detailed information including features and statuses.
+/// Note that this operation may be slow as it searches through all workspaces.
+/// 
+/// # Arguments
+/// 
+/// * `api` - Reference to the ClickUp API client
+/// * `space_id` - The ID of the space to show
+/// 
+/// # Returns
+/// 
+/// Returns `Ok(())` on successful display, or a `ClickUpError` on failure.
+/// 
+/// # Errors
+/// 
+/// This function can return:
+/// - `ClickUpError::NetworkError` if the API request fails
+/// - `ClickUpError::NotFoundError` if the space doesn't exist
 async fn show_space(api: &ClickUpApi, space_id: &str) -> Result<(), ClickUpError> {
     // For now, we'll need to search through workspaces to find the space
     // In a real implementation, you might want to store workspace_id in config
@@ -142,6 +228,26 @@ async fn show_space(api: &ClickUpApi, space_id: &str) -> Result<(), ClickUpError
     Err(ClickUpError::NotFoundError(format!("Space {space_id} not found")))
 }
 
+/// List all folders in a space
+/// 
+/// This function retrieves and displays all folders for a specific space
+/// in a formatted table showing key information like visibility and
+/// archival status.
+/// 
+/// # Arguments
+/// 
+/// * `api` - Reference to the ClickUp API client
+/// * `space_id` - The ID of the space to list folders for
+/// 
+/// # Returns
+/// 
+/// Returns `Ok(())` on successful listing, or a `ClickUpError` on failure.
+/// 
+/// # Errors
+/// 
+/// This function can return:
+/// - `ClickUpError::NetworkError` if the API request fails
+/// - `ClickUpError::NotFoundError` if the space doesn't exist
 async fn list_folders(api: &ClickUpApi, space_id: &str) -> Result<(), ClickUpError> {
     let folders = api.get_folders(space_id).await?;
     
@@ -224,6 +330,29 @@ struct TaskComments {
     comments: Vec<Comment>,
 }
 
+/// Create a comprehensive backup of a space
+/// 
+/// This function creates a complete backup of a space including all folders,
+/// lists, tasks, and optionally comments. The backup is saved as a JSON file
+/// with timestamped filename in the specified output directory.
+/// 
+/// # Arguments
+/// 
+/// * `api` - Reference to the ClickUp API client
+/// * `space_id` - The ID of the space to backup
+/// * `output_dir` - Directory to save the backup file
+/// * `include_comments` - Whether to include task comments in the backup
+/// 
+/// # Returns
+/// 
+/// Returns `Ok(())` on successful backup, or a `ClickUpError` on failure.
+/// 
+/// # Errors
+/// 
+/// This function can return:
+/// - `ClickUpError::NetworkError` if API requests fail or file operations fail
+/// - `ClickUpError::NotFoundError` if the space doesn't exist
+/// - File system errors if the output directory cannot be created or written to
 async fn backup_space(
     api: &ClickUpApi, 
     space_id: &str, 
@@ -341,6 +470,24 @@ async fn backup_space(
 }
 
 /// Helper function to get space information
+/// 
+/// This function searches for a space across all accessible workspaces
+/// and returns its complete information. Used internally by backup operations.
+/// 
+/// # Arguments
+/// 
+/// * `api` - Reference to the ClickUp API client
+/// * `space_id` - The ID of the space to retrieve
+/// 
+/// # Returns
+/// 
+/// Returns the space information on success, or a `ClickUpError` on failure.
+/// 
+/// # Errors
+/// 
+/// This function can return:
+/// - `ClickUpError::NetworkError` if the API request fails
+/// - `ClickUpError::NotFoundError` if the space doesn't exist
 async fn get_space_info(api: &ClickUpApi, space_id: &str) -> Result<Space, ClickUpError> {
     // Search through workspaces to find the space
     let workspaces = api.get_workspaces().await?;
@@ -355,7 +502,26 @@ async fn get_space_info(api: &ClickUpApi, space_id: &str) -> Result<Space, Click
     Err(ClickUpError::NotFoundError(format!("Space {space_id} not found")))
 } 
 
-/// Prompt the user to select a workspace and then a space, returning the selected space's ID
+/// Prompt the user to select a workspace and then a space interactively
+/// 
+/// This function provides an interactive selection process for choosing
+/// a space when none is specified. It lists available workspaces and
+/// spaces, then prompts for user input.
+/// 
+/// # Arguments
+/// 
+/// * `api` - Reference to the ClickUp API client
+/// 
+/// # Returns
+/// 
+/// Returns the selected space ID on success, or a `ClickUpError` on failure.
+/// 
+/// # Errors
+/// 
+/// This function can return:
+/// - `ClickUpError::NetworkError` if the API request fails
+/// - `ClickUpError::NotFoundError` if no workspaces or spaces are found
+/// - `ClickUpError::IoError` if user input fails
 async fn select_space_interactive(api: &ClickUpApi) -> Result<String, ClickUpError> {
     // List workspaces
     let workspaces = api.get_workspaces().await?;

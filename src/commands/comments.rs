@@ -1,3 +1,23 @@
+//! # Comment Commands
+//! 
+//! This module handles all comment-related operations for the ClickUp CLI.
+//! It provides commands for listing, creating, updating, and deleting comments
+//! on tasks.
+//! 
+//! ## Commands
+//! 
+//! - **List**: Display all comments for a specific task
+//! - **Show**: Show detailed information about a specific comment
+//! - **Create**: Add a new comment to a task
+//! - **Update**: Modify an existing comment
+//! - **Delete**: Remove a comment from a task
+//! 
+//! ## Features
+//! 
+//! Comments support rich text formatting, user mentions, and can be assigned
+//! to specific team members. Comments are displayed in a formatted table
+//! for easy reading.
+
 use crate::api::ClickUpApi;
 use crate::config::Config;
 use crate::error::ClickUpError;
@@ -6,6 +26,10 @@ use clap::Subcommand;
 use colored::*;
 use comfy_table::{Table, Cell};
 
+/// Comment command variants
+/// 
+/// This enum defines all available comment subcommands with their
+/// associated parameters and help text.
 #[derive(Subcommand)]
 pub enum CommentCommands {
     /// List all comments for a task
@@ -58,6 +82,27 @@ pub enum CommentCommands {
     },
 }
 
+/// Execute comment commands
+/// 
+/// This function routes comment commands to their appropriate handlers
+/// and manages the overall comment operations flow.
+/// 
+/// # Arguments
+/// 
+/// * `command` - The comment command to execute
+/// * `config` - Reference to the application configuration
+/// 
+/// # Returns
+/// 
+/// Returns `Ok(())` on successful execution, or a `ClickUpError` on failure.
+/// 
+/// # Errors
+/// 
+/// This function can return various errors including:
+/// - Network errors when communicating with the API
+/// - Authentication errors if not properly authenticated
+/// - Validation errors for invalid parameters
+/// - Not found errors for missing comments or tasks
 pub async fn execute(command: CommentCommands, config: &Config) -> Result<(), ClickUpError> {
     let api = ClickUpApi::new(config.clone())?;
 
@@ -81,6 +126,25 @@ pub async fn execute(command: CommentCommands, config: &Config) -> Result<(), Cl
     Ok(())
 }
 
+/// List all comments for a task
+/// 
+/// This function retrieves and displays all comments for a specific task
+/// in a formatted table. Long comments are truncated for display.
+/// 
+/// # Arguments
+/// 
+/// * `api` - Reference to the ClickUp API client
+/// * `task_id` - The ID of the task to list comments for
+/// 
+/// # Returns
+/// 
+/// Returns `Ok(())` on successful listing, or a `ClickUpError` on failure.
+/// 
+/// # Errors
+/// 
+/// This function can return:
+/// - `ClickUpError::NetworkError` if the API request fails
+/// - `ClickUpError::NotFoundError` if the task doesn't exist
 async fn list_comments(api: &ClickUpApi, task_id: &str) -> Result<(), ClickUpError> {
     let comments = api.get_comments(task_id).await?;
     
@@ -118,6 +182,26 @@ async fn list_comments(api: &ClickUpApi, task_id: &str) -> Result<(), ClickUpErr
     Ok(())
 }
 
+/// Show detailed information about a specific comment
+/// 
+/// This function searches for a comment across all accessible workspaces
+/// and displays its detailed information. Note that this operation may
+/// be slow as it searches through all tasks.
+/// 
+/// # Arguments
+/// 
+/// * `api` - Reference to the ClickUp API client
+/// * `comment_id` - The ID of the comment to show
+/// 
+/// # Returns
+/// 
+/// Returns `Ok(())` on successful display, or a `ClickUpError` on failure.
+/// 
+/// # Errors
+/// 
+/// This function can return:
+/// - `ClickUpError::NetworkError` if the API request fails
+/// - `ClickUpError::NotFoundError` if the comment doesn't exist
 async fn show_comment(api: &ClickUpApi, comment_id: &str) -> Result<(), ClickUpError> {
     // For now, we'll need to search through tasks to find the comment
     // In a real implementation, you might want to store task_id in config
@@ -159,6 +243,29 @@ async fn show_comment(api: &ClickUpApi, comment_id: &str) -> Result<(), ClickUpE
     Err(ClickUpError::NotFoundError(format!("Comment {comment_id} not found")))
 }
 
+/// Update an existing comment
+/// 
+/// This function updates a comment with new text and optional parameters.
+/// Only the provided fields will be updated.
+/// 
+/// # Arguments
+/// 
+/// * `api` - Reference to the ClickUp API client
+/// * `comment_id` - The ID of the comment to update
+/// * `text` - The new comment text
+/// * `assignee` - Optional assignee ID to mention
+/// * `notify_all` - Optional flag to notify all team members
+/// 
+/// # Returns
+/// 
+/// Returns `Ok(())` on successful update, or a `ClickUpError` on failure.
+/// 
+/// # Errors
+/// 
+/// This function can return:
+/// - `ClickUpError::NetworkError` if the API request fails
+/// - `ClickUpError::NotFoundError` if the comment doesn't exist
+/// - `ClickUpError::ValidationError` if the text is empty
 async fn update_comment(
     api: &ClickUpApi,
     comment_id: &str,
@@ -182,6 +289,25 @@ async fn update_comment(
     Ok(())
 }
 
+/// Delete a comment
+/// 
+/// This function permanently removes a comment from a task.
+/// This action cannot be undone.
+/// 
+/// # Arguments
+/// 
+/// * `api` - Reference to the ClickUp API client
+/// * `comment_id` - The ID of the comment to delete
+/// 
+/// # Returns
+/// 
+/// Returns `Ok(())` on successful deletion, or a `ClickUpError` on failure.
+/// 
+/// # Errors
+/// 
+/// This function can return:
+/// - `ClickUpError::NetworkError` if the API request fails
+/// - `ClickUpError::NotFoundError` if the comment doesn't exist
 async fn delete_comment(api: &ClickUpApi, comment_id: &str) -> Result<(), ClickUpError> {
     api.delete_comment(comment_id).await?;
     
@@ -191,6 +317,29 @@ async fn delete_comment(api: &ClickUpApi, comment_id: &str) -> Result<(), ClickU
     Ok(())
 }
 
+/// Create a new comment on a task
+/// 
+/// This function creates a new comment on the specified task with
+/// optional assignee mention and team notification.
+/// 
+/// # Arguments
+/// 
+/// * `api` - Reference to the ClickUp API client
+/// * `task_id` - The ID of the task to comment on
+/// * `text` - The comment text content
+/// * `assignee` - Optional assignee ID to mention in the comment
+/// * `notify_all` - Optional flag to notify all team members
+/// 
+/// # Returns
+/// 
+/// Returns `Ok(())` on successful creation, or a `ClickUpError` on failure.
+/// 
+/// # Errors
+/// 
+/// This function can return:
+/// - `ClickUpError::NetworkError` if the API request fails
+/// - `ClickUpError::NotFoundError` if the task doesn't exist
+/// - `ClickUpError::ValidationError` if the text is empty
 async fn create_comment(
     api: &ClickUpApi,
     task_id: &str,
