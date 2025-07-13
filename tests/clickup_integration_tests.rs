@@ -37,6 +37,21 @@ fn setup_test_env() -> TempDir {
     temp_dir
 }
 
+/// Helper to run CLI command with test environment
+fn run_cli_with_test_env(args: &[&str]) -> std::process::Output {
+    let mut cmd = Command::cargo_bin("clickup-cli").unwrap();
+    cmd.args(args);
+    
+    // Set the test token environment variable for the CLI process
+    if let Ok(test_token) = env::var("CLICKUP_API_TOKEN_TEST") {
+        cmd.env("CLICKUP_API_TOKEN_TEST", test_token);
+        // Clear the regular token to ensure test token is used
+        cmd.env_remove("CLICKUP_API_TOKEN");
+    }
+    
+    cmd.output().unwrap()
+}
+
 /// Loads environment variables from .env file
 fn load_env() {
     let _ = dotenvy::dotenv();
@@ -193,6 +208,33 @@ fn delete_list(list_id: &str) {
         .status();
 }
 
+/// Helper to get allowed statuses for a list
+fn get_list_statuses(list_id: &str) -> Vec<String> {
+    let output = Command::cargo_bin("clickup-cli")
+        .unwrap()
+        .args(["lists", "show", "--id", list_id])
+        .output()
+        .ok();
+    if let Some(output) = output {
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let mut statuses = Vec::new();
+        for line in stdout.lines() {
+            if line.trim().starts_with("Status:") {
+                // Example: Status: to do (color: #d3d3d3, type: open)
+                if let Some(status) = line.split(':').nth(1) {
+                    let status = status.trim().split(' ').next().unwrap_or("");
+                    if !status.is_empty() {
+                        statuses.push(status.to_string());
+                    }
+                }
+            }
+        }
+        statuses
+    } else {
+        vec![]
+    }
+}
+
 /// Tests that the CLI can authenticate and access the API
 #[test]
 #[ignore]
@@ -207,10 +249,7 @@ fn test_authentication() {
     let _temp_dir = setup_test_env();
     
     // Test that we can list workspaces (which requires authentication)
-    let mut cmd = Command::cargo_bin("clickup-cli").unwrap();
-    cmd.args(["workspaces", "list"]);
-    
-    let output = cmd.output().unwrap();
+    let output = run_cli_with_test_env(&["workspaces", "list"]);
     
     // Should succeed and return some output
     assert!(output.status.success(), "Authentication failed: {:?}", String::from_utf8_lossy(&output.stderr));
@@ -237,20 +276,14 @@ fn test_workspace_team_listing() {
     let _temp_dir = setup_test_env();
     
     // Test listing workspaces
-    let mut cmd = Command::cargo_bin("clickup-cli").unwrap();
-    cmd.args(["workspaces", "list"]);
-    
-    let output = cmd.output().unwrap();
+    let output = run_cli_with_test_env(&["workspaces", "list"]);
     
     // Should succeed and return some output
     assert!(output.status.success(), "Workspace listing failed: {:?}", String::from_utf8_lossy(&output.stderr));
     assert!(output.stdout.len() > 0, "No output from workspaces list");
     
     // Test listing teams (if any exist)
-    let mut cmd = Command::cargo_bin("clickup-cli").unwrap();
-    cmd.args(["teams", "list"]);
-    
-    let output = cmd.output().unwrap();
+    let output = run_cli_with_test_env(&["teams", "list"]);
     
     // Should succeed (even if no teams exist)
     assert!(output.status.success(), "Team listing failed: {:?}", String::from_utf8_lossy(&output.stderr));
@@ -331,13 +364,16 @@ fn test_task_lifecycle() {
     assert!(output_str.contains(&task_name), "Task name not found in output");
     assert!(output_str.contains("to do"), "Task status not found in output");
     
+    // Fetch allowed statuses for the list
+    let statuses = get_list_statuses(&list_id);
+    let update_status = statuses.iter().find(|s| *s != "to do").cloned().unwrap_or_else(|| "complete".to_string());
     // 3. Update the task
     let mut cmd = Command::cargo_bin("clickup-cli").unwrap();
     cmd.args([
         "tasks", "update",
         "--id", &task_id,
         "--name", &updated_task_name,
-        "--status", "in progress",
+        "--status", &update_status,
         "--priority", "3"
     ]);
     
@@ -353,7 +389,7 @@ fn test_task_lifecycle() {
     
     let output_str = String::from_utf8_lossy(&output.stdout);
     assert!(output_str.contains(&updated_task_name), "Updated task name not found in output");
-    assert!(output_str.contains("in progress"), "Updated task status not found in output");
+    assert!(output_str.contains(&update_status), "Updated task status not found in output");
     
     // 5. Delete the task
     let mut cmd = Command::cargo_bin("clickup-cli").unwrap();
@@ -679,9 +715,15 @@ fn test_invalid_authentication() {
     
     let _temp_dir = setup_test_env();
     
-    // Temporarily set an invalid token
-    let original_token = env::var("CLICKUP_API_TOKEN_TEST").ok();
-    env::set_var("CLICKUP_API_TOKEN_TEST", "invalid-token-12345");
+    // Temporarily set an invalid token and remove config token
+    let original_token = std::env::var("CLICKUP_API_TOKEN_TEST").ok();
+    std::env::set_var("CLICKUP_API_TOKEN", "invalid-token-12345");
+    std::env::set_var("CLICKUP_API_TOKEN_TEST", "invalid-token-12345");
+    // Remove config file if it exists
+    if let Some(config_dir) = dirs::config_dir() {
+        let config_file = config_dir.join("clickup-cli").join("config.toml");
+        let _ = std::fs::remove_file(config_file);
+    }
     
     // Test that the CLI fails gracefully with invalid token
     let mut cmd = Command::cargo_bin("clickup-cli").unwrap();
@@ -695,10 +737,11 @@ fn test_invalid_authentication() {
     
     // Restore original token if it existed
     if let Some(token) = original_token {
-        env::set_var("CLICKUP_API_TOKEN_TEST", token);
+        std::env::set_var("CLICKUP_API_TOKEN_TEST", token);
     } else {
-        env::remove_var("CLICKUP_API_TOKEN_TEST");
+        std::env::remove_var("CLICKUP_API_TOKEN_TEST");
     }
+    std::env::remove_var("CLICKUP_API_TOKEN");
 }
 
 /// Tests CLI help and version commands

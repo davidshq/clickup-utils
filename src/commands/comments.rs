@@ -47,10 +47,10 @@ pub enum CommentCommands {
     /// Create a new comment on a task
     Create {
         /// Task ID
-        #[arg(short, long)]
+        #[arg(short = 'i', long)]
         task_id: String,
         /// Comment text
-        #[arg(short, long)]
+        #[arg(short = 't', long)]
         text: String,
         /// Assignee ID (optional)
         #[arg(short, long)]
@@ -65,7 +65,7 @@ pub enum CommentCommands {
         #[arg(short, long)]
         id: String,
         /// New comment text
-        #[arg(short, long)]
+        #[arg(short = 't', long)]
         text: String,
         /// Assignee ID (optional)
         #[arg(short, long)]

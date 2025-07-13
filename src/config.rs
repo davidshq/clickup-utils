@@ -224,7 +224,7 @@ impl Config {
             }
         }
         
-        // When running tests, load the test API token if available
+        // Check for test API token (only in test context)
         #[cfg(test)]
         {
             if let Ok(test_token) = std::env::var("CLICKUP_API_TOKEN_TEST") {
@@ -233,6 +233,8 @@ impl Config {
                 }
             }
         }
+        
+
         
         Ok(config)
     }
@@ -392,7 +394,7 @@ impl Config {
     /// This function can return:
     /// - `ClickUpError::AuthError` if no API token is configured
     pub fn get_api_token(&self) -> Result<&str, ClickUpError> {
-        // When running tests, check for test-specific token first
+        // Check for test-specific token first (when in test context)
         #[cfg(test)]
         {
             if let Some(test_token) = &self.test_api_token {
