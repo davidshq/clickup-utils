@@ -80,15 +80,19 @@ if [ -n "$1" ]; then
     print_status "Running test: $1"
     cargo test --release -- --ignored "$1"
 else
-    # Run all integration tests
-    print_status "Running all integration tests..."
-    cargo test --release -- --ignored
-fi
-
-# Check exit status
-if [ $? -eq 0 ]; then
-    print_success "All integration tests passed!"
-else
-    print_error "Some integration tests failed"
-    exit 1
+    # Run all integration tests except test_invalid_authentication
+    print_status "Running all integration tests except test_invalid_authentication..."
+    cargo test --release -- --ignored --skip test_invalid_authentication
+    status=$?
+    # Now run test_invalid_authentication last
+    print_status "Running test_invalid_authentication (last)..."
+    cargo test --release -- --ignored test_invalid_authentication
+    status2=$?
+    if [ $status -eq 0 ] && [ $status2 -eq 0 ]; then
+        print_success "All integration tests passed!"
+        exit 0
+    else
+        print_error "Some integration tests failed"
+        exit 1
+    fi
 fi 

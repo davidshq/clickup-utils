@@ -980,10 +980,32 @@ impl ClickUpApi {
     /// This function can return authentication, permission, or network errors.
     pub async fn delete_task(&self, task_id: &str) -> Result<(), ClickUpError> {
         let endpoint = format!("/task/{task_id}");
-        let _: Value = self
-            .make_request(reqwest::Method::DELETE, &endpoint, None, None)
+        // DELETE operations may return empty responses, so we use make_request_raw
+        // and handle the response manually
+        let response_text = self
+            .make_request_raw(reqwest::Method::DELETE, &endpoint, None, None)
             .await?;
-        Ok(())
+        
+        // For DELETE operations, empty response or 204 status indicates success
+        if response_text.trim().is_empty() {
+            Ok(())
+        } else {
+            // If there's a response body, it might be an error message
+            // Try to parse it as JSON to get a proper error
+            if let Ok(error_json) = serde_json::from_str::<serde_json::Value>(&response_text) {
+                if let (Some(err_msg), Some(ecode)) = (
+                    error_json.get("err").and_then(|v| v.as_str()),
+                    error_json.get("ECODE").and_then(|v| v.as_str()),
+                ) {
+                    Err(ClickUpError::ApiError(format!("ClickUp Error {ecode}: {err_msg}")))
+                } else {
+                    Err(ClickUpError::ApiError(format!("Delete failed: {}", response_text)))
+                }
+            } else {
+                // If it's not JSON, treat as generic error
+                Err(ClickUpError::ApiError(format!("Delete failed: {}", response_text)))
+            }
+        }
     }
 
     // Comment endpoints
@@ -1025,13 +1047,15 @@ impl ClickUpApi {
         &self,
         task_id: &str,
         comment_data: CreateCommentRequest,
-    ) -> Result<Comment, ClickUpError> {
+    ) -> Result<(), ClickUpError> {
         let endpoint = format!("/task/{task_id}/comment");
         let body = serde_json::to_value(comment_data).map_err(|e| {
             ClickUpError::SerializationError(format!("Failed to serialize comment data: {e}"))
         })?;
-        self.make_request(reqwest::Method::POST, &endpoint, Some(body), None)
-            .await
+        let _response_text = self
+            .make_request_raw(reqwest::Method::POST, &endpoint, Some(body), None)
+            .await?;
+        Ok(())
     }
 
     // Additional API endpoints
@@ -1073,13 +1097,15 @@ impl ClickUpApi {
         &self,
         comment_id: &str,
         comment_data: CreateCommentRequest,
-    ) -> Result<Comment, ClickUpError> {
+    ) -> Result<(), ClickUpError> {
         let endpoint = format!("/comment/{comment_id}");
         let body = serde_json::to_value(comment_data).map_err(|e| {
             ClickUpError::SerializationError(format!("Failed to serialize comment data: {e}"))
         })?;
-        self.make_request(reqwest::Method::PUT, &endpoint, Some(body), None)
-            .await
+        let _response_text = self
+            .make_request_raw(reqwest::Method::PUT, &endpoint, Some(body), None)
+            .await?;
+        Ok(())
     }
 
     /// Deletes a comment
@@ -1097,10 +1123,32 @@ impl ClickUpApi {
     /// This function can return authentication, permission, or network errors.
     pub async fn delete_comment(&self, comment_id: &str) -> Result<(), ClickUpError> {
         let endpoint = format!("/comment/{comment_id}");
-        let _: Value = self
-            .make_request(reqwest::Method::DELETE, &endpoint, None, None)
+        // DELETE operations may return empty responses, so we use make_request_raw
+        // and handle the response manually
+        let response_text = self
+            .make_request_raw(reqwest::Method::DELETE, &endpoint, None, None)
             .await?;
-        Ok(())
+        
+        // For DELETE operations, empty response or 204 status indicates success
+        if response_text.trim().is_empty() || response_text.trim() == "{}" {
+            Ok(())
+        } else {
+            // If there's a response body, it might be an error message
+            // Try to parse it as JSON to get a proper error
+            if let Ok(error_json) = serde_json::from_str::<serde_json::Value>(&response_text) {
+                if let (Some(err_msg), Some(ecode)) = (
+                    error_json.get("err").and_then(|v| v.as_str()),
+                    error_json.get("ECODE").and_then(|v| v.as_str()),
+                ) {
+                    Err(ClickUpError::ApiError(format!("ClickUp Error {ecode}: {err_msg}")))
+                } else {
+                    Err(ClickUpError::ApiError(format!("Delete failed: {}", response_text)))
+                }
+            } else {
+                // If it's not JSON, treat as generic error
+                Err(ClickUpError::ApiError(format!("Delete failed: {}", response_text)))
+            }
+        }
     }
 
     /// Gets rate limiting statistics

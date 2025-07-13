@@ -183,7 +183,7 @@ async fn list_comments(api: &ClickUpApi, task_id: &str) -> Result<(), ClickUpErr
             Cell::new(&comment.id),
             Cell::new(&comment.user.username),
             Cell::new(&comment_text),
-            Cell::new(&comment.date_created),
+            Cell::new(&comment.date),
             Cell::new(if comment.resolved { "Yes" } else { "No" }),
         ]);
     }
@@ -232,8 +232,8 @@ async fn show_comment(api: &ClickUpApi, comment_id: &str) -> Result<(), ClickUpE
                         println!("ID: {}", comment.id);
                         println!("Task: {} ({})", task.name.as_deref().unwrap_or(""), task.id);
                         println!("User: {} ({})", comment.user.username, comment.user.id);
-                        println!("Created: {}", comment.date_created);
-                        println!("Updated: {}", comment.date_updated);
+                        println!("Created: {}", comment.date);
+                        println!("Updated: {}", comment.date);
                         println!("Resolved: {}", if comment.resolved { "Yes" } else { "No" });
                         println!("Text: {}", comment.comment_text);
 
@@ -293,13 +293,9 @@ async fn update_comment(
         notify_all,
     };
 
-    let comment = api.update_comment(comment_id, comment_data).await?;
+    api.update_comment(comment_id, comment_data).await?;
 
-    println!("{}", "✓ Comment updated successfully!".green());
-    println!("ID: {}", comment.id);
-    println!("Text: {}", comment.comment_text);
-    println!("Updated: {}", comment.date_updated);
-
+    println!("✓ Comment updated successfully!");
     Ok(())
 }
 
@@ -367,13 +363,8 @@ async fn create_comment(
         notify_all,
     };
 
-    let comment = api.create_comment(task_id, comment_data).await?;
+    api.create_comment(task_id, comment_data).await?;
 
-    println!("{}", "✓ Comment created successfully!".green());
-    println!("ID: {}", comment.id);
-    println!("User: {}", comment.user.username);
-    println!("Text: {}", comment.comment_text);
-    println!("Created: {}", comment.date_created);
-
+    println!("✓ Comment created successfully!");
     Ok(())
 }

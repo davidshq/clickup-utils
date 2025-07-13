@@ -166,8 +166,10 @@ impl Config {
     pub fn load_with_path(
         config_file_override: Option<&std::path::Path>,
     ) -> Result<Self, ClickUpError> {
-        // Load .env file if it exists (highest priority)
-        dotenv().ok();
+        // Load .env file if it exists (highest priority), unless skipped for tests
+        if std::env::var("CLICKUP_SKIP_ENV_FILE").is_err() {
+            dotenv().ok();
+        }
 
         // Get the config file path
         let config_file = if let Some(path) = config_file_override {
@@ -238,13 +240,10 @@ impl Config {
             }
         }
 
-        // Check for test API token (only in test context)
-        #[cfg(test)]
-        {
-            if let Ok(test_token) = std::env::var("CLICKUP_API_TOKEN_TEST") {
-                if !test_token.trim().is_empty() {
-                    config.test_api_token = Some(test_token);
-                }
+        // Check for test API token (always check, not just in test context)
+        if let Ok(test_token) = std::env::var("CLICKUP_API_TOKEN_TEST") {
+            if !test_token.trim().is_empty() {
+                config.api_token = Some(test_token);
             }
         }
 
@@ -399,7 +398,7 @@ impl Config {
     /// is configured, it returns an authentication error.
     ///
     /// The function checks for tokens in the following order:
-    /// 1. Environment variable `CLICKUP_API_TOKEN_TEST` (when running tests)
+    /// 1. Environment variable `CLICKUP_API_TOKEN_TEST` (when available)
     /// 2. Environment variable `CLICKUP_API_TOKEN` (for regular use)
     /// 3. Stored API token in configuration
     ///
@@ -413,16 +412,6 @@ impl Config {
     /// This function can return:
     /// - `ClickUpError::AuthError` if no API token is configured
     pub fn get_api_token(&self) -> Result<&str, ClickUpError> {
-        // Check for test-specific token first (when in test context)
-        #[cfg(test)]
-        {
-            if let Some(test_token) = &self.test_api_token {
-                if !test_token.trim().is_empty() {
-                    return Ok(test_token.as_str());
-                }
-            }
-        }
-
         // Fall back to stored token in configuration
         self.api_token
             .as_deref()

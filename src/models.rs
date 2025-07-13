@@ -1141,6 +1141,7 @@ pub struct CommentsResponse {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Comment {
     /// Unique comment identifier
+    #[serde(deserialize_with = "string_or_number")]
     pub id: String,
     /// Comment content in rich format
     pub comment: Vec<CommentText>,
@@ -1148,22 +1149,37 @@ pub struct Comment {
     pub comment_text: String,
     /// Comment author information
     pub user: CommentUser,
-    /// Whether the comment is resolved
+    /// Whether the comment is resolved (optional in API response)
+    #[serde(default)]
     pub resolved: bool,
     /// Comment assignee (if any)
     pub assignee: Option<serde_json::Value>,
-    /// User who assigned the comment
+    /// Group assignee (if any)
+    pub group_assignee: Option<serde_json::Value>,
+    /// User who assigned the comment (optional in API response)
+    #[serde(default)]
     pub assignee_by: Option<serde_json::Value>,
     /// Comment reactions
+    pub reactions: Vec<serde_json::Value>,
+    /// Comment reactions (legacy field, optional in API response)
+    #[serde(default)]
     pub reaction: Option<serde_json::Value>,
     /// Comment creation timestamp
-    pub date_created: String,
-    /// Comment last update timestamp
-    pub date_updated: String,
-    /// Parent comment (for threaded comments)
+    pub date: String,
+    /// Comment creation timestamp (legacy field, optional in API response)
+    #[serde(default)]
+    pub date_created: Option<String>,
+    /// Comment last update timestamp (optional in API response)
+    #[serde(default)]
+    pub date_updated: Option<String>,
+    /// Parent comment (for threaded comments, optional in API response)
+    #[serde(default)]
     pub parent: Option<serde_json::Value>,
-    /// Child comments (for threaded comments)
+    /// Child comments (for threaded comments, optional in API response)
+    #[serde(default)]
     pub children: Vec<serde_json::Value>,
+    /// Reply count
+    pub reply_count: i64,
 }
 
 /// Comment text segment
@@ -1174,8 +1190,8 @@ pub struct CommentText {
     /// Text content
     pub text: String,
     /// Text type (e.g., "text", "link", "mention")
-    #[serde(rename = "type")]
-    pub type_: String,
+    #[serde(rename = "type", default)]
+    pub type_: Option<String>,
 }
 
 /// Comment user information

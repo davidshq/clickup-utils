@@ -473,7 +473,7 @@ fn test_comment_creation() {
         id: "comment_123".to_string(),
         comment: vec![CommentText {
             text: "This is a comment".to_string(),
-            type_: "text".to_string(),
+            type_: Some("text".to_string()),
         }],
         comment_text: "This is a comment".to_string(),
         user: CommentUser {
@@ -484,12 +484,16 @@ fn test_comment_creation() {
         },
         resolved: false,
         assignee: None,
+        group_assignee: None,
         assignee_by: None,
+        reactions: vec![],
         reaction: None,
-        date_created: "2023-01-01T00:00:00Z".to_string(),
-        date_updated: "2023-01-01T00:00:00Z".to_string(),
+        date: "2023-01-01T00:00:00Z".to_string(),
+        date_created: Some("2023-01-01T00:00:00Z".to_string()),
+        date_updated: Some("2023-01-01T00:00:00Z".to_string()),
         parent: None,
         children: vec![],
+        reply_count: 0,
     };
 
     assert_eq!(comment.id, "comment_123");
@@ -509,7 +513,7 @@ fn test_comments_response_creation() {
         id: "comment_123".to_string(),
         comment: vec![CommentText {
             text: "This is a comment".to_string(),
-            type_: "text".to_string(),
+            type_: Some("text".to_string()),
         }],
         comment_text: "This is a comment".to_string(),
         user: CommentUser {
@@ -520,12 +524,16 @@ fn test_comments_response_creation() {
         },
         resolved: false,
         assignee: None,
+        group_assignee: None,
         assignee_by: None,
+        reactions: vec![],
         reaction: None,
-        date_created: "2023-01-01T00:00:00Z".to_string(),
-        date_updated: "2023-01-01T00:00:00Z".to_string(),
+        date: "2023-01-01T00:00:00Z".to_string(),
+        date_created: Some("2023-01-01T00:00:00Z".to_string()),
+        date_updated: Some("2023-01-01T00:00:00Z".to_string()),
         parent: None,
         children: vec![],
+        reply_count: 0,
     };
 
     let response = CommentsResponse {
@@ -818,11 +826,11 @@ fn test_task_space_creation() {
 fn test_comment_text_creation() {
     let comment_text = CommentText {
         text: "This is comment text".to_string(),
-        type_: "text".to_string(),
+        type_: Some("text".to_string()),
     };
 
     assert_eq!(comment_text.text, "This is comment text");
-    assert_eq!(comment_text.type_, "text");
+    assert_eq!(comment_text.type_, Some("text".to_string()));
 }
 
 /// Tests comment user model creation

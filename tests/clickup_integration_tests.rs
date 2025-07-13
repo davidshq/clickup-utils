@@ -44,17 +44,23 @@ fn run_cli_with_test_env(args: &[&str]) -> std::process::Output {
 
     // Set the test token environment variable for the CLI process
     if let Ok(test_token) = env::var("CLICKUP_API_TOKEN_TEST") {
+        eprintln!("[DEBUG] Using test token: {}", &test_token[..8.min(test_token.len())]);
+        eprintln!("[DEBUG] Full test token length: {}", test_token.len());
         cmd.env("CLICKUP_API_TOKEN_TEST", test_token);
         // Clear the regular token to ensure test token is used
         cmd.env_remove("CLICKUP_API_TOKEN");
+        // Prevent loading .env file by setting a dummy value
+        cmd.env("CLICKUP_SKIP_ENV_FILE", "1");
+    } else {
+        eprintln!("[DEBUG] No test token found!");
     }
 
     cmd.output().unwrap()
 }
 
-/// Loads environment variables from .env file
+/// Loads environment variables from .env.test file
 fn load_env() {
-    let _ = dotenvy::dotenv();
+    let _ = dotenvy::from_filename(".env.test");
 }
 
 /// Checks if the required test token is available
@@ -135,13 +141,11 @@ fn get_or_discover_workspace_id() -> Option<String> {
             return Some(id);
         }
     }
-    // Discover first workspace via CLI
-    let output = Command::cargo_bin("clickup-cli")
-        .unwrap()
-        .args(["workspaces", "list"])
-        .output()
-        .ok()?;
+    // Discover first workspace via CLI using test environment
+    let output = run_cli_with_test_env(&["workspaces", "list"]);
     let stdout = String::from_utf8_lossy(&output.stdout);
+    // DEBUG: Print the raw output for diagnosis
+    eprintln!("[DEBUG] Raw output from 'workspaces list':\n{}", stdout);
     // Try to find a workspace ID in the output (assume table format)
     for line in stdout.lines() {
         if line.trim().starts_with("|")
@@ -159,11 +163,7 @@ fn get_or_discover_workspace_id() -> Option<String> {
 
 /// Helper to get or discover a space ID in a workspace
 fn get_or_discover_space_id(workspace_id: &str) -> Option<String> {
-    let output = Command::cargo_bin("clickup-cli")
-        .unwrap()
-        .args(["spaces", "list", "--workspace-id", workspace_id])
-        .output()
-        .ok()?;
+    let output = run_cli_with_test_env(&["spaces", "list", "--workspace-id", workspace_id]);
     let stdout = String::from_utf8_lossy(&output.stdout);
     for line in stdout.lines() {
         if line.trim().starts_with("|")
@@ -186,12 +186,8 @@ fn get_or_discover_test_list_id(space_id: &str) -> Option<(String, bool)> {
             return Some((id, false)); // false = not created by test
         }
     }
-    // Discover first available list in the space
-    let output = Command::cargo_bin("clickup-cli")
-        .unwrap()
-        .args(["lists", "list", "--space-id", space_id])
-        .output()
-        .ok()?;
+    // Discover first available list in the space using test environment
+    let output = run_cli_with_test_env(&["lists", "list", "--space-id", space_id]);
     let stdout = String::from_utf8_lossy(&output.stdout);
     // Try to find a list ID in the output (assume table format)
     for line in stdout.lines() {
@@ -584,19 +580,6 @@ fn test_commenting() {
         String::from_utf8_lossy(&output.stderr)
     );
 
-    // Extract comment ID from output
-    let output_str = String::from_utf8_lossy(&output.stdout);
-    let comment_id = match extract_comment_id(&output_str) {
-        Some(id) => id,
-        None => {
-            eprintln!("Could not extract comment ID from output: {}", output_str);
-            if created {
-                delete_list(&list_id);
-            }
-            return;
-        }
-    };
-
     // 3. List comments and verify the new comment appears
     let mut cmd = Command::cargo_bin("clickup-cli").unwrap();
     cmd.args(["comments", "list", "--task-id", &task_id]);
@@ -614,7 +597,28 @@ fn test_commenting() {
         "Comment text not found in listing"
     );
 
-    // 4. Update the comment
+    // 4. (Optional) Extract the comment ID for update/delete if needed
+    // For now, just find the first comment with the expected text
+    let comment_id = output_str
+        .lines()
+        .find(|line| line.contains(&comment_text))
+        .and_then(|line| {
+            // Try to extract the comment ID from the table row
+            let parts: Vec<_> = line.split('|').map(|s| s.trim()).collect();
+            if parts.len() > 1 { Some(parts[1].to_string()) } else { None }
+        });
+    let comment_id = match comment_id {
+        Some(id) => id,
+        None => {
+            eprintln!("Could not extract comment ID from listing: {}", output_str);
+            if created {
+                delete_list(&list_id);
+            }
+            return;
+        }
+    };
+
+    // 5. Update the comment
     let mut cmd = Command::cargo_bin("clickup-cli").unwrap();
     cmd.args([
         "comments",
@@ -632,7 +636,7 @@ fn test_commenting() {
         String::from_utf8_lossy(&output.stderr)
     );
 
-    // 5. List comments again and verify the updated comment
+    // 6. List comments again and verify the updated comment
     let mut cmd = Command::cargo_bin("clickup-cli").unwrap();
     cmd.args(["comments", "list", "--task-id", &task_id]);
 
@@ -649,7 +653,7 @@ fn test_commenting() {
         "Updated comment text not found in listing"
     );
 
-    // 6. Delete the comment
+    // 7. Delete the comment
     let mut cmd = Command::cargo_bin("clickup-cli").unwrap();
     cmd.args(["comments", "delete", "--id", &comment_id]);
 
@@ -660,7 +664,7 @@ fn test_commenting() {
         String::from_utf8_lossy(&output.stderr)
     );
 
-    // 7. Clean up - delete the task
+    // 8. Clean up - delete the task
     let mut cmd = Command::cargo_bin("clickup-cli").unwrap();
     cmd.args(["tasks", "delete", "--id", &task_id]);
 
@@ -881,6 +885,7 @@ fn test_list_operations() {
 /// Tests authentication with invalid token
 #[test]
 #[ignore]
+#[serial_test::serial]
 fn test_invalid_authentication() {
     load_env();
 
