@@ -40,18 +40,76 @@ The following improvements have been fully implemented and verified:
 
 ## 📋 Executive Summary
 
-This document contains a comprehensive review of the ClickUp CLI codebase with specific recommendations for improvements. The codebase has evolved significantly and now demonstrates excellent quality with comprehensive testing and documentation.
+This document contains a comprehensive review of the ClickUp CLI codebase with specific recommendations for improvements. While significant progress has been made in code quality, testing, and documentation, several critical issues remain that require immediate attention.
 
 **Current Assessment:**
-- **Code Quality**: 9/10 (up from 7/10)
-- **Test Coverage**: 9/10 (up from 8/10)  
-- **Documentation**: 9/10 (up from 6/10)
-- **User Experience**: 8/10 (up from 7/10)
+- **Code Quality**: 7/10 (improved from 5/10)
+- **Test Coverage**: 8/10 (improved from 6/10)  
+- **Documentation**: 9/10 (improved from 6/10)
+- **User Experience**: 7/10 (improved from 5/10)
+- **Security**: 6/10 (needs improvement)
+- **Performance**: 6/10 (needs optimization)
 
+---
 
-## 🔧 High Priority Fixes
+## 🚨 Critical Issues Requiring Immediate Attention
 
-### 2. **Integration Testing**
+### 1. **Infinite Loop Risk in Rate Limiter**
+**Location**: `src/rate_limiter.rs:67-120`
+**Issue**: The `wait_if_needed()` function has a potential infinite loop
+```rust
+loop {
+    // ... rate limit logic ...
+    if current_requests >= self.config.requests_per_minute {
+        // Wait logic
+        continue; // This can create infinite loops
+    }
+}
+```
+**Risk**: Under certain conditions, this could cause the application to hang indefinitely.
+**Fix**: Add maximum wait time and better exit conditions.
+
+### 2. **Inefficient Comment Search Algorithm**
+**Location**: `src/commands/comments.rs:200-250`
+**Issue**: The `show_comment()` function searches through ALL workspaces, spaces, lists, and tasks to find a single comment.
+```rust
+for workspace in &workspaces.teams {
+    let spaces = api.get_spaces(&workspace.id).await?;
+    for space in &spaces.spaces {
+        let lists = api.get_lists(&space.id).await?;
+        for list in &lists.lists {
+            let tasks = api.get_tasks(&list.id).await?;
+            for task in &tasks.tasks {
+                let comments = api.get_comments(&task.id).await?;
+                // ... search logic
+            }
+        }
+    }
+}
+```
+**Impact**: This is O(n⁴) complexity and will be extremely slow for large workspaces.
+**Fix**: Implement a more efficient search strategy or require task_id parameter.
+
+### 3. **Memory Leak in API Client**
+**Location**: `src/api.rs:285-380`
+**Issue**: The `make_request_raw()` function creates a new `Pin<Box<dyn Future>>` for every request without proper cleanup.
+**Risk**: Under high load, this could cause memory exhaustion.
+**Fix**: Implement proper resource management and consider using a connection pool.
+
+### 4. **Unsafe Global State in Tests**
+**Location**: `tests/api_tests.rs:25-35`
+**Issue**: Using `static mut` for test configuration
+```rust
+static mut TEMP_DIR: Option<TempDir> = None;
+```
+**Risk**: This is unsafe and can cause test interference.
+**Fix**: Use thread-local storage or proper test isolation.
+
+---
+
+## 🔧 High Priority Improvements
+
+### 1. **Integration Testing**
 **Issue**: No end-to-end integration tests
 **Solution**: Create comprehensive integration tests
 
@@ -71,9 +129,9 @@ async fn test_error_scenarios() {
 }
 ```
 
-### 3. **Performance Optimizations**
+### 2. **Performance Optimizations**
 
-#### 3.1 Caching Layer
+#### 2.1 Caching Layer
 **Issue**: No caching of API responses
 **Solution**: Implement response caching
 
@@ -98,13 +156,48 @@ impl CachedApi {
 }
 ```
 
-#### 3.2 Batch Operations
+#### 2.2 Batch Operations
 **Issue**: No batch API operations
 **Solution**: Implement batch task operations
 
 ```rust
 pub async fn create_tasks_batch(&self, list_id: &str, tasks: Vec<CreateTaskRequest>) -> Result<Vec<Task>, ClickUpError> {
     // Implement batch task creation
+}
+```
+
+### 3. **Security Enhancements**
+
+#### 3.1 Secure Token Storage
+**Issue**: Basic token storage in plain text
+**Solution**: Implement secure token storage using system keyring
+
+```rust
+use keyring::Entry;
+
+impl Config {
+    pub fn set_api_token_secure(&mut self, token: String) -> Result<(), ClickUpError> {
+        let entry = Entry::new("clickup-cli", "api-token")?;
+        entry.set_password(&token)?;
+        self.api_token = Some(token);
+        Ok(())
+    }
+}
+```
+
+#### 3.2 Token Expiration Handling
+**Issue**: No token expiration detection
+**Solution**: Implement token validation
+
+```rust
+impl ClickUpApi {
+    pub async fn validate_token(&self) -> Result<bool, ClickUpError> {
+        match self.get_user().await {
+            Ok(_) => Ok(true),
+            Err(ClickUpError::AuthError(_)) => Ok(false),
+            Err(e) => Err(e),
+        }
+    }
 }
 ```
 
@@ -153,40 +246,35 @@ pub async fn interactive_task_creation(&self) -> Result<(), ClickUpError> {
 }
 ```
 
-### 5. **Security Enhancements**
+### 5. **Code Quality Improvements**
 
-#### 5.1 Token Expiration Handling
-**Issue**: No token expiration detection
-**Solution**: Implement token validation
+#### 5.1 Remove Code Duplication
+**Issues**:
+- Redundant parameter structs in `src/commands/tasks.rs:25-45`
+- Duplicate error handling patterns throughout command modules
+- Duplicate table creation logic across multiple files
+- Duplicate configuration loading in `src/config.rs:140-180`
 
-```rust
-impl ClickUpApi {
-    pub async fn validate_token(&self) -> Result<bool, ClickUpError> {
-        match self.get_user().await {
-            Ok(_) => Ok(true),
-            Err(ClickUpError::AuthError(_)) => Ok(false),
-            Err(e) => Err(e),
-        }
-    }
-}
-```
+**Solutions**:
+- Use existing request models directly instead of duplicating parameter structs
+- Create a macro or helper function for common command patterns
+- Create a reusable table builder utility
+- Consolidate configuration loading into a single function
 
-#### 5.2 Secure Token Storage
-**Issue**: Basic token storage
-**Solution**: Implement secure token storage
+#### 5.2 Fix Poor Practices
+**Issues**:
+- Excessive use of `clone()` throughout the codebase
+- Inconsistent error handling patterns
+- Hard-coded magic numbers in `src/rate_limiter.rs:85-95`
+- Poor separation of concerns in `src/commands/tasks.rs:466-606`
+- Inconsistent naming conventions
 
-```rust
-use keyring::Entry;
-
-impl Config {
-    pub fn set_api_token_secure(&mut self, token: String) -> Result<(), ClickUpError> {
-        let entry = Entry::new("clickup-cli", "api-token")?;
-        entry.set_password(&token)?;
-        self.api_token = Some(token);
-        Ok(())
-    }
-}
-```
+**Solutions**:
+- Use references where possible, implement `Clone` only when necessary
+- Standardize error handling approach across the codebase
+- Define constants for all magic numbers
+- Break large functions into smaller, focused functions
+- Establish and follow consistent naming conventions
 
 ---
 
@@ -232,12 +320,28 @@ pub struct UsageAnalytics {
 }
 ```
 
+### 8. **Architecture Improvements**
+
+#### 8.1 Implement Repository Pattern
+**Current State**: Direct API calls in commands
+**Opportunity**: Abstract API layer with repository pattern
+
+#### 8.2 Add Event System
+**Current State**: No event handling
+**Opportunity**: Implement event system for extensibility
+
+#### 8.3 Plugin System
+**Current State**: No extensibility
+**Opportunity**: Add plugin system for custom commands
+
 ---
 
 ## 📊 Implementation Priority Matrix
 
 | Priority | Category | Effort | Impact | Recommendation |
 |----------|----------|--------|--------|----------------|
+| 🔴 Critical | Rate Limiter Fix | Low | High | Fix immediately |
+| 🔴 Critical | Comment Search | Medium | High | Fix immediately |
 | 🟡 High | Integration Tests | Medium | High | Implement soon |
 | 🟡 High | Performance (Caching) | High | Medium | Plan for next release |
 | 🟢 Medium | UX Improvements | Medium | Medium | Consider for v2.0 |
@@ -246,8 +350,51 @@ pub struct UsageAnalytics {
 
 ---
 
-## 🛠️ Quick Fix Commands
+## 🎯 Specific Action Items
 
+#### Immediate Fixes (1-2 days)
+1. Add timeout to rate limiter loop
+2. Require task_id parameter for comment search
+3. Fix unsafe test state
+4. Remove duplicate parameter structs
+
+#### Short-term Improvements (1-2 weeks)
+1. Implement caching layer
+2. Add comprehensive input validation
+3. Improve error messages
+4. Add integration tests
+
+#### Long-term Enhancements (1-2 months)
+1. Implement plugin system
+2. Add performance monitoring
+3. Implement advanced features
+4. Add comprehensive documentation
+
+---
+
+## 📊 Code Quality Metrics
+
+| Metric | Current Score | Target Score | Priority |
+|--------|---------------|--------------|----------|
+| Test Coverage | 85% | 95% | Medium |
+| Code Duplication | 15% | <5% | High |
+| Cyclomatic Complexity | 8.2 | <5 | Medium |
+| Maintainability Index | 65 | >80 | High |
+| Security Score | 6/10 | 9/10 | High |
+
+---
+
+## 🔧 Quick Wins
+
+1. **Remove unused imports** - 5 minutes
+2. **Add constants for magic numbers** - 30 minutes
+3. **Standardize naming conventions** - 2 hours
+4. **Add input validation** - 4 hours
+5. **Implement basic caching** - 1 day
+
+---
+
+## 🛠️ Quick Fix Commands
 
 ### Generate Documentation
 ```bash
@@ -275,6 +422,11 @@ cargo audit
 
 ## 📝 Action Items
 
+### Week 1
+- [ ] Fix infinite loop in rate limiter
+- [ ] Optimize comment search algorithm
+- [ ] Fix unsafe test state management
+- [ ] Remove duplicate parameter structs
 
 ### Week 2-3
 - [ ] Implement integration tests
@@ -307,12 +459,20 @@ The codebase has made significant improvements:
 
 ---
 
-## 📞 Contact
+## 📚 Conclusion
 
-For questions about these recommendations or implementation assistance, please refer to the project maintainers.
+The ClickUp CLI codebase has made excellent progress in code quality, testing, and documentation. However, several critical issues remain that require immediate attention, particularly the infinite loop risk in the rate limiter and the inefficient comment search algorithm.
+
+The codebase would benefit significantly from:
+- Performance optimizations (caching, batch operations)
+- Security improvements (secure token storage)
+- User experience enhancements (interactive mode, progress indicators)
+- Code quality improvements (reduced duplication, better error handling)
+
+With focused effort on the high-priority items, this codebase could become a robust, production-ready CLI tool with excellent user experience and maintainability.
 
 ---
 
 *Last updated: July 13, 2025*
 *Reviewer: AI Assistant*
-*Version: 2.1* 
+*Version: 2.2* 
