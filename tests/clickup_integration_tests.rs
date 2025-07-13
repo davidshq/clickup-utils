@@ -44,7 +44,10 @@ fn run_cli_with_test_env(args: &[&str]) -> std::process::Output {
 
     // Set the test token environment variable for the CLI process
     if let Ok(test_token) = env::var("CLICKUP_API_TOKEN_TEST") {
-        eprintln!("[DEBUG] Using test token: {}", &test_token[..8.min(test_token.len())]);
+        eprintln!(
+            "[DEBUG] Using test token: {}",
+            &test_token[..8.min(test_token.len())]
+        );
         eprintln!("[DEBUG] Full test token length: {}", test_token.len());
         cmd.env("CLICKUP_API_TOKEN_TEST", test_token);
         // Clear the regular token to ensure test token is used
@@ -69,6 +72,7 @@ fn has_test_token() -> bool {
 }
 
 /// Sets up the test environment with proper authentication
+#[allow(dead_code)]
 fn setup_test_authentication() -> Result<(), Box<dyn std::error::Error>> {
     load_env();
 
@@ -91,6 +95,7 @@ fn get_test_list_id() -> Option<String> {
 }
 
 /// Helper function to get a test workspace ID
+#[allow(dead_code)]
 fn get_test_workspace_id() -> Option<String> {
     // Try to get from environment first
     if let Ok(workspace_id) = env::var("CLICKUP_TEST_WORKSPACE_ID") {
@@ -122,6 +127,7 @@ fn extract_task_id(output: &str) -> Option<String> {
 }
 
 /// Helper function to extract comment ID from CLI output
+#[allow(dead_code)]
 fn extract_comment_id(output: &str) -> Option<String> {
     // Look for patterns like "Comment created with ID: abc123" or similar
     if let Some(id_start) = output.find("ID:") {
@@ -605,7 +611,11 @@ fn test_commenting() {
         .and_then(|line| {
             // Try to extract the comment ID from the table row
             let parts: Vec<_> = line.split('|').map(|s| s.trim()).collect();
-            if parts.len() > 1 { Some(parts[1].to_string()) } else { None }
+            if parts.len() > 1 {
+                Some(parts[1].to_string())
+            } else {
+                None
+            }
         });
     let comment_id = match comment_id {
         Some(id) => id,

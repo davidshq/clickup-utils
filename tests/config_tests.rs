@@ -16,7 +16,7 @@
 //! Tests use temporary directories and isolated environment variables to avoid
 //! interfering with the user's actual configuration files.
 
-use clickup_cli::config::{Config, RateLimitConfig};
+use clickup_cli::config::Config;
 use std::env;
 use std::fs;
 use tempfile::TempDir;
@@ -150,7 +150,8 @@ fn test_config_is_authenticated() {
     let _test_config = TestConfig::new();
     let mut config = Config::default();
     assert!(!config.is_authenticated());
-    config.set_api_token("test_token".to_string()).unwrap();
+    // Set the token directly without saving to avoid file system issues in tests
+    config.api_token = Some("test_token".to_string());
     assert!(config.is_authenticated());
 }
 
@@ -162,13 +163,11 @@ fn test_config_is_authenticated() {
 fn test_config_save_and_load() {
     let test_config = TestConfig::new();
     // Create a config with all fields set
-    let config = Config {
-        api_token: Some("test_token_456".to_string()),
-        workspace_id: Some("workspace_123".to_string()),
-        default_list_id: Some("list_456".to_string()),
-        api_base_url: "https://test.api.clickup.com/api/v2".to_string(),
-        rate_limit: RateLimitConfig::default(),
-    };
+    let mut config = Config::default();
+    config.api_token = Some("test_token_456".to_string());
+    config.workspace_id = Some("workspace_123".to_string());
+    config.default_list_id = Some("list_456".to_string());
+    config.api_base_url = "https://test.api.clickup.com/api/v2".to_string();
     // Save the config to the temp file
     let save_result = config.save_with_path(Some(&test_config.config_file));
     assert!(

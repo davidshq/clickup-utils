@@ -221,9 +221,7 @@ impl Config {
                 ClickUpError::ConfigError(format!("Failed to set buffer seconds default: {e}"))
             })?;
         // Build the config and deserialize
-        let config = builder
-            .build()
-            .map_err(ClickUpError::ConfigParseError)?;
+        let config = builder.build().map_err(ClickUpError::ConfigParseError)?;
         #[allow(unused_mut)]
         let mut config: Config = config.try_deserialize().map_err(|_| {
             ClickUpError::ConfigParseError(config::ConfigError::NotFound(

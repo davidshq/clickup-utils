@@ -985,7 +985,7 @@ impl ClickUpApi {
         let response_text = self
             .make_request_raw(reqwest::Method::DELETE, &endpoint, None, None)
             .await?;
-        
+
         // For DELETE operations, empty response or 204 status indicates success
         if response_text.trim().is_empty() {
             Ok(())
@@ -997,13 +997,19 @@ impl ClickUpApi {
                     error_json.get("err").and_then(|v| v.as_str()),
                     error_json.get("ECODE").and_then(|v| v.as_str()),
                 ) {
-                    Err(ClickUpError::ApiError(format!("ClickUp Error {ecode}: {err_msg}")))
+                    Err(ClickUpError::ApiError(format!(
+                        "ClickUp Error {ecode}: {err_msg}"
+                    )))
                 } else {
-                    Err(ClickUpError::ApiError(format!("Delete failed: {}", response_text)))
+                    Err(ClickUpError::ApiError(format!(
+                        "Delete failed: {response_text}"
+                    )))
                 }
             } else {
                 // If it's not JSON, treat as generic error
-                Err(ClickUpError::ApiError(format!("Delete failed: {}", response_text)))
+                Err(ClickUpError::ApiError(format!(
+                    "Delete failed: {response_text}"
+                )))
             }
         }
     }
@@ -1128,7 +1134,7 @@ impl ClickUpApi {
         let response_text = self
             .make_request_raw(reqwest::Method::DELETE, &endpoint, None, None)
             .await?;
-        
+
         // For DELETE operations, empty response or 204 status indicates success
         if response_text.trim().is_empty() || response_text.trim() == "{}" {
             Ok(())
@@ -1140,13 +1146,19 @@ impl ClickUpApi {
                     error_json.get("err").and_then(|v| v.as_str()),
                     error_json.get("ECODE").and_then(|v| v.as_str()),
                 ) {
-                    Err(ClickUpError::ApiError(format!("ClickUp Error {ecode}: {err_msg}")))
+                    Err(ClickUpError::ApiError(format!(
+                        "ClickUp Error {ecode}: {err_msg}"
+                    )))
                 } else {
-                    Err(ClickUpError::ApiError(format!("Delete failed: {}", response_text)))
+                    Err(ClickUpError::ApiError(format!(
+                        "Delete failed: {response_text}"
+                    )))
                 }
             } else {
                 // If it's not JSON, treat as generic error
-                Err(ClickUpError::ApiError(format!("Delete failed: {}", response_text)))
+                Err(ClickUpError::ApiError(format!(
+                    "Delete failed: {response_text}"
+                )))
             }
         }
     }
