@@ -1,11 +1,36 @@
+//! # API Tests
+//! 
+//! This module contains comprehensive tests for the ClickUp API client functionality.
+//! It tests API client creation, configuration handling, authentication, and various
+//! edge cases to ensure robust operation.
+//! 
+//! ## Test Categories
+//! 
+//! - **Client Creation**: Tests for API client instantiation with various configurations
+//! - **Token Handling**: Tests for different token types and formats
+//! - **Configuration**: Tests for config validation and edge cases
+//! - **Task Operations**: Tests for task-related functionality including overdue task handling
+//! 
+//! ## Test Environment
+//! 
+//! Tests use a temporary configuration directory to avoid interfering with
+//! the user's actual configuration files.
+
 use clickup_cli::api::ClickUpApi;
 use clickup_cli::config::{Config, RateLimitConfig};
 use tempfile::TempDir;
 use std::sync::Once;
 
+/// Global test initialization state
 static INIT: Once = Once::new();
+/// Temporary directory for test configuration
 static mut TEMP_DIR: Option<TempDir> = None;
 
+/// Sets up the test environment with a temporary configuration directory
+/// 
+/// This function ensures that tests don't interfere with the user's actual
+/// configuration by using a temporary directory for all config operations.
+/// It's called once per test run using the `Once` synchronization primitive.
 fn setup_test_env() {
     INIT.call_once(|| {
         let temp_dir = TempDir::new().unwrap();
@@ -18,6 +43,11 @@ fn setup_test_env() {
     });
 }
 
+/// Tests API client creation with a valid configuration
+/// 
+/// This test verifies that the API client can be created successfully
+/// when provided with a complete, valid configuration including token,
+/// workspace ID, and list ID.
 #[test]
 fn test_api_client_creation_with_valid_config() {
     setup_test_env();
@@ -33,6 +63,11 @@ fn test_api_client_creation_with_valid_config() {
     assert!(api.is_ok());
 }
 
+/// Tests API client creation without an authentication token
+/// 
+/// This test verifies that the API client can be created successfully
+/// even when no authentication token is provided, as the client should
+/// be able to handle unauthenticated operations.
 #[test]
 fn test_api_client_creation_without_token() {
     setup_test_env();
@@ -48,6 +83,10 @@ fn test_api_client_creation_without_token() {
     assert!(api.is_ok()); // API client can be created without token
 }
 
+/// Tests API client creation with a personal token (pk_ prefix)
+/// 
+/// This test verifies that the API client can handle personal tokens
+/// which start with 'pk_' and are used directly without Bearer prefix.
 #[test]
 fn test_api_client_with_personal_token() {
     setup_test_env();
@@ -63,6 +102,10 @@ fn test_api_client_with_personal_token() {
     assert!(api.is_ok());
 }
 
+/// Tests API client creation with an OAuth token
+/// 
+/// This test verifies that the API client can handle OAuth tokens
+/// which are used with the Bearer prefix in authentication headers.
 #[test]
 fn test_api_client_with_oauth_token() {
     setup_test_env();
@@ -78,6 +121,10 @@ fn test_api_client_with_oauth_token() {
     assert!(api.is_ok());
 }
 
+/// Tests API client creation with a custom API base URL
+/// 
+/// This test verifies that the API client can be configured with
+/// custom base URLs for different environments or API versions.
 #[test]
 fn test_api_client_with_custom_base_url() {
     setup_test_env();
@@ -93,6 +140,10 @@ fn test_api_client_with_custom_base_url() {
     assert!(api.is_ok());
 }
 
+/// Tests API client creation with potentially invalid configuration
+/// 
+/// This test verifies that the API client can handle invalid or malformed
+/// configuration values gracefully without failing during creation.
 #[test]
 fn test_api_client_creation_failure() {
     // Test with invalid base URL (this should still work as it's just a string)
@@ -108,6 +159,10 @@ fn test_api_client_creation_failure() {
     assert!(api.is_ok()); // The client creation itself should succeed
 }
 
+/// Tests API client creation with cloned configuration
+/// 
+/// This test verifies that the API client can be created multiple times
+/// using the same configuration object, ensuring proper cloning behavior.
 #[test]
 fn test_api_client_config_clone() {
     setup_test_env();
@@ -127,6 +182,10 @@ fn test_api_client_config_clone() {
     assert!(api2.is_ok());
 }
 
+/// Tests API client creation with an empty token string
+/// 
+/// This test verifies that the API client can handle empty token strings
+/// gracefully without failing during creation.
 #[test]
 fn test_api_client_with_empty_token() {
     setup_test_env();
@@ -142,6 +201,10 @@ fn test_api_client_with_empty_token() {
     assert!(api.is_ok()); // Client creation should succeed even with empty token
 }
 
+/// Tests API client creation with a whitespace-only token
+/// 
+/// This test verifies that the API client can handle tokens containing
+/// only whitespace characters without failing during creation.
 #[test]
 fn test_api_client_with_whitespace_token() {
     setup_test_env();
@@ -157,6 +220,10 @@ fn test_api_client_with_whitespace_token() {
     assert!(api.is_ok()); // Client creation should succeed even with whitespace token
 }
 
+/// Tests creation of multiple API client instances
+/// 
+/// This test verifies that multiple API client instances can be created
+/// simultaneously with different configurations without conflicts.
 #[test]
 fn test_api_client_multiple_instances() {
     setup_test_env();
@@ -183,6 +250,10 @@ fn test_api_client_multiple_instances() {
     assert!(api2.is_ok());
 }
 
+/// Tests API client creation with all None values
+/// 
+/// This test verifies that the API client can be created with a minimal
+/// configuration where all optional fields are set to None.
 #[test]
 fn test_api_client_with_none_values() {
     setup_test_env();
@@ -198,6 +269,10 @@ fn test_api_client_with_none_values() {
     assert!(api.is_ok());
 }
 
+/// Tests API client creation with a very long token
+/// 
+/// This test verifies that the API client can handle extremely long
+/// authentication tokens without memory or performance issues.
 #[test]
 fn test_api_client_with_long_token() {
     setup_test_env();
@@ -214,6 +289,10 @@ fn test_api_client_with_long_token() {
     assert!(api.is_ok());
 }
 
+/// Tests API client creation with special characters in token
+/// 
+/// This test verifies that the API client can handle tokens containing
+/// special characters, symbols, and punctuation marks.
 #[test]
 fn test_api_client_with_special_characters_in_token() {
     setup_test_env();
@@ -230,6 +309,11 @@ fn test_api_client_with_special_characters_in_token() {
     assert!(api.is_ok());
 } 
 
+/// Tests the overdue task update functionality with tag filtering
+/// 
+/// This test verifies the logic for identifying and updating overdue tasks
+/// that have specific tags. It creates a mock task that is overdue and
+/// has the 'urgent' tag to test the filtering and update logic.
 #[test]
 fn test_update_overdue_by_tag_functionality() {
     use chrono::{DateTime, Utc};
@@ -307,6 +391,12 @@ fn test_update_overdue_by_tag_functionality() {
     println!("✓ Test task is properly configured as overdue with 'urgent' tag");
 } 
 
+/// Tests time preservation in overdue task updates
+/// 
+/// This test verifies that when updating overdue tasks, the original
+/// time component is preserved while the date is updated to today.
+/// It ensures that tasks with specific times (not midnight) maintain
+/// their time when rescheduled.
 #[test]
 fn test_update_overdue_by_tag_time_preservation() {
     use chrono::{DateTime, Utc, NaiveTime};

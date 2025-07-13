@@ -1,10 +1,32 @@
+//! # Configuration Tests
+//! 
+//! This module contains comprehensive tests for the configuration management system.
+//! It tests configuration loading, saving, validation, and various edge cases
+//! to ensure robust configuration handling.
+//! 
+//! ## Test Categories
+//! 
+//! - **Default Configuration**: Tests for default configuration values
+//! - **Token Management**: Tests for API token setting, getting, and validation
+//! - **File Operations**: Tests for configuration file saving and loading
+//! - **Validation**: Tests for input validation and error handling
+//! 
+//! ## Test Environment
+//! 
+//! Tests use temporary directories and isolated environment variables to avoid
+//! interfering with the user's actual configuration files.
+
 use clickup_cli::config::{Config, RateLimitConfig};
 use tempfile::TempDir;
 use std::fs;
 use std::env;
 
 
-// Test configuration that properly isolates tests
+/// Test configuration that properly isolates tests from user configuration
+/// 
+/// This struct manages temporary directories and environment variables
+/// to ensure tests don't interfere with the user's actual configuration.
+/// It automatically cleans up when dropped.
 struct TestConfig {
     #[allow(dead_code)]
     temp_dir: TempDir,
@@ -14,6 +36,14 @@ struct TestConfig {
 }
 
 impl TestConfig {
+    /// Creates a new test configuration with isolated environment
+    /// 
+    /// This function sets up a temporary directory and modifies environment
+    /// variables to ensure tests use isolated configuration files.
+    /// 
+    /// # Returns
+    /// 
+    /// Returns a `TestConfig` instance that will clean up automatically.
     fn new() -> Self {
         let temp_dir = TempDir::new().expect("Failed to create temp directory");
         let temp_path = temp_dir.path().to_path_buf();
@@ -64,6 +94,10 @@ impl Drop for TestConfig {
     }
 }
 
+/// Tests default configuration values
+/// 
+/// This test verifies that the default configuration has the expected
+/// values for all fields, including the API base URL and empty optional fields.
 #[test]
 fn test_config_default() {
     let _test_config = TestConfig::new();
@@ -74,6 +108,10 @@ fn test_config_default() {
     assert!(config.default_list_id.is_none());
 }
 
+/// Tests setting and getting API tokens
+/// 
+/// This test verifies that API tokens can be set, saved to a file,
+/// loaded from the file, and retrieved correctly.
 #[test]
 fn test_config_set_and_get_api_token() {
     let test_config = TestConfig::new();
@@ -88,6 +126,10 @@ fn test_config_set_and_get_api_token() {
     assert_eq!(retrieved_token, test_token);
 }
 
+/// Tests getting API token when none is set
+/// 
+/// This test verifies that attempting to get an API token when none
+/// is configured returns an appropriate authentication error.
 #[test]
 fn test_config_get_api_token_when_none() {
     let _test_config = TestConfig::new();
@@ -100,6 +142,10 @@ fn test_config_get_api_token_when_none() {
     }
 }
 
+/// Tests authentication status checking
+/// 
+/// This test verifies that the authentication status is correctly
+/// determined based on whether an API token is set.
 #[test]
 fn test_config_is_authenticated() {
     let _test_config = TestConfig::new();
@@ -109,6 +155,10 @@ fn test_config_is_authenticated() {
     assert!(config.is_authenticated());
 }
 
+/// Tests configuration saving and loading
+/// 
+/// This test verifies that a complete configuration can be saved to a file
+/// and then loaded back with all fields preserved correctly.
 #[test]
 fn test_config_save_and_load() {
     let test_config = TestConfig::new();
@@ -133,6 +183,10 @@ fn test_config_save_and_load() {
     assert_eq!(loaded_config.api_base_url, config.api_base_url);
 }
 
+/// Tests validation of empty API tokens
+/// 
+/// This test verifies that setting an empty string as an API token
+/// is rejected with an appropriate validation error.
 #[test]
 fn test_config_validation_empty_token() {
     let _test_config = TestConfig::new();
@@ -145,6 +199,10 @@ fn test_config_validation_empty_token() {
     }
 }
 
+/// Tests validation of whitespace-only API tokens
+/// 
+/// This test verifies that setting a string containing only whitespace
+/// as an API token is rejected with an appropriate validation error.
 #[test]
 fn test_config_validation_whitespace_token() {
     let _test_config = TestConfig::new();

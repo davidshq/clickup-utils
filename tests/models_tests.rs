@@ -1,6 +1,31 @@
+//! # Data Model Tests
+//! 
+//! This module contains comprehensive tests for all data models used in the ClickUp CLI.
+//! It tests model creation, serialization, deserialization, and various edge cases
+//! to ensure robust data handling.
+//! 
+//! ## Test Categories
+//! 
+//! - **User Models**: Tests for user data structures and authentication
+//! - **Workspace Models**: Tests for workspace and team management structures
+//! - **Space Models**: Tests for space configuration and features
+//! - **List Models**: Tests for list management and organization
+//! - **Task Models**: Tests for task data and metadata structures
+//! - **Comment Models**: Tests for comment system and threading
+//! - **Request Models**: Tests for API request data structures
+//! 
+//! ## Test Coverage
+//! 
+//! Tests cover all model variants including optional fields, nested structures,
+//! and various data types to ensure complete model validation.
+
 use clickup_cli::models::*;
 
 
+/// Tests user data model creation and field validation
+/// 
+/// This test verifies that UserData can be created with all fields
+/// and that the values are correctly stored and accessible.
 #[test]
 fn test_user_data_creation() {
     let user_data = UserData {
@@ -23,6 +48,10 @@ fn test_user_data_creation() {
     assert_eq!(user_data.color, Some("#ff0000".to_string()));
 }
 
+/// Tests user model creation and wrapper structure
+/// 
+/// This test verifies that the User wrapper structure correctly
+/// contains UserData and provides proper access to user information.
 #[test]
 fn test_user_creation() {
     let user_data = UserData {
@@ -44,6 +73,10 @@ fn test_user_creation() {
     assert_eq!(user.user.username, Some("testuser".to_string()));
 }
 
+/// Tests workspace model creation and field validation
+/// 
+/// This test verifies that Workspace can be created with all fields
+/// and that the values are correctly stored and accessible.
 #[test]
 fn test_workspace_creation() {
     let workspace = Workspace {
@@ -60,6 +93,10 @@ fn test_workspace_creation() {
     assert_eq!(workspace.color, Some("#00ff00".to_string()));
 }
 
+/// Tests workspaces response model creation
+/// 
+/// This test verifies that WorkspacesResponse can be created and
+/// contains a collection of workspaces with proper access.
 #[test]
 fn test_workspaces_response_creation() {
     let workspace = Workspace {
@@ -79,6 +116,10 @@ fn test_workspaces_response_creation() {
     assert_eq!(response.teams[0].id, "workspace_123");
 }
 
+/// Tests space model creation and field validation
+/// 
+/// This test verifies that Space can be created with all fields
+/// and that boolean flags and optional fields work correctly.
 #[test]
 fn test_space_creation() {
     let space = Space {
@@ -100,6 +141,10 @@ fn test_space_creation() {
     assert!(!space.archived);
 }
 
+/// Tests spaces response model creation
+/// 
+/// This test verifies that SpacesResponse can be created and
+/// contains a collection of spaces with proper access.
 #[test]
 fn test_spaces_response_creation() {
     let space = Space {
@@ -122,6 +167,10 @@ fn test_spaces_response_creation() {
     assert_eq!(response.spaces[0].id, "space_123");
 }
 
+/// Tests list model creation and field validation
+/// 
+/// This test verifies that List can be created with all fields
+/// including optional fields and nested structures.
 #[test]
 fn test_list_creation() {
     let list = List {
@@ -152,6 +201,10 @@ fn test_list_creation() {
     assert_eq!(list.space.id, "space_123");
 }
 
+/// Tests lists response model creation
+/// 
+/// This test verifies that ListsResponse can be created and
+/// contains a collection of lists with proper access.
 #[test]
 fn test_lists_response_creation() {
     let list = List {
@@ -183,6 +236,10 @@ fn test_lists_response_creation() {
     assert_eq!(response.lists[0].id, "list_123");
 }
 
+/// Tests task model creation and field validation
+/// 
+/// This test verifies that Task can be created with all fields
+/// including complex nested structures like status, creator, and assignees.
 #[test]
 fn test_task_creation() {
     let task = Task {
@@ -253,6 +310,10 @@ fn test_task_creation() {
     assert_eq!(task.space.id, "space_123");
 }
 
+/// Tests tasks response model creation
+/// 
+/// This test verifies that TasksResponse can be created and
+/// contains a collection of tasks with proper access.
 #[test]
 fn test_tasks_response_creation() {
     let task = Task {
@@ -315,6 +376,10 @@ fn test_tasks_response_creation() {
     assert_eq!(response.tasks[0].id, "task_123");
 }
 
+/// Tests create task request model creation
+/// 
+/// This test verifies that CreateTaskRequest can be created with all
+/// optional fields and that the values are correctly stored.
 #[test]
 fn test_create_task_request_creation() {
     let request = CreateTaskRequest {
@@ -343,6 +408,10 @@ fn test_create_task_request_creation() {
     assert_eq!(request.tags, Some(vec!["urgent".to_string(), "bug".to_string()]));
 }
 
+/// Tests create task request default values
+/// 
+/// This test verifies that CreateTaskRequest::default() creates
+/// a request with empty/None values for all optional fields.
 #[test]
 fn test_create_task_request_default() {
     let request = CreateTaskRequest::default();
@@ -364,6 +433,10 @@ fn test_create_task_request_default() {
     assert_eq!(request.notify_all, None);
 }
 
+/// Tests update task request model creation
+/// 
+/// This test verifies that UpdateTaskRequest can be created with all
+/// optional fields and that the values are correctly stored.
 #[test]
 fn test_update_task_request_creation() {
     let request = UpdateTaskRequest {
@@ -392,6 +465,10 @@ fn test_update_task_request_creation() {
     assert_eq!(request.tags, Some(vec!["completed".to_string()]));
 }
 
+/// Tests comment model creation and field validation
+/// 
+/// This test verifies that Comment can be created with all fields
+/// including nested structures like comment text and user information.
 #[test]
 fn test_comment_creation() {
     let comment = Comment {
@@ -424,6 +501,10 @@ fn test_comment_creation() {
     assert_eq!(comment.children.len(), 0);
 }
 
+/// Tests comments response model creation
+/// 
+/// This test verifies that CommentsResponse can be created and
+/// contains a collection of comments with proper access.
 #[test]
 fn test_comments_response_creation() {
     let comment = Comment {
@@ -457,6 +538,10 @@ fn test_comments_response_creation() {
     assert_eq!(response.comments[0].id, "comment_123");
 }
 
+/// Tests create comment request model creation
+/// 
+/// This test verifies that CreateCommentRequest can be created with
+/// all optional fields and that the values are correctly stored.
 #[test]
 fn test_create_comment_request_creation() {
     let request = CreateCommentRequest {
@@ -470,6 +555,10 @@ fn test_create_comment_request_creation() {
     assert_eq!(request.notify_all, Some(true));
 }
 
+/// Tests custom field value model creation
+/// 
+/// This test verifies that CustomFieldValue can be created with
+/// JSON values and that the field ID and value are correctly stored.
 #[test]
 fn test_custom_field_value_creation() {
     let value = CustomFieldValue {
@@ -481,6 +570,10 @@ fn test_custom_field_value_creation() {
     assert_eq!(value.value, serde_json::json!("field value"));
 }
 
+/// Tests task tag model creation
+/// 
+/// This test verifies that TaskTag can be created with color information
+/// and that the tag name, colors, and creator are correctly stored.
 #[test]
 fn test_task_tag_creation() {
     let tag = TaskTag {
@@ -496,6 +589,10 @@ fn test_task_tag_creation() {
     assert_eq!(tag.creator, 123);
 }
 
+/// Tests task priority model creation
+/// 
+/// This test verifies that TaskPriority can be created with priority
+/// information and that the ID, priority level, color, and order are correctly stored.
 #[test]
 fn test_task_priority_creation() {
     let priority = TaskPriority {
@@ -511,6 +608,10 @@ fn test_task_priority_creation() {
     assert_eq!(priority.orderindex, "1");
 }
 
+/// Tests task status model creation
+/// 
+/// This test verifies that TaskStatus can be created with status
+/// information and that the ID, status name, color, order, and type are correctly stored.
 #[test]
 fn test_task_status_creation() {
     let status = TaskStatus {
@@ -528,6 +629,10 @@ fn test_task_status_creation() {
     assert_eq!(status.type_, "custom");
 }
 
+/// Tests task creator model creation
+/// 
+/// This test verifies that TaskCreator can be created with user
+/// information and that the ID, username, color, and profile picture are correctly stored.
 #[test]
 fn test_task_creator_creation() {
     let creator = TaskCreator {
@@ -543,6 +648,10 @@ fn test_task_creator_creation() {
     assert_eq!(creator.profile_picture, Some("https://example.com/avatar.jpg".to_string()));
 }
 
+/// Tests task assignee model creation
+/// 
+/// This test verifies that TaskAssignee can be created with user
+/// information and that all user fields including email and initials are correctly stored.
 #[test]
 fn test_task_assignee_creation() {
     let assignee = TaskAssignee {
@@ -561,6 +670,10 @@ fn test_task_assignee_creation() {
     assert_eq!(assignee.initials, Some("TU".to_string()));
 }
 
+/// Tests task watcher model creation
+/// 
+/// This test verifies that TaskWatcher can be created with user
+/// information and that all user fields are correctly stored.
 #[test]
 fn test_task_watcher_creation() {
     let watcher = TaskWatcher {
@@ -579,6 +692,10 @@ fn test_task_watcher_creation() {
     assert_eq!(watcher.initials, Some("TU".to_string()));
 }
 
+/// Tests task checklist model creation
+/// 
+/// This test verifies that TaskChecklist can be created with checklist
+/// information and that the ID, name, order, and resolution status are correctly stored.
 #[test]
 fn test_task_checklist_creation() {
     let checklist = TaskChecklist {
@@ -598,6 +715,10 @@ fn test_task_checklist_creation() {
     assert_eq!(checklist.resolved, Some(false));
 }
 
+/// Tests task checklist item model creation
+/// 
+/// This test verifies that TaskChecklistItem can be created with item
+/// information and that the ID, name, order, and resolution status are correctly stored.
 #[test]
 fn test_task_checklist_item_creation() {
     let item = TaskChecklistItem {
@@ -617,6 +738,10 @@ fn test_task_checklist_item_creation() {
     assert_eq!(item.resolved, Some(false));
 }
 
+/// Tests task custom field model creation
+/// 
+/// This test verifies that TaskCustomField can be created with field
+/// information and that the ID, name, type, configuration, and value are correctly stored.
 #[test]
 fn test_task_custom_field_creation() {
     let custom_field = TaskCustomField {
@@ -633,6 +758,10 @@ fn test_task_custom_field_creation() {
     assert_eq!(custom_field.value, Some(serde_json::json!("field value")));
 }
 
+/// Tests task list model creation
+/// 
+/// This test verifies that TaskList can be created with list
+/// information and that the ID, name, and access permissions are correctly stored.
 #[test]
 fn test_task_list_creation() {
     let task_list = TaskList {
@@ -646,6 +775,10 @@ fn test_task_list_creation() {
     assert_eq!(task_list.access, Some(true));
 }
 
+/// Tests task folder model creation
+/// 
+/// This test verifies that TaskFolder can be created with folder
+/// information and that the ID, name, visibility, and access permissions are correctly stored.
 #[test]
 fn test_task_folder_creation() {
     let task_folder = TaskFolder {
@@ -661,6 +794,10 @@ fn test_task_folder_creation() {
     assert_eq!(task_folder.access, Some(true));
 }
 
+/// Tests task space model creation
+/// 
+/// This test verifies that TaskSpace can be created with space
+/// information and that the ID and name are correctly stored.
 #[test]
 fn test_task_space_creation() {
     let task_space = TaskSpace {
@@ -672,6 +809,10 @@ fn test_task_space_creation() {
     assert_eq!(task_space.name, Some("Test Space".to_string()));
 }
 
+/// Tests comment text model creation
+/// 
+/// This test verifies that CommentText can be created with text
+/// content and that the text and type are correctly stored.
 #[test]
 fn test_comment_text_creation() {
     let comment_text = CommentText {
@@ -683,6 +824,10 @@ fn test_comment_text_creation() {
     assert_eq!(comment_text.type_, "text");
 }
 
+/// Tests comment user model creation
+/// 
+/// This test verifies that CommentUser can be created with user
+/// information and that the ID, username, color, and profile picture are correctly stored.
 #[test]
 fn test_comment_user_creation() {
     let comment_user = CommentUser {
@@ -698,6 +843,10 @@ fn test_comment_user_creation() {
     assert_eq!(comment_user.profile_picture, Some("https://example.com/avatar.jpg".to_string()));
 }
 
+/// Tests list status model creation
+/// 
+/// This test verifies that ListStatus can be created with status
+/// information and that the status name, color, and label visibility are correctly stored.
 #[test]
 fn test_list_status_creation() {
     let list_status = ListStatus {
@@ -711,6 +860,10 @@ fn test_list_status_creation() {
     assert_eq!(list_status.hide_label, Some(false));
 }
 
+/// Tests list priority model creation
+/// 
+/// This test verifies that ListPriority can be created with priority
+/// information and that the priority level and color are correctly stored.
 #[test]
 fn test_list_priority_creation() {
     let list_priority = ListPriority {
@@ -722,6 +875,10 @@ fn test_list_priority_creation() {
     assert_eq!(list_priority.color, "#ff0000");
 }
 
+/// Tests list assignee model creation
+/// 
+/// This test verifies that ListAssignee can be created with user
+/// information and that all user fields including email and initials are correctly stored.
 #[test]
 fn test_list_assignee_creation() {
     let list_assignee = ListAssignee {
@@ -740,6 +897,10 @@ fn test_list_assignee_creation() {
     assert_eq!(list_assignee.initials, Some("TU".to_string()));
 }
 
+/// Tests list folder model creation
+/// 
+/// This test verifies that ListFolder can be created with folder
+/// information and that the ID, name, visibility, and access permissions are correctly stored.
 #[test]
 fn test_list_folder_creation() {
     let list_folder = ListFolder {
@@ -755,6 +916,10 @@ fn test_list_folder_creation() {
     assert_eq!(list_folder.access, Some(true));
 }
 
+/// Tests list space model creation
+/// 
+/// This test verifies that ListSpace can be created with space
+/// information and that the ID and name are correctly stored.
 #[test]
 fn test_list_space_creation() {
     let list_space = ListSpace {
@@ -766,6 +931,10 @@ fn test_list_space_creation() {
     assert_eq!(list_space.name, "Test Space");
 }
 
+/// Tests folder model creation and field validation
+/// 
+/// This test verifies that Folder can be created with all fields
+/// including optional fields and nested structures like space information.
 #[test]
 fn test_folder_creation() {
     let folder = Folder {
@@ -792,6 +961,10 @@ fn test_folder_creation() {
     assert_eq!(folder.archived, Some(false));
 }
 
+/// Tests folders response model creation
+/// 
+/// This test verifies that FoldersResponse can be created and
+/// contains a collection of folders with proper access.
 #[test]
 fn test_folders_response_creation() {
     let folder = Folder {
@@ -818,6 +991,10 @@ fn test_folders_response_creation() {
     assert_eq!(response.folders[0].id, "folder_123");
 }
 
+/// Tests folder space model creation
+/// 
+/// This test verifies that FolderSpace can be created with space
+/// information and that the ID and name are correctly stored.
 #[test]
 fn test_folder_space_creation() {
     let folder_space = FolderSpace {
@@ -829,6 +1006,10 @@ fn test_folder_space_creation() {
     assert_eq!(folder_space.name, "Test Space");
 }
 
+/// Tests workspace member model creation
+/// 
+/// This test verifies that WorkspaceMember can be created with user
+/// information and that all user fields including role and status are correctly stored.
 #[test]
 fn test_workspace_member_creation() {
     let member = WorkspaceMember {
@@ -859,6 +1040,10 @@ fn test_workspace_member_creation() {
     assert_eq!(member.user.status, Some("active".to_string()));
 }
 
+/// Tests workspace role model creation
+/// 
+/// This test verifies that WorkspaceRole can be created with role
+/// information and that the ID, name, color, and permissions are correctly stored.
 #[test]
 fn test_workspace_role_creation() {
     let role = WorkspaceRole {
@@ -874,6 +1059,10 @@ fn test_workspace_role_creation() {
     assert_eq!(role.permissions, Some(serde_json::json!({"read": true, "write": true})));
 }
 
+/// Tests space status model creation
+/// 
+/// This test verifies that SpaceStatus can be created with status
+/// information and that the ID, status name, color, order, and type are correctly stored.
 #[test]
 fn test_space_status_creation() {
     let status = SpaceStatus {
@@ -891,6 +1080,10 @@ fn test_space_status_creation() {
     assert_eq!(status.type_, "custom");
 }
 
+/// Tests space features model creation
+/// 
+/// This test verifies that SpaceFeatures can be created with all
+/// feature configurations and that all optional feature fields are correctly stored.
 #[test]
 fn test_space_features_creation() {
     let features = SpaceFeatures {
@@ -937,6 +1130,10 @@ fn test_space_features_creation() {
     assert!(features.portfolios.is_some());
 }
 
+/// Tests due date features model creation
+/// 
+/// This test verifies that DueDateFeatures can be created with
+/// all due date configuration options and that the boolean flags are correctly stored.
 #[test]
 fn test_due_date_features_creation() {
     let features = DueDateFeatures {
@@ -952,6 +1149,10 @@ fn test_due_date_features_creation() {
     assert!(features.remap_closed_due_date);
 }
 
+/// Tests time tracking features model creation
+/// 
+/// This test verifies that TimeTrackingFeatures can be created with
+/// time tracking configuration and that the enabled flag is correctly stored.
 #[test]
 fn test_time_tracking_features_creation() {
     let features = TimeTrackingFeatures {
@@ -961,6 +1162,10 @@ fn test_time_tracking_features_creation() {
     assert!(features.enabled);
 }
 
+/// Tests tag features model creation
+/// 
+/// This test verifies that TagFeatures can be created with
+/// tag configuration and that the enabled flag is correctly stored.
 #[test]
 fn test_tag_features_creation() {
     let features = TagFeatures {
@@ -970,6 +1175,10 @@ fn test_tag_features_creation() {
     assert!(features.enabled);
 }
 
+/// Tests time estimate features model creation
+/// 
+/// This test verifies that TimeEstimateFeatures can be created with
+/// time estimate configuration and that the enabled flag is correctly stored.
 #[test]
 fn test_time_estimate_features_creation() {
     let features = TimeEstimateFeatures {
@@ -979,6 +1188,10 @@ fn test_time_estimate_features_creation() {
     assert!(features.enabled);
 }
 
+/// Tests checklist features model creation
+/// 
+/// This test verifies that ChecklistFeatures can be created with
+/// checklist configuration and that the enabled flag is correctly stored.
 #[test]
 fn test_checklist_features_creation() {
     let features = ChecklistFeatures {
@@ -988,6 +1201,10 @@ fn test_checklist_features_creation() {
     assert!(features.enabled);
 }
 
+/// Tests custom field features model creation
+/// 
+/// This test verifies that CustomFieldFeatures can be created with
+/// custom field configuration and that the enabled flag is correctly stored.
 #[test]
 fn test_custom_field_features_creation() {
     let features = CustomFieldFeatures {
@@ -997,6 +1214,10 @@ fn test_custom_field_features_creation() {
     assert!(features.enabled);
 }
 
+/// Tests dependency features model creation
+/// 
+/// This test verifies that DependencyFeatures can be created with
+/// dependency configuration and that the enabled flag is correctly stored.
 #[test]
 fn test_dependency_features_creation() {
     let features = DependencyFeatures {
@@ -1006,6 +1227,10 @@ fn test_dependency_features_creation() {
     assert!(features.enabled);
 }
 
+/// Tests dependency warning features model creation
+/// 
+/// This test verifies that DependencyWarningFeatures can be created with
+/// dependency warning configuration and that the enabled flag is correctly stored.
 #[test]
 fn test_dependency_warning_features_creation() {
     let features = DependencyWarningFeatures {
@@ -1015,6 +1240,10 @@ fn test_dependency_warning_features_creation() {
     assert!(features.enabled);
 }
 
+/// Tests portfolio features model creation
+/// 
+/// This test verifies that PortfolioFeatures can be created with
+/// portfolio configuration and that the enabled flag is correctly stored.
 #[test]
 fn test_portfolio_features_creation() {
     let features = PortfolioFeatures {

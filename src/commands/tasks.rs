@@ -1,3 +1,27 @@
+//! # Task Commands
+//! 
+//! This module handles all task-related operations for the ClickUp CLI.
+//! It provides commands for listing, creating, updating, and deleting tasks,
+//! as well as advanced features like tag-based filtering and overdue task management.
+//! 
+//! ## Commands
+//! 
+//! - **List**: Display all tasks in a list
+//! - **ListByTag**: Display tasks filtered by a specific tag
+//! - **SearchByTag**: Search for tasks with a tag across multiple spaces
+//! - **UpdateOverdueByTag**: Update overdue tasks with a tag to today's date
+//! - **Show**: Show detailed information about a specific task
+//! - **Create**: Create a new task with various parameters
+//! - **Update**: Update an existing task with new values
+//! - **Delete**: Remove a task permanently
+//! 
+//! ## Features
+//! 
+//! Tasks are displayed in formatted tables showing key information including
+//! status, priority, due dates, and assignees. Advanced features include
+//! tag-based filtering, overdue task management with dry-run support, and
+//! comprehensive task details display.
+
 use crate::api::ClickUpApi;
 use crate::config::Config;
 use crate::error::ClickUpError;
@@ -8,6 +32,9 @@ use comfy_table::{Table, Cell};
 use chrono::NaiveTime;
 
 /// Parameters for creating a task
+/// 
+/// This struct encapsulates all the parameters needed to create a new task,
+/// providing a clean interface for task creation operations.
 struct CreateTaskParams {
     list_id: String,
     name: String,
@@ -19,6 +46,9 @@ struct CreateTaskParams {
 }
 
 /// Parameters for updating a task
+/// 
+/// This struct encapsulates all the parameters needed to update an existing task,
+/// providing a clean interface for task update operations.
 struct UpdateTaskParams {
     task_id: String,
     name: Option<String>,
@@ -29,6 +59,11 @@ struct UpdateTaskParams {
     time_estimate: Option<i64>,
 }
 
+/// Task command variants
+/// 
+/// This enum defines all available task subcommands with their
+/// associated parameters and help text. Each command variant includes
+/// comprehensive help documentation for CLI usage.
 #[derive(Subcommand)]
 pub enum TaskCommands {
     /// List all tasks in a list
@@ -135,6 +170,28 @@ pub enum TaskCommands {
     },
 }
 
+/// Execute task commands
+/// 
+/// This function routes task commands to their appropriate handlers
+/// and manages the overall task operations flow.
+/// 
+/// # Arguments
+/// 
+/// * `command` - The task command to execute
+/// * `config` - Reference to the application configuration
+/// 
+/// # Returns
+/// 
+/// Returns `Ok(())` on successful execution, or a `ClickUpError` on failure.
+/// 
+/// # Errors
+/// 
+/// This function can return various errors including:
+/// - Network errors when communicating with the API
+/// - Authentication errors if not properly authenticated
+/// - Validation errors for invalid parameters
+/// - Not found errors for missing tasks or lists
+/// - Date parsing errors for overdue task operations
 pub async fn execute(command: TaskCommands, config: &Config) -> Result<(), ClickUpError> {
     let api = ClickUpApi::new(config.clone())?;
 
@@ -185,6 +242,26 @@ pub async fn execute(command: TaskCommands, config: &Config) -> Result<(), Click
     Ok(())
 }
 
+/// List all tasks in a list
+/// 
+/// This function retrieves and displays all tasks for a specific list
+/// in a formatted table showing key information like status, priority,
+/// due dates, and assignees.
+/// 
+/// # Arguments
+/// 
+/// * `api` - Reference to the ClickUp API client
+/// * `list_id` - The ID of the list to list tasks for
+/// 
+/// # Returns
+/// 
+/// Returns `Ok(())` on successful listing, or a `ClickUpError` on failure.
+/// 
+/// # Errors
+/// 
+/// This function can return:
+/// - `ClickUpError::NetworkError` if the API request fails
+/// - `ClickUpError::NotFoundError` if the list doesn't exist
 async fn list_tasks(api: &ClickUpApi, list_id: &str) -> Result<(), ClickUpError> {
     let tasks = api.get_tasks(list_id).await?;
     
@@ -226,6 +303,26 @@ async fn list_tasks(api: &ClickUpApi, list_id: &str) -> Result<(), ClickUpError>
     Ok(())
 }
 
+/// List tasks in a list filtered by tag
+/// 
+/// This function retrieves and displays tasks for a specific list that
+/// have a particular tag, showing key information in a formatted table.
+/// 
+/// # Arguments
+/// 
+/// * `api` - Reference to the ClickUp API client
+/// * `list_id` - The ID of the list to search in
+/// * `tag` - The tag name to filter by
+/// 
+/// # Returns
+/// 
+/// Returns `Ok(())` on successful listing, or a `ClickUpError` on failure.
+/// 
+/// # Errors
+/// 
+/// This function can return:
+/// - `ClickUpError::NetworkError` if the API request fails
+/// - `ClickUpError::NotFoundError` if the list doesn't exist
 async fn list_tasks_by_tag(api: &ClickUpApi, list_id: &str, tag: &str) -> Result<(), ClickUpError> {
     println!("{}", format!("Fetching tasks with tag '{tag}'...").blue());
     let tasks = api.get_tasks_by_tag(list_id, tag).await?;
@@ -273,6 +370,28 @@ async fn list_tasks_by_tag(api: &ClickUpApi, list_id: &str, tag: &str) -> Result
     Ok(())
 }
 
+/// Search for tasks with a specific tag across all lists in a space
+/// 
+/// This function searches for tasks with a particular tag across multiple
+/// spaces and lists, displaying results in a formatted table. This is
+/// useful for finding tasks across a large workspace.
+/// 
+/// # Arguments
+/// 
+/// * `api` - Reference to the ClickUp API client
+/// * `tag` - The tag name to search for
+/// * `workspace_id` - Optional workspace ID to limit search scope
+/// * `space_id` - Optional space ID to limit search scope
+/// 
+/// # Returns
+/// 
+/// Returns `Ok(())` on successful search, or a `ClickUpError` on failure.
+/// 
+/// # Errors
+/// 
+/// This function can return:
+/// - `ClickUpError::NetworkError` if the API request fails
+/// - `ClickUpError::NotFoundError` if the workspace or space doesn't exist
 async fn search_tasks_by_tag(api: &ClickUpApi, tag: String, workspace_id: Option<String>, space_id: Option<String>) -> Result<(), ClickUpError> {
     println!("{}", format!("Searching for tasks with tag '{tag}'...").blue());
     let tasks = api.search_tasks_by_tag(tag.clone(), workspace_id, space_id).await?;
@@ -320,6 +439,30 @@ async fn search_tasks_by_tag(api: &ClickUpApi, tag: String, workspace_id: Option
     Ok(())
 }
 
+/// Update overdue tasks with a specific tag to today's date
+/// 
+/// This function finds tasks with a specific tag that are overdue and
+/// updates their due dates to today while preserving the original time.
+/// Supports dry-run mode to preview changes without making them.
+/// 
+/// # Arguments
+/// 
+/// * `api` - Reference to the ClickUp API client
+/// * `tag` - The tag name to filter by
+/// * `workspace_id` - Optional workspace ID to limit search scope
+/// * `space_id` - Optional space ID to limit search scope
+/// * `dry_run` - Whether to show what would be updated without making changes
+/// 
+/// # Returns
+/// 
+/// Returns `Ok(())` on successful operation, or a `ClickUpError` on failure.
+/// 
+/// # Errors
+/// 
+/// This function can return:
+/// - `ClickUpError::NetworkError` if the API request fails
+/// - `ClickUpError::ValidationError` if date parsing fails
+/// - `ClickUpError::NotFoundError` if the workspace or space doesn't exist
 async fn update_overdue_by_tag(api: &ClickUpApi, tag: String, workspace_id: Option<String>, space_id: Option<String>, dry_run: bool) -> Result<(), ClickUpError> {
     println!("{}", format!("Searching for overdue tasks with tag '{tag}'...").blue());
     let tasks = api.search_tasks_by_tag(tag.clone(), workspace_id, space_id).await?;
@@ -441,6 +584,25 @@ async fn update_overdue_by_tag(api: &ClickUpApi, tag: String, workspace_id: Opti
     Ok(())
 }
 
+/// Show details of a specific task
+/// 
+/// This function retrieves and displays comprehensive information about
+/// a specific task including all metadata, assignees, tags, and checklists.
+/// 
+/// # Arguments
+/// 
+/// * `api` - Reference to the ClickUp API client
+/// * `task_id` - The ID of the task to show
+/// 
+/// # Returns
+/// 
+/// Returns `Ok(())` on successful display, or a `ClickUpError` on failure.
+/// 
+/// # Errors
+/// 
+/// This function can return:
+/// - `ClickUpError::NetworkError` if the API request fails
+/// - `ClickUpError::NotFoundError` if the task doesn't exist
 async fn show_task(api: &ClickUpApi, task_id: &str) -> Result<(), ClickUpError> {
     let task = api.get_task(task_id).await?;
 
@@ -501,6 +663,26 @@ async fn show_task(api: &ClickUpApi, task_id: &str) -> Result<(), ClickUpError> 
     Ok(())
 }
 
+/// Create a new task
+/// 
+/// This function creates a new task with the specified parameters including
+/// name, description, status, priority, due date, and time estimates.
+/// 
+/// # Arguments
+/// 
+/// * `api` - Reference to the ClickUp API client
+/// * `params` - Task creation parameters
+/// 
+/// # Returns
+/// 
+/// Returns `Ok(())` on successful creation, or a `ClickUpError` on failure.
+/// 
+/// # Errors
+/// 
+/// This function can return:
+/// - `ClickUpError::NetworkError` if the API request fails
+/// - `ClickUpError::ValidationError` if required parameters are missing
+/// - `ClickUpError::NotFoundError` if the list doesn't exist
 async fn create_task(
     api: &ClickUpApi,
     params: CreateTaskParams,
@@ -534,6 +716,26 @@ async fn create_task(
     Ok(())
 }
 
+/// Update an existing task
+/// 
+/// This function updates an existing task with new values for any of the
+/// provided parameters. Only the specified fields will be updated.
+/// 
+/// # Arguments
+/// 
+/// * `api` - Reference to the ClickUp API client
+/// * `params` - Task update parameters
+/// 
+/// # Returns
+/// 
+/// Returns `Ok(())` on successful update, or a `ClickUpError` on failure.
+/// 
+/// # Errors
+/// 
+/// This function can return:
+/// - `ClickUpError::NetworkError` if the API request fails
+/// - `ClickUpError::ValidationError` if invalid parameters are provided
+/// - `ClickUpError::NotFoundError` if the task doesn't exist
 async fn update_task(
     api: &ClickUpApi,
     params: UpdateTaskParams,
@@ -567,6 +769,25 @@ async fn update_task(
     Ok(())
 }
 
+/// Delete a task
+/// 
+/// This function permanently removes a task from ClickUp.
+/// This action cannot be undone.
+/// 
+/// # Arguments
+/// 
+/// * `api` - Reference to the ClickUp API client
+/// * `task_id` - The ID of the task to delete
+/// 
+/// # Returns
+/// 
+/// Returns `Ok(())` on successful deletion, or a `ClickUpError` on failure.
+/// 
+/// # Errors
+/// 
+/// This function can return:
+/// - `ClickUpError::NetworkError` if the API request fails
+/// - `ClickUpError::NotFoundError` if the task doesn't exist
 async fn delete_task(api: &ClickUpApi, task_id: &str) -> Result<(), ClickUpError> {
     api.delete_task(task_id).await?;
     

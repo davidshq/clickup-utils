@@ -140,12 +140,14 @@ impl ClickUpApi {
     /// 
     /// This is the core function that handles all API communication. It automatically
     /// adds authentication headers, handles request bodies, and processes responses.
+    /// Includes rate limiting and retry logic for failed requests.
     /// 
     /// # Arguments
     /// 
     /// * `method` - The HTTP method to use (GET, POST, PUT, DELETE)
     /// * `endpoint` - The API endpoint path (without base URL)
     /// * `body` - Optional JSON body for POST/PUT requests
+    /// * `query_params` - Optional query parameters to append to the URL
     /// 
     /// # Returns
     /// 
@@ -158,6 +160,7 @@ impl ClickUpApi {
     /// - Authentication errors (invalid token)
     /// - API errors (4xx, 5xx responses)
     /// - Serialization errors (invalid JSON)
+    /// - Rate limiting errors (with automatic retry logic)
     fn make_request<'a, T>(
         &'a self,
         method: reqwest::Method,
