@@ -71,6 +71,10 @@ toml = "0.9.0"
 # Used for parsing and manipulating dates for overdue task detection
 chrono = { version = "0.4", features = ["serde"] }
 
+# Async utilities
+# Provides utilities for async operations like join_all
+futures = "0.3"
+
 # Logging
 # Provides structured logging throughout the application
 env_logger = "0.11.8"

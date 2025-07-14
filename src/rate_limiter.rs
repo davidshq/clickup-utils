@@ -44,7 +44,7 @@ use tokio::sync::Mutex;
 /// This struct tracks API requests and enforces rate limits to prevent
 /// hitting API quotas. It maintains a sliding window of requests and
 /// automatically throttles when approaching limits.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct RateLimiter {
     /// Rate limiting configuration
     config: RateLimitConfig,

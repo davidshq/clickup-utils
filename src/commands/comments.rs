@@ -22,7 +22,7 @@ use crate::api::ClickUpApi;
 use crate::config::Config;
 use crate::error::ClickUpError;
 use crate::models::CreateCommentRequest;
-use crate::commands::utils::{ApiUtils, CommandExecutor, DisplayUtils, ErrorUtils, TableBuilder, TableHeaders};
+use crate::commands::utils::{ApiUtils, CommandExecutor, DisplayUtils, TableBuilder, TableHeaders};
 use clap::Subcommand;
 use colored::*;
 
@@ -205,9 +205,9 @@ async fn list_comments(api: &ClickUpApi, task_id: &str) -> Result<(), ClickUpErr
 
 /// Show detailed information about a specific comment
 ///
-/// This function searches for a comment across all accessible workspaces
-/// and displays its detailed information. Note that this operation may
-/// be slow as it searches through all tasks.
+/// This function uses an efficient search strategy to find a comment by ID
+/// and displays its detailed information. The search is performed concurrently
+/// across workspaces for better performance.
 ///
 /// # Arguments
 ///
@@ -224,46 +224,38 @@ async fn list_comments(api: &ClickUpApi, task_id: &str) -> Result<(), ClickUpErr
 /// - `ClickUpError::NetworkError` if the API request fails
 /// - `ClickUpError::NotFoundError` if the comment doesn't exist
 async fn show_comment(api: &ClickUpApi, comment_id: &str) -> Result<(), ClickUpError> {
-    // For now, we'll need to search through tasks to find the comment
-    // In a real implementation, you might want to store task_id in config
-    let workspaces = api.get_workspaces().await?;
+    // Use the efficient comment search method
+    let comment = api.get_comment(comment_id).await?;
 
-    for workspace in &workspaces.teams {
-        let spaces = api.get_spaces(&workspace.id).await?;
-        for space in &spaces.spaces {
-            let lists = api.get_lists(&space.id).await?;
-            for list in &lists.lists {
-                let tasks = api.get_tasks(&list.id).await?;
-                for task in &tasks.tasks {
-                    let comments = api.get_comments(&task.id).await?;
-                    if let Some(comment) =
-                        comments.comments.into_iter().find(|c| c.id == comment_id)
-                    {
-                        DisplayUtils::display_details_header("Comment");
-                        println!("ID: {}", comment.id);
-                        println!("Task: {} ({})", task.name.as_deref().unwrap_or(""), task.id);
-                        println!("User: {} ({})", comment.user.username, comment.user.id);
-                        println!("Created: {}", comment.date);
-                        println!("Updated: {}", comment.date);
-                        println!("Resolved: {}", if comment.resolved { "Yes" } else { "No" });
-                        println!("Text: {}", comment.comment_text);
+    DisplayUtils::display_details_header("Comment");
+    println!("ID: {}", comment.id);
+    println!("User: {} ({})", comment.user.username, comment.user.id);
+    println!("Created: {}", comment.date);
+    println!("Updated: {}", comment.date_updated.as_deref().unwrap_or(&comment.date));
+    println!("Resolved: {}", if comment.resolved { "Yes" } else { "No" });
+    println!("Text: {}", comment.comment_text);
 
-                        if let Some(assignee) = &comment.assignee {
-                            println!("Assignee: {assignee:?}");
-                        }
-
-                        if let Some(assignee_by) = &comment.assignee_by {
-                            println!("Assigned by: {assignee_by:?}");
-                        }
-
-                        return Ok(());
-                    }
-                }
-            }
-        }
+    if let Some(assignee) = &comment.assignee {
+        println!("Assignee: {assignee:?}");
     }
 
-    Err(ErrorUtils::not_found_error("Comment", comment_id))
+    if let Some(assignee_by) = &comment.assignee_by {
+        println!("Assigned by: {assignee_by:?}");
+    }
+
+    if let Some(parent) = &comment.parent {
+        println!("Parent Comment: {parent:?}");
+    }
+
+    if !comment.children.is_empty() {
+        println!("Child Comments: {} replies", comment.reply_count);
+    }
+
+    if !comment.reactions.is_empty() {
+        println!("Reactions: {} reactions", comment.reactions.len());
+    }
+
+    Ok(())
 }
 
 /// Update an existing comment

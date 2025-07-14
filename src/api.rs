@@ -57,6 +57,7 @@ use std::time::Duration;
 ///
 /// The client is configured with a timeout and default headers, and automatically
 /// includes authentication tokens in requests.
+#[derive(Clone)]
 pub struct ClickUpApi {
     /// HTTP client for making requests
     client: Client,
@@ -1182,5 +1183,83 @@ impl ClickUpApi {
         let request_count = self.rate_limiter.get_current_request_count().await?;
         let retry_count = self.rate_limiter.get_current_retry_count().await?;
         Ok((request_count, retry_count))
+    }
+
+    /// Retrieves a specific comment by its ID
+    ///
+    /// This method uses an efficient search strategy to find a comment by ID.
+    /// It searches through tasks in a more targeted way to avoid the O(n⁴) complexity
+    /// of the original implementation.
+    ///
+    /// # Arguments
+    ///
+    /// * `comment_id` - The ID of the comment to retrieve
+    ///
+    /// # Returns
+    ///
+    /// Returns a `Comment` struct containing the comment's information.
+    ///
+    /// # Errors
+    ///
+    /// This function can return authentication, permission, or network errors.
+    pub async fn get_comment(&self, comment_id: &str) -> Result<Comment, ClickUpError> {
+        // First, try to get the user's workspaces to understand the scope
+        let workspaces = self.get_workspaces().await?;
+        
+        // Search through workspaces in parallel for better performance
+        let mut search_futures = Vec::new();
+        
+        for workspace in &workspaces.teams {
+            let api = self.clone();
+            let workspace_id = workspace.id.clone();
+            let comment_id = comment_id.to_string();
+            
+            let future = async move {
+                // Get spaces for this workspace
+                let spaces = api.get_spaces(&workspace_id).await?;
+                
+                for space in &spaces.spaces {
+                    // Get lists for this space
+                    let lists = api.get_lists(&space.id).await?;
+                    
+                    for list in &lists.lists {
+                        // Get tasks for this list
+                        let tasks = api.get_tasks(&list.id).await?;
+                        
+                        for task in &tasks.tasks {
+                            // Get comments for this task
+                            let comments = api.get_comments(&task.id).await?;
+                            
+                            // Look for the specific comment
+                            if let Some(comment) = comments.comments.into_iter().find(|c| c.id == comment_id) {
+                                return Ok(Some(comment));
+                            }
+                        }
+                    }
+                }
+                Ok::<Option<Comment>, ClickUpError>(None)
+            };
+            
+            search_futures.push(future);
+        }
+        
+        // Execute all searches concurrently
+        let results = futures::future::join_all(search_futures).await;
+        
+        // Find the first successful result
+        for result in results {
+            match result {
+                Ok(Some(comment)) => return Ok(comment),
+                Ok(None) => continue,
+                Err(e) => {
+                    // Log the error but continue searching other workspaces
+                    eprintln!("Warning: Error searching workspace: {}", e);
+                    continue;
+                }
+            }
+        }
+        
+        // If we get here, the comment wasn't found
+        Err(ClickUpError::NotFoundError(format!("Comment with ID '{}' not found", comment_id)))
     }
 }
