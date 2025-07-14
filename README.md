@@ -2,8 +2,8 @@
 
 [![Rust](https://img.shields.io/badge/rust-1.70+-orange.svg)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-100%25%20passing-brightgreen.svg)](https://github.com/davidshq/clickup-cli)
-[![Clippy](https://img.shields.io/badge/clippy-clean-brightgreen.svg)](https://github.com/davidshq/clickup-cli)
+[![Tests](https://img.shields.io/badge/tests-95%2B%20passing-brightgreen.svg)](https://github.com/davidshq/clickup-utils)
+[![Clippy](https://img.shields.io/badge/clippy-mostly%20clean-yellow.svg)](https://github.com/davidshq/clickup-utils)
 
 A powerful command-line interface for the ClickUp API that allows you to manage your ClickUp workspaces, spaces, lists, tasks, and comments directly from the terminal.
 
@@ -13,14 +13,16 @@ This has been vibe coded using primarily Cursor. Expect the code quality to be l
 ## ⚠️ Development Status
 **This project is currently in active development.**
 
+**Note**: There is currently one minor clippy warning in the integration tests that will be addressed in a future update.
+
 
 ### Recent Improvements
-- All code quality issues resolved (previously 125 warnings)
-- Comprehensive test suite implemented (100+ tests)
+- Comprehensive test suite implemented (95+ unit tests, integration tests available)
 - Advanced task features (tag filtering, cross-space search, overdue management)
 - Interactive prompts for missing parameters
 - Dry-run support for destructive operations
 - Rate limiting with sophisticated retry logic
+- Integration test suite with real API testing capabilities
 
 ## 🚀 Features
 
@@ -40,6 +42,7 @@ This has been vibe coded using primarily Cursor. Expect the code quality to be l
 - **🔄 Advanced Search**: Cross-space task search and filtering
 - **📊 Interactive Prompts**: User-friendly prompts for missing parameters
 - **🛡️ Dry-run Support**: Safe testing of destructive operations
+- **🧪 Integration Testing**: Comprehensive test suite with real API testing
 
 ## 📦 Installation
 
@@ -52,8 +55,8 @@ This has been vibe coded using primarily Cursor. Expect the code quality to be l
 
 ```bash
 # Clone the repository
-git clone https://github.com/davidshq/clickup-cli.git
-cd clickup-cli
+git clone https://github.com/davidshq/clickup-utils.git
+cd clickup-utils
 
 # Build the application
 cargo build --release
@@ -460,8 +463,8 @@ We welcome contributions! This project is production-ready and actively maintain
 
 ```bash
 # Clone the repository
-git clone https://github.com/davidshq/clickup-cli.git
-cd clickup-cli
+git clone https://github.com/davidshq/clickup-utils.git
+cd clickup-utils
 
 # Install dependencies
 cargo build
@@ -489,9 +492,32 @@ cargo test -- --nocapture
 # Run specific test
 cargo test test_name
 
+# Run integration tests (requires API token)
+cargo test -- --ignored
+
 # Check for issues
 cargo clippy --all-targets --all-features -- -D warnings
 ```
+
+#### Integration Tests
+
+The project includes comprehensive integration tests that verify functionality against the real ClickUp API:
+
+```bash
+# Set up test environment
+cp env.test.example .env.test
+# Edit .env.test with your test API token
+
+# Run integration tests
+./scripts/run_integration_tests.sh
+
+# Or run directly with cargo
+cargo test -- --ignored
+```
+
+**Note**: Integration tests require a valid ClickUp API token and will create/delete test data in your ClickUp workspace.
+
+See [INTEGRATION_TESTS_README.md](INTEGRATION_TESTS_README.md) for detailed setup instructions.
 
 #### Test Configuration
 
@@ -524,7 +550,7 @@ cargo doc --no-deps
 
 **Overall Coverage: ~40% (21/49 endpoints)** - Focused on core task management functionality.
 
-See `CLICKUP_API_COMPARISON.md` for detailed API implementation status.
+See `CLICKUP_API_COMPARISON.md` for detailed API implementation status and `CODE_REVIEW_RECOMMENDATIONS.md` for current development status.
 
 ## 📄 License
 
@@ -539,7 +565,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/davidshq/clickup-cli/issues)
+- **Issues**: [GitHub Issues](https://github.com/davidshq/clickup-utils/issues)
 - **Documentation**: [API Documentation](https://docs.rs/clickup-cli) (when published)
 - **Development Status**: See `CODE_REVIEW_RECOMMENDATIONS.md` for current development status and planned improvements
 
@@ -547,4 +573,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 This project is actively maintained. See [CODE_REVIEW_RECOMMENDATIONS.md](CODE_REVIEW_RECOMMENDATIONS.md) for current development status and planned improvements.
 
-For detailed change history, check the [GitHub commits](https://github.com/davidshq/clickup-cli/commits/main).
+### Recent Changes
+- Added comprehensive integration test suite with real API testing
+- Improved error handling and user experience
+- Enhanced documentation and code quality
+- Added support for advanced task management features
+
+For detailed change history, check the [GitHub commits](https://github.com/davidshq/clickup-utils/commits/main).
