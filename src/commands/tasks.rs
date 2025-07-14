@@ -26,10 +26,10 @@ use crate::api::ClickUpApi;
 use crate::config::Config;
 use crate::error::ClickUpError;
 use crate::models::{CreateTaskRequest, UpdateTaskRequest};
+use crate::commands::utils::{ApiUtils, CommandExecutor, DisplayUtils, TableBuilder, TableHeaders};
 use chrono::NaiveTime;
 use clap::Subcommand;
 use colored::*;
-use comfy_table::{Cell, Table};
 
 /// Parameters for creating a task
 ///
@@ -170,6 +170,88 @@ pub enum TaskCommands {
     },
 }
 
+impl CommandExecutor for TaskCommands {
+    type Commands = TaskCommands;
+    
+    async fn execute(command: Self::Commands, config: &Config) -> Result<(), ClickUpError> {
+        let api = ApiUtils::create_client(config)?;
+        Self::handle_command(command, &api).await
+    }
+    
+    async fn handle_command(command: Self::Commands, api: &ClickUpApi) -> Result<(), ClickUpError> {
+        match command {
+            TaskCommands::List { list_id } => {
+                list_tasks(api, &list_id).await?;
+            }
+            TaskCommands::ListByTag { list_id, tag } => {
+                list_tasks_by_tag(api, &list_id, &tag).await?;
+            }
+            TaskCommands::SearchByTag {
+                tag,
+                workspace_id,
+                space_id,
+            } => {
+                search_tasks_by_tag(api, tag, workspace_id, space_id).await?;
+            }
+            TaskCommands::UpdateOverdueByTag {
+                tag,
+                workspace_id,
+                space_id,
+                dry_run,
+            } => {
+                update_overdue_by_tag(api, tag, workspace_id, space_id, dry_run).await?;
+            }
+            TaskCommands::Show { id } => {
+                show_task(api, &id).await?;
+            }
+            TaskCommands::Create {
+                list_id,
+                name,
+                description,
+                status,
+                priority,
+                due_date,
+                time_estimate,
+            } => {
+                let params = CreateTaskParams {
+                    list_id: list_id.clone(),
+                    name,
+                    description,
+                    status,
+                    priority,
+                    due_date,
+                    time_estimate,
+                };
+                create_task(api, params).await?;
+            }
+            TaskCommands::Update {
+                id,
+                name,
+                description,
+                status,
+                priority,
+                due_date,
+                time_estimate,
+            } => {
+                let params = UpdateTaskParams {
+                    task_id: id.clone(),
+                    name,
+                    description,
+                    status,
+                    priority,
+                    due_date,
+                    time_estimate,
+                };
+                update_task(api, params).await?;
+            }
+            TaskCommands::Delete { id } => {
+                delete_task(api, &id).await?;
+            }
+        }
+        Ok(())
+    }
+}
+
 /// Execute task commands
 ///
 /// This function routes task commands to their appropriate handlers
@@ -193,78 +275,7 @@ pub enum TaskCommands {
 /// - Not found errors for missing tasks or lists
 /// - Date parsing errors for overdue task operations
 pub async fn execute(command: TaskCommands, config: &Config) -> Result<(), ClickUpError> {
-    let api = ClickUpApi::new(config.clone())?;
-
-    match command {
-        TaskCommands::List { list_id } => {
-            list_tasks(&api, &list_id).await?;
-        }
-        TaskCommands::ListByTag { list_id, tag } => {
-            list_tasks_by_tag(&api, &list_id, &tag).await?;
-        }
-        TaskCommands::SearchByTag {
-            tag,
-            workspace_id,
-            space_id,
-        } => {
-            search_tasks_by_tag(&api, tag, workspace_id, space_id).await?;
-        }
-        TaskCommands::UpdateOverdueByTag {
-            tag,
-            workspace_id,
-            space_id,
-            dry_run,
-        } => {
-            update_overdue_by_tag(&api, tag, workspace_id, space_id, dry_run).await?;
-        }
-        TaskCommands::Show { id } => {
-            show_task(&api, &id).await?;
-        }
-        TaskCommands::Create {
-            list_id,
-            name,
-            description,
-            status,
-            priority,
-            due_date,
-            time_estimate,
-        } => {
-            let params = CreateTaskParams {
-                list_id: list_id.clone(),
-                name,
-                description,
-                status,
-                priority,
-                due_date,
-                time_estimate,
-            };
-            create_task(&api, params).await?;
-        }
-        TaskCommands::Update {
-            id,
-            name,
-            description,
-            status,
-            priority,
-            due_date,
-            time_estimate,
-        } => {
-            let params = UpdateTaskParams {
-                task_id: id.clone(),
-                name,
-                description,
-                status,
-                priority,
-                due_date,
-                time_estimate,
-            };
-            update_task(&api, params).await?;
-        }
-        TaskCommands::Delete { id } => {
-            delete_task(&api, &id).await?;
-        }
-    }
-    Ok(())
+    TaskCommands::execute(command, config).await
 }
 
 /// List all tasks in a list
@@ -291,18 +302,18 @@ async fn list_tasks(api: &ClickUpApi, list_id: &str) -> Result<(), ClickUpError>
     let tasks = api.get_tasks(list_id).await?;
 
     if tasks.tasks.is_empty() {
-        println!("{}", "No tasks found".yellow());
+        DisplayUtils::display_empty_message("tasks");
         return Ok(());
     }
 
-    let mut table = Table::new();
-    table.set_header(vec![
-        Cell::new("ID").add_attribute(comfy_table::Attribute::Bold),
-        Cell::new("Name").add_attribute(comfy_table::Attribute::Bold),
-        Cell::new("Status").add_attribute(comfy_table::Attribute::Bold),
-        Cell::new("Priority").add_attribute(comfy_table::Attribute::Bold),
-        Cell::new("Due Date").add_attribute(comfy_table::Attribute::Bold),
-        Cell::new("Assignees").add_attribute(comfy_table::Attribute::Bold),
+    let mut table_builder = TableBuilder::new();
+    table_builder.add_header(vec![
+        TableHeaders::id(),
+        TableHeaders::name(),
+        TableHeaders::status(),
+        TableHeaders::priority(),
+        TableHeaders::due_date(),
+        "Assignees",
     ]);
 
     for task in &tasks.tasks {
@@ -322,17 +333,17 @@ async fn list_tasks(api: &ClickUpApi, list_id: &str) -> Result<(), ClickUpError>
                 .join(", ")
         };
 
-        table.add_row(vec![
-            Cell::new(&task.id),
-            Cell::new(task.name.as_deref().unwrap_or("")),
-            Cell::new(&task.status.status),
-            Cell::new(priority),
-            Cell::new(due_date),
-            Cell::new(&assignees),
+        table_builder.add_row(vec![
+            task.id.clone(),
+            task.name.as_deref().unwrap_or("").to_string(),
+            task.status.status.clone(),
+            priority.to_string(),
+            due_date.to_string(),
+            assignees,
         ]);
     }
 
-    println!("{table}");
+    table_builder.print();
     Ok(())
 }
 
@@ -365,15 +376,15 @@ async fn list_tasks_by_tag(api: &ClickUpApi, list_id: &str, tag: &str) -> Result
         return Ok(());
     }
 
-    let mut table = Table::new();
-    table.set_header(vec![
-        Cell::new("ID").add_attribute(comfy_table::Attribute::Bold),
-        Cell::new("Name").add_attribute(comfy_table::Attribute::Bold),
-        Cell::new("Status").add_attribute(comfy_table::Attribute::Bold),
-        Cell::new("Priority").add_attribute(comfy_table::Attribute::Bold),
-        Cell::new("Due Date").add_attribute(comfy_table::Attribute::Bold),
-        Cell::new("Assignees").add_attribute(comfy_table::Attribute::Bold),
-        Cell::new("Tags").add_attribute(comfy_table::Attribute::Bold),
+    let mut table_builder = TableBuilder::new();
+    table_builder.add_header(vec![
+        TableHeaders::id(),
+        TableHeaders::name(),
+        TableHeaders::status(),
+        TableHeaders::priority(),
+        TableHeaders::due_date(),
+        "Assignees",
+        "Tags",
     ]);
 
     for task in &tasks.tasks {
@@ -400,19 +411,19 @@ async fn list_tasks_by_tag(api: &ClickUpApi, list_id: &str, tag: &str) -> Result
             .collect::<Vec<_>>()
             .join(", ");
 
-        table.add_row(vec![
-            Cell::new(&task.id),
-            Cell::new(task.name.as_deref().unwrap_or("")),
-            Cell::new(&task.status.status),
-            Cell::new(priority),
-            Cell::new(due_date),
-            Cell::new(&assignees),
-            Cell::new(&tag_names),
+        table_builder.add_row(vec![
+            task.id.clone(),
+            task.name.as_deref().unwrap_or("").to_string(),
+            task.status.status.clone(),
+            priority.to_string(),
+            due_date.to_string(),
+            assignees,
+            tag_names,
         ]);
     }
 
     println!("{}", format!("Tasks with tag '{tag}':").bold());
-    println!("{table}");
+    table_builder.print();
     Ok(())
 }
 
@@ -457,15 +468,15 @@ async fn search_tasks_by_tag(
         return Ok(());
     }
 
-    let mut table = Table::new();
-    table.set_header(vec![
-        Cell::new("ID").add_attribute(comfy_table::Attribute::Bold),
-        Cell::new("Name").add_attribute(comfy_table::Attribute::Bold),
-        Cell::new("Status").add_attribute(comfy_table::Attribute::Bold),
-        Cell::new("Priority").add_attribute(comfy_table::Attribute::Bold),
-        Cell::new("Due Date").add_attribute(comfy_table::Attribute::Bold),
-        Cell::new("Assignees").add_attribute(comfy_table::Attribute::Bold),
-        Cell::new("Tags").add_attribute(comfy_table::Attribute::Bold),
+    let mut table_builder = TableBuilder::new();
+    table_builder.add_header(vec![
+        TableHeaders::id(),
+        TableHeaders::name(),
+        TableHeaders::status(),
+        TableHeaders::priority(),
+        TableHeaders::due_date(),
+        "Assignees",
+        "Tags",
     ]);
 
     for task in &tasks.tasks {
@@ -492,19 +503,19 @@ async fn search_tasks_by_tag(
             .collect::<Vec<_>>()
             .join(", ");
 
-        table.add_row(vec![
-            Cell::new(&task.id),
-            Cell::new(task.name.as_deref().unwrap_or("")),
-            Cell::new(&task.status.status),
-            Cell::new(priority),
-            Cell::new(due_date),
-            Cell::new(&assignees),
-            Cell::new(&tag_names),
+        table_builder.add_row(vec![
+            task.id.clone(),
+            task.name.as_deref().unwrap_or("").to_string(),
+            task.status.status.clone(),
+            priority.to_string(),
+            due_date.to_string(),
+            assignees,
+            tag_names,
         ]);
     }
 
     println!("{}", format!("Tasks with tag '{tag}':").bold());
-    println!("{table}");
+    table_builder.print();
     Ok(())
 }
 

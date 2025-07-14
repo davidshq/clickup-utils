@@ -18,9 +18,8 @@
 use crate::api::ClickUpApi;
 use crate::config::Config;
 use crate::error::ClickUpError;
+use crate::commands::utils::{ApiUtils, CommandExecutor, DisplayUtils, ErrorUtils, TableBuilder, TableHeaders};
 use clap::Subcommand;
-use colored::*;
-use comfy_table::{Cell, Table};
 
 /// Team command variants
 ///
@@ -37,6 +36,27 @@ pub enum TeamCommands {
         #[arg(short, long)]
         id: String,
     },
+}
+
+impl CommandExecutor for TeamCommands {
+    type Commands = TeamCommands;
+    
+    async fn execute(command: Self::Commands, config: &Config) -> Result<(), ClickUpError> {
+        let api = ApiUtils::create_client(config)?;
+        Self::handle_command(command, &api).await
+    }
+    
+    async fn handle_command(command: Self::Commands, api: &ClickUpApi) -> Result<(), ClickUpError> {
+        match command {
+            TeamCommands::List => {
+                list_teams(api).await?;
+            }
+            TeamCommands::Show { id } => {
+                show_team(api, &id).await?;
+            }
+        }
+        Ok(())
+    }
 }
 
 /// Execute team commands
@@ -61,17 +81,7 @@ pub enum TeamCommands {
 /// - Validation errors for invalid parameters
 /// - Not found errors for missing teams
 pub async fn execute(command: TeamCommands, config: &Config) -> Result<(), ClickUpError> {
-    let api = ClickUpApi::new(config.clone())?;
-
-    match command {
-        TeamCommands::List => {
-            list_teams(&api).await?;
-        }
-        TeamCommands::Show { id } => {
-            show_team(&api, &id).await?;
-        }
-    }
-    Ok(())
+    TeamCommands::execute(command, config).await
 }
 
 /// List all teams
@@ -96,28 +106,28 @@ async fn list_teams(api: &ClickUpApi) -> Result<(), ClickUpError> {
     let workspaces = api.get_workspaces().await?;
 
     if workspaces.teams.is_empty() {
-        println!("{}", "No teams found".yellow());
+        DisplayUtils::display_empty_message("teams");
         return Ok(());
     }
 
-    let mut table = Table::new();
-    table.set_header(vec![
-        Cell::new("ID").add_attribute(comfy_table::Attribute::Bold),
-        Cell::new("Name").add_attribute(comfy_table::Attribute::Bold),
-        Cell::new("Members").add_attribute(comfy_table::Attribute::Bold),
-        Cell::new("Color").add_attribute(comfy_table::Attribute::Bold),
+    let mut table_builder = TableBuilder::new();
+    table_builder.add_header(vec![
+        TableHeaders::id(),
+        TableHeaders::name(),
+        TableHeaders::members(),
+        TableHeaders::color(),
     ]);
 
     for team in &workspaces.teams {
-        table.add_row(vec![
-            Cell::new(&team.id),
-            Cell::new(team.name.as_deref().unwrap_or("")),
-            Cell::new(team.members.len().to_string()),
-            Cell::new(team.color.as_deref().unwrap_or("None")),
+        table_builder.add_row(vec![
+            team.id.clone(),
+            team.name.as_deref().unwrap_or("").to_string(),
+            team.members.len().to_string(),
+            team.color.as_deref().unwrap_or("None").to_string(),
         ]);
     }
 
-    println!("{table}");
+    table_builder.print();
     Ok(())
 }
 
@@ -147,31 +157,31 @@ async fn show_team(api: &ClickUpApi, team_id: &str) -> Result<(), ClickUpError> 
         .teams
         .into_iter()
         .find(|t| t.id == team_id)
-        .ok_or_else(|| ClickUpError::NotFoundError(format!("Team {team_id} not found")))?;
+        .ok_or_else(|| ErrorUtils::not_found_error("Team", team_id))?;
 
-    println!("{}", "Team Details".bold());
+    DisplayUtils::display_details_header("Team");
     println!("ID: {}", team.id);
     println!("Name: {}", team.name.as_deref().unwrap_or(""));
     println!("Color: {}", team.color.as_deref().unwrap_or("None"));
     println!("Avatar: {}", team.avatar.as_deref().unwrap_or("None"));
     println!("Members: {}", team.members.len());
 
-    if !team.members.is_empty() {
-        println!("\n{}", "Members:".bold());
-        for member in &team.members {
-            if let (Some(username), Some(email)) = (&member.user.username, &member.user.email) {
-                println!("  - {username} ({email})");
-            } else if let Some(username) = &member.user.username {
-                println!("  - {username} (no email)");
-            } else {
-                println!("  - Unknown user");
-            }
-        }
-    }
+    // Display members
+    let members: Vec<(String, Option<String>)> = team
+        .members
+        .iter()
+        .map(|m| {
+            let username = m.user.username.as_deref().unwrap_or("Unknown user").to_string();
+            let email = m.user.email.clone();
+            (username, email)
+        })
+        .collect();
+    DisplayUtils::display_members(&members);
 
+    // Display roles
     if let Some(roles) = &team.roles {
         if !roles.is_empty() {
-            println!("\n{}", "Roles:".bold());
+            DisplayUtils::display_section_header("Roles");
             for role in roles {
                 println!("  - {} (ID: {})", role.name, role.id);
             }

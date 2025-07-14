@@ -17,9 +17,8 @@
 use crate::api::ClickUpApi;
 use crate::config::Config;
 use crate::error::ClickUpError;
+use crate::commands::utils::{ApiUtils, CommandExecutor, DisplayUtils, ErrorUtils, TableBuilder, TableHeaders};
 use clap::Subcommand;
-use colored::*;
-use comfy_table::{Cell, Table};
 
 /// List command variants
 ///
@@ -39,6 +38,27 @@ pub enum ListCommands {
         #[arg(short, long)]
         id: String,
     },
+}
+
+impl CommandExecutor for ListCommands {
+    type Commands = ListCommands;
+    
+    async fn execute(command: Self::Commands, config: &Config) -> Result<(), ClickUpError> {
+        let api = ApiUtils::create_client(config)?;
+        Self::handle_command(command, &api).await
+    }
+    
+    async fn handle_command(command: Self::Commands, api: &ClickUpApi) -> Result<(), ClickUpError> {
+        match command {
+            ListCommands::List { space_id } => {
+                list_lists(api, &space_id).await?;
+            }
+            ListCommands::Show { id } => {
+                show_list(api, &id).await?;
+            }
+        }
+        Ok(())
+    }
 }
 
 /// Execute list commands
@@ -63,17 +83,7 @@ pub enum ListCommands {
 /// - Validation errors for invalid parameters
 /// - Not found errors for missing lists or spaces
 pub async fn execute(command: ListCommands, config: &Config) -> Result<(), ClickUpError> {
-    let api = ClickUpApi::new(config.clone())?;
-
-    match command {
-        ListCommands::List { space_id } => {
-            list_lists(&api, &space_id).await?;
-        }
-        ListCommands::Show { id } => {
-            show_list(&api, &id).await?;
-        }
-    }
-    Ok(())
+    ListCommands::execute(command, config).await
 }
 
 /// List all lists in a space
@@ -100,17 +110,17 @@ async fn list_lists(api: &ClickUpApi, space_id: &str) -> Result<(), ClickUpError
     let lists = api.get_lists(space_id).await?;
 
     if lists.lists.is_empty() {
-        println!("{}", "No lists found".yellow());
+        DisplayUtils::display_empty_message("lists");
         return Ok(());
     }
 
-    let mut table = Table::new();
-    table.set_header(vec![
-        Cell::new("ID").add_attribute(comfy_table::Attribute::Bold),
-        Cell::new("Name").add_attribute(comfy_table::Attribute::Bold),
-        Cell::new("Content").add_attribute(comfy_table::Attribute::Bold),
-        Cell::new("Task Count").add_attribute(comfy_table::Attribute::Bold),
-        Cell::new("Folder").add_attribute(comfy_table::Attribute::Bold),
+    let mut table_builder = TableBuilder::new();
+    table_builder.add_header(vec![
+        TableHeaders::id(),
+        TableHeaders::name(),
+        TableHeaders::content(),
+        TableHeaders::task_count(),
+        TableHeaders::folder(),
     ]);
 
     for list in &lists.lists {
@@ -122,16 +132,16 @@ async fn list_lists(api: &ClickUpApi, space_id: &str) -> Result<(), ClickUpError
         let task_count = list.task_count.map_or("".to_string(), |c| c.to_string());
         let content = list.content.as_deref().unwrap_or("");
 
-        table.add_row(vec![
-            Cell::new(&list.id),
-            Cell::new(list.name.as_deref().unwrap_or("")),
-            Cell::new(content),
-            Cell::new(task_count),
-            Cell::new(folder_name),
+        table_builder.add_row(vec![
+            list.id.clone(),
+            list.name.as_deref().unwrap_or("").to_string(),
+            content.to_string(),
+            task_count,
+            folder_name.to_string(),
         ]);
     }
 
-    println!("{table}");
+    table_builder.print();
     Ok(())
 }
 
@@ -165,7 +175,7 @@ async fn show_list(api: &ClickUpApi, list_id: &str) -> Result<(), ClickUpError> 
         for space in &spaces.spaces {
             let lists = api.get_lists(&space.id).await?;
             if let Some(list) = lists.lists.into_iter().find(|l| l.id == list_id) {
-                println!("{}", "List Details".bold());
+                DisplayUtils::display_details_header("List");
                 println!("ID: {}", list.id);
                 println!("Name: {}", list.name.as_deref().unwrap_or(""));
                 println!("Content: {}", list.content.as_deref().unwrap_or(""));
@@ -183,7 +193,5 @@ async fn show_list(api: &ClickUpApi, list_id: &str) -> Result<(), ClickUpError> 
         }
     }
 
-    Err(ClickUpError::NotFoundError(format!(
-        "List {list_id} not found"
-    )))
+    Err(ErrorUtils::not_found_error("List", list_id))
 }

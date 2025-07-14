@@ -22,9 +22,9 @@ use crate::api::ClickUpApi;
 use crate::config::Config;
 use crate::error::ClickUpError;
 use crate::models::CreateCommentRequest;
+use crate::commands::utils::{ApiUtils, CommandExecutor, DisplayUtils, ErrorUtils, TableBuilder, TableHeaders};
 use clap::Subcommand;
 use colored::*;
-use comfy_table::{Cell, Table};
 
 /// Comment command variants
 ///
@@ -82,6 +82,46 @@ pub enum CommentCommands {
     },
 }
 
+impl CommandExecutor for CommentCommands {
+    type Commands = CommentCommands;
+    
+    async fn execute(command: Self::Commands, config: &Config) -> Result<(), ClickUpError> {
+        let api = ApiUtils::create_client(config)?;
+        Self::handle_command(command, &api).await
+    }
+    
+    async fn handle_command(command: Self::Commands, api: &ClickUpApi) -> Result<(), ClickUpError> {
+        match command {
+            CommentCommands::List { task_id } => {
+                list_comments(api, &task_id).await?;
+            }
+            CommentCommands::Show { id } => {
+                show_comment(api, &id).await?;
+            }
+            CommentCommands::Create {
+                task_id,
+                text,
+                assignee,
+                notify_all,
+            } => {
+                create_comment(api, &task_id, text, assignee, notify_all).await?;
+            }
+            CommentCommands::Update {
+                id,
+                text,
+                assignee,
+                notify_all,
+            } => {
+                update_comment(api, &id, text, assignee, notify_all).await?;
+            }
+            CommentCommands::Delete { id } => {
+                delete_comment(api, &id).await?;
+            }
+        }
+        Ok(())
+    }
+}
+
 /// Execute comment commands
 ///
 /// This function routes comment commands to their appropriate handlers
@@ -104,36 +144,7 @@ pub enum CommentCommands {
 /// - Validation errors for invalid parameters
 /// - Not found errors for missing comments or tasks
 pub async fn execute(command: CommentCommands, config: &Config) -> Result<(), ClickUpError> {
-    let api = ClickUpApi::new(config.clone())?;
-
-    match command {
-        CommentCommands::List { task_id } => {
-            list_comments(&api, &task_id).await?;
-        }
-        CommentCommands::Show { id } => {
-            show_comment(&api, &id).await?;
-        }
-        CommentCommands::Create {
-            task_id,
-            text,
-            assignee,
-            notify_all,
-        } => {
-            create_comment(&api, &task_id, text, assignee, notify_all).await?;
-        }
-        CommentCommands::Update {
-            id,
-            text,
-            assignee,
-            notify_all,
-        } => {
-            update_comment(&api, &id, text, assignee, notify_all).await?;
-        }
-        CommentCommands::Delete { id } => {
-            delete_comment(&api, &id).await?;
-        }
-    }
-    Ok(())
+    CommentCommands::execute(command, config).await
 }
 
 /// List all comments for a task
@@ -159,17 +170,17 @@ async fn list_comments(api: &ClickUpApi, task_id: &str) -> Result<(), ClickUpErr
     let comments = api.get_comments(task_id).await?;
 
     if comments.comments.is_empty() {
-        println!("{}", "No comments found".yellow());
+        DisplayUtils::display_empty_message("comments");
         return Ok(());
     }
 
-    let mut table = Table::new();
-    table.set_header(vec![
-        Cell::new("ID").add_attribute(comfy_table::Attribute::Bold),
-        Cell::new("User").add_attribute(comfy_table::Attribute::Bold),
-        Cell::new("Comment").add_attribute(comfy_table::Attribute::Bold),
-        Cell::new("Created").add_attribute(comfy_table::Attribute::Bold),
-        Cell::new("Resolved").add_attribute(comfy_table::Attribute::Bold),
+    let mut table_builder = TableBuilder::new();
+    table_builder.add_header(vec![
+        TableHeaders::id(),
+        TableHeaders::user(),
+        TableHeaders::comment(),
+        TableHeaders::created(),
+        TableHeaders::resolved(),
     ]);
 
     for comment in &comments.comments {
@@ -179,16 +190,16 @@ async fn list_comments(api: &ClickUpApi, task_id: &str) -> Result<(), ClickUpErr
             comment.comment_text.clone()
         };
 
-        table.add_row(vec![
-            Cell::new(&comment.id),
-            Cell::new(&comment.user.username),
-            Cell::new(&comment_text),
-            Cell::new(&comment.date),
-            Cell::new(if comment.resolved { "Yes" } else { "No" }),
+        table_builder.add_row(vec![
+            comment.id.clone(),
+            comment.user.username.clone(),
+            comment_text,
+            comment.date.clone(),
+            if comment.resolved { "Yes" } else { "No" }.to_string(),
         ]);
     }
 
-    println!("{table}");
+    table_builder.print();
     Ok(())
 }
 
@@ -228,7 +239,7 @@ async fn show_comment(api: &ClickUpApi, comment_id: &str) -> Result<(), ClickUpE
                     if let Some(comment) =
                         comments.comments.into_iter().find(|c| c.id == comment_id)
                     {
-                        println!("{}", "Comment Details".bold());
+                        DisplayUtils::display_details_header("Comment");
                         println!("ID: {}", comment.id);
                         println!("Task: {} ({})", task.name.as_deref().unwrap_or(""), task.id);
                         println!("User: {} ({})", comment.user.username, comment.user.id);
@@ -252,9 +263,7 @@ async fn show_comment(api: &ClickUpApi, comment_id: &str) -> Result<(), ClickUpE
         }
     }
 
-    Err(ClickUpError::NotFoundError(format!(
-        "Comment {comment_id} not found"
-    )))
+    Err(ErrorUtils::not_found_error("Comment", comment_id))
 }
 
 /// Update an existing comment

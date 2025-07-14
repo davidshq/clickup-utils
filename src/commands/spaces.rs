@@ -21,10 +21,10 @@ use crate::api::ClickUpApi;
 use crate::config::Config;
 use crate::error::ClickUpError;
 use crate::models::{Comment, Folder, List, Space, Task};
+use crate::commands::utils::{ApiUtils, CommandExecutor, DisplayUtils, ErrorUtils, TableBuilder, TableHeaders};
 use chrono::Utc;
 use clap::Subcommand;
 use colored::*;
-use comfy_table::{Cell, Table};
 use serde_json;
 use std::fs;
 use std::io::{self, Write};
@@ -69,6 +69,41 @@ pub enum SpaceCommands {
     },
 }
 
+impl CommandExecutor for SpaceCommands {
+    type Commands = SpaceCommands;
+    
+    async fn execute(command: Self::Commands, config: &Config) -> Result<(), ClickUpError> {
+        let api = ApiUtils::create_client(config)?;
+        Self::handle_command(command, &api).await
+    }
+    
+    async fn handle_command(command: Self::Commands, api: &ClickUpApi) -> Result<(), ClickUpError> {
+        match command {
+            SpaceCommands::List { workspace_id } => {
+                list_spaces(api, &workspace_id).await?;
+            }
+            SpaceCommands::Show { id } => {
+                show_space(api, &id).await?;
+            }
+            SpaceCommands::ListFolders { space_id } => {
+                list_folders(api, &space_id).await?;
+            }
+            SpaceCommands::Backup {
+                space_id,
+                output_dir,
+                include_comments,
+            } => {
+                let space_id = match space_id {
+                    Some(id) => id,
+                    None => select_space_interactive(api).await?,
+                };
+                backup_space(api, &space_id, &output_dir, include_comments).await?;
+            }
+        }
+        Ok(())
+    }
+}
+
 /// Execute space commands
 ///
 /// This function routes space commands to their appropriate handlers
@@ -92,31 +127,7 @@ pub enum SpaceCommands {
 /// - Not found errors for missing spaces or workspaces
 /// - File system errors during backup operations
 pub async fn execute(command: SpaceCommands, config: &Config) -> Result<(), ClickUpError> {
-    let api = ClickUpApi::new(config.clone())?;
-
-    match command {
-        SpaceCommands::List { workspace_id } => {
-            list_spaces(&api, &workspace_id).await?;
-        }
-        SpaceCommands::Show { id } => {
-            show_space(&api, &id).await?;
-        }
-        SpaceCommands::ListFolders { space_id } => {
-            list_folders(&api, &space_id).await?;
-        }
-        SpaceCommands::Backup {
-            space_id,
-            output_dir,
-            include_comments,
-        } => {
-            let space_id = match space_id {
-                Some(id) => id,
-                None => select_space_interactive(&api).await?,
-            };
-            backup_space(&api, &space_id, &output_dir, include_comments).await?;
-        }
-    }
-    Ok(())
+    SpaceCommands::execute(command, config).await
 }
 
 /// List all spaces in a workspace
@@ -143,34 +154,34 @@ async fn list_spaces(api: &ClickUpApi, workspace_id: &str) -> Result<(), ClickUp
     let spaces = api.get_spaces(workspace_id).await?;
 
     if spaces.spaces.is_empty() {
-        println!("{}", "No spaces found".yellow());
+        DisplayUtils::display_empty_message("spaces");
         return Ok(());
     }
 
-    let mut table = Table::new();
-    table.set_header(vec![
-        Cell::new("ID").add_attribute(comfy_table::Attribute::Bold),
-        Cell::new("Name").add_attribute(comfy_table::Attribute::Bold),
-        Cell::new("Private").add_attribute(comfy_table::Attribute::Bold),
-        Cell::new("Statuses").add_attribute(comfy_table::Attribute::Bold),
-        Cell::new("Multiple Assignees").add_attribute(comfy_table::Attribute::Bold),
+    let mut table_builder = TableBuilder::new();
+    table_builder.add_header(vec![
+        TableHeaders::id(),
+        TableHeaders::name(),
+        TableHeaders::private(),
+        TableHeaders::statuses(),
+        TableHeaders::multiple_assignees(),
     ]);
 
     for space in &spaces.spaces {
-        table.add_row(vec![
-            Cell::new(&space.id),
-            Cell::new(space.name.as_deref().unwrap_or("")),
-            Cell::new(if space.private { "Yes" } else { "No" }),
-            Cell::new(space.statuses.len().to_string()),
-            Cell::new(if space.multiple_assignees {
+        table_builder.add_row(vec![
+            space.id.clone(),
+            space.name.as_deref().unwrap_or("").to_string(),
+            if space.private { "Yes" } else { "No" }.to_string(),
+            space.statuses.len().to_string(),
+            if space.multiple_assignees {
                 "Yes"
             } else {
                 "No"
-            }),
+            }.to_string(),
         ]);
     }
 
-    println!("{table}");
+    table_builder.print();
     Ok(())
 }
 
@@ -202,7 +213,7 @@ async fn show_space(api: &ClickUpApi, space_id: &str) -> Result<(), ClickUpError
     for workspace in &workspaces.teams {
         let spaces = api.get_spaces(&workspace.id).await?;
         if let Some(space) = spaces.spaces.into_iter().find(|s| s.id == space_id) {
-            println!("{}", "Space Details".bold());
+            DisplayUtils::display_details_header("Space");
             println!("ID: {}", space.id);
             println!("Name: {}", space.name.as_deref().unwrap_or(""));
             println!("Private: {}", if space.private { "Yes" } else { "No" });
@@ -217,14 +228,14 @@ async fn show_space(api: &ClickUpApi, space_id: &str) -> Result<(), ClickUpError
             println!("Statuses: {}", space.statuses.len());
 
             if !space.statuses.is_empty() {
-                println!("\n{}", "Statuses:".bold());
+                DisplayUtils::display_section_header("Statuses");
                 for status in &space.statuses {
                     println!("  - {} ({})", status.status, status.type_);
                 }
             }
 
             if let Some(features) = &space.features {
-                println!("\n{}", "Features:".bold());
+                DisplayUtils::display_section_header("Features");
                 if let Some(due_dates) = &features.due_dates {
                     println!(
                         "  Due Dates: {}",
@@ -261,9 +272,7 @@ async fn show_space(api: &ClickUpApi, space_id: &str) -> Result<(), ClickUpError
         }
     }
 
-    Err(ClickUpError::NotFoundError(format!(
-        "Space {space_id} not found"
-    )))
+    Err(ErrorUtils::not_found_error("Space", space_id))
 }
 
 /// List all folders in a space
@@ -290,17 +299,17 @@ async fn list_folders(api: &ClickUpApi, space_id: &str) -> Result<(), ClickUpErr
     let folders = api.get_folders(space_id).await?;
 
     if folders.folders.is_empty() {
-        println!("{}", "No folders found".yellow());
+        DisplayUtils::display_empty_message("folders");
         return Ok(());
     }
 
-    let mut table = Table::new();
-    table.set_header(vec![
-        Cell::new("ID").add_attribute(comfy_table::Attribute::Bold),
-        Cell::new("Name").add_attribute(comfy_table::Attribute::Bold),
-        Cell::new("Content").add_attribute(comfy_table::Attribute::Bold),
-        Cell::new("Hidden").add_attribute(comfy_table::Attribute::Bold),
-        Cell::new("Archived").add_attribute(comfy_table::Attribute::Bold),
+    let mut table_builder = TableBuilder::new();
+    table_builder.add_header(vec![
+        TableHeaders::id(),
+        TableHeaders::name(),
+        TableHeaders::content(),
+        "Hidden",
+        "Archived",
     ]);
 
     for folder in &folders.folders {
@@ -316,16 +325,16 @@ async fn list_folders(api: &ClickUpApi, space_id: &str) -> Result<(), ClickUpErr
             "No"
         };
 
-        table.add_row(vec![
-            Cell::new(&folder.id),
-            Cell::new(folder.name.as_deref().unwrap_or("")),
-            Cell::new(content),
-            Cell::new(hidden),
-            Cell::new(archived),
+        table_builder.add_row(vec![
+            folder.id.clone(),
+            folder.name.as_deref().unwrap_or("").to_string(),
+            content.to_string(),
+            hidden.to_string(),
+            archived.to_string(),
         ]);
     }
 
-    println!("{table}");
+    table_builder.print();
     Ok(())
 }
 
