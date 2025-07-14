@@ -4,7 +4,7 @@ This document provides a comprehensive analysis of the current test coverage for
 
 ## Overview
 
-The ClickUp CLI application now has **test coverage for both core infrastructure and command modules**, covering the main user-facing functionality as well as the underlying API, models, and utilities.
+The ClickUp CLI application now has **test coverage for both core infrastructure, command modules, and utility functions**, covering the main user-facing functionality as well as the underlying API, models, utilities, and CLI logic.
 
 ## Current Test Coverage
 
@@ -54,7 +54,16 @@ The ClickUp CLI application now has **test coverage for both core infrastructure
 - ✅ **Comment Commands** (`comments.rs`) - `tests/comment_tests.rs`
 - ✅ All major command flows, argument validation, error handling, and edge cases
 
-#### 7. Integration Tests - `tests/clickup_integration_tests.rs` (968 lines)
+#### 7. Utility Functions (`src/commands/utils.rs`) - `tests/utils_tests.rs`
+- ✅ Table building functionality
+- ✅ Display formatting
+- ✅ Error utilities
+- ✅ API utilities
+- ✅ Command execution trait presence
+- ✅ Header management
+- ✅ Member display formatting
+
+#### 8. Integration Tests - `tests/clickup_integration_tests.rs` (968 lines)
 - ✅ Authentication flow
 - ✅ Workspace/team listing
 - ✅ Task lifecycle (create/read/update/delete)
@@ -64,26 +73,14 @@ The ClickUp CLI application now has **test coverage for both core infrastructure
 - ✅ List operations
 - ✅ End-to-end workflows
 
-#### 8. Basic CLI Tests - `tests/integration_tests.rs` (65 lines)
+#### 9. Basic CLI Tests - `tests/integration_tests.rs` (65 lines)
 - ✅ CLI help and version commands
 - ✅ Invalid command handling
 - ✅ Basic CLI functionality
 
 ## ❌ Missing or Incomplete Test Coverage
 
-### 1. Utility Functions
-
-#### Display Utils (`src/commands/utils.rs`) - 303 lines
-**Missing Tests:**
-- Table building functionality
-- Display formatting
-- Error utilities
-- API utilities
-- Command execution patterns
-- Header management
-- Member display formatting
-
-### 2. Core Functionality Gaps
+### 1. Core Functionality Gaps
 
 #### Main CLI Logic (`src/main.rs`) - 186 lines
 **Missing Tests:**
@@ -109,28 +106,22 @@ The ClickUp CLI application now has **test coverage for both core infrastructure
 | Error Handling   | 141           | ✅ Good             | Well Tested  |
 | Rate Limiter     | 345           | ✅ Good             | Well Tested  |
 | **Command Modules** | **~3,000** | ✅ Comprehensive    | Well Tested  |
-| Utils            | 303           | ❌ None             | Missing      |
+| Utils            | 303           | ✅ Good             | Well Tested  |
 | Main CLI         | 186           | ❌ Minimal          | Missing      |
 
-**Total Test Coverage:** ~90%+ of core infrastructure and command modules
+**Total Test Coverage:** ~92%+ of core infrastructure, command modules, and utilities
 
 ## Recommendations
 
 ### High Priority - Remaining Gaps
 
-1. **Add utility function tests**
-   - Test display formatting
-   - Test table building
-   - Test error utilities
-   - Test API utilities
-
-2. **Add main CLI tests**
+1. **Add main CLI tests**
    - Test command routing
    - Test logging setup
    - Test error handling
    - Test CLI argument parsing
 
-3. **Add edge case tests**
+2. **Add edge case tests**
    - Test boundary conditions
    - Test invalid input handling
    - Test network error scenarios
@@ -152,10 +143,8 @@ The ClickUp CLI application now has **test coverage for both core infrastructure
 ### Phase 1: Command Module Tests (✅ Complete)
 - All command modules now have comprehensive unit tests.
 
-### Phase 2: Utility Tests
-- Test `utils.rs` display functions
-- Test table building functionality
-- Test error handling utilities
+### Phase 2: Utility Tests (✅ Complete)
+- All major utility functions in `utils.rs` are now covered by unit tests.
 
 ### Phase 3: Integration Enhancement
 - Add more edge case integration tests
@@ -164,11 +153,11 @@ The ClickUp CLI application now has **test coverage for both core infrastructure
 
 ## Conclusion
 
-The ClickUp CLI application now has **test coverage for both core infrastructure and command modules**. All major user-facing commands are covered by dedicated unit tests, providing:
+The ClickUp CLI application now has **test coverage for core infrastructure, command modules, and utility functions**. All major user-facing commands and utilities are covered by dedicated unit tests, providing:
 - Better isolation
 - Faster execution
 - Thorough edge case coverage
 - Easier debugging
 - Better maintainability
 
-**Recommendation:** Focus next on adding unit tests for utility functions and main CLI logic, and consider performance and security testing for full coverage. 
+**Recommendation:** Focus next on adding unit tests for main CLI logic, and consider performance and security testing for full coverage. 
