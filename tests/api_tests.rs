@@ -20,26 +20,42 @@ use clickup_cli::api::ClickUpApi;
 use clickup_cli::config::{Config, RateLimitConfig};
 use std::sync::Once;
 use tempfile::TempDir;
+use std::cell::RefCell;
+use dotenvy;
 
 /// Global test initialization state
 static INIT: Once = Once::new();
-/// Temporary directory for test configuration
-static mut TEMP_DIR: Option<TempDir> = None;
+
+// Thread-local storage for test configuration
+thread_local! {
+    static TEST_CONFIG: RefCell<Option<TempDir>> = RefCell::new(None);
+}
 
 /// Sets up the test environment with a temporary configuration directory
 ///
 /// This function ensures that tests don't interfere with the user's actual
 /// configuration by using a temporary directory for all config operations.
 /// It's called once per test run using the `Once` synchronization primitive.
+/// The temporary directory is stored in thread-local storage to ensure
+/// proper test isolation and prevent unsafe global state.
+/// 
+/// The function also loads test-specific configuration from .env.test file
+/// to ensure tests use the test environment rather than production settings.
 fn setup_test_env() {
     INIT.call_once(|| {
+        // Load test environment from .env.test
+        dotenvy::from_filename(".env.test").ok();
+        
+        // Set up environment variables for configuration
         let temp_dir = TempDir::new().unwrap();
         let temp_path = temp_dir.path().to_path_buf();
         std::env::set_var("XDG_CONFIG_HOME", &temp_path);
         std::env::set_var("APPDATA", &temp_path);
-        unsafe {
-            TEMP_DIR = Some(temp_dir);
-        }
+        
+        // Store the temp directory in thread-local storage to prevent it from being dropped
+        TEST_CONFIG.with(|config| {
+            *config.borrow_mut() = Some(temp_dir);
+        });
     });
 }
 
@@ -51,14 +67,13 @@ fn setup_test_env() {
 #[test]
 fn test_api_client_creation_with_valid_config() {
     setup_test_env();
-    let config = Config {
-        api_token: Some("test_token_123".to_string()),
-        workspace_id: Some("workspace_123".to_string()),
-        default_list_id: Some("list_456".to_string()),
-        api_base_url: "https://api.clickup.com/api/v2".to_string(),
-        rate_limit: RateLimitConfig::default(),
-    };
-
+    
+    // Load test configuration from .env.test
+    let config = Config::load_for_tests().expect("Failed to load test configuration");
+    
+    // Verify we have a test token loaded
+    assert!(config.api_token.is_some(), "Test configuration should include API token");
+    
     let api = ClickUpApi::new(config);
     assert!(api.is_ok());
 }
@@ -71,6 +86,8 @@ fn test_api_client_creation_with_valid_config() {
 #[test]
 fn test_api_client_creation_without_token() {
     setup_test_env();
+    
+    // Create a config without token to test unauthenticated operations
     let config = Config {
         api_token: None,
         workspace_id: None,
@@ -90,14 +107,13 @@ fn test_api_client_creation_without_token() {
 #[test]
 fn test_api_client_with_personal_token() {
     setup_test_env();
-    let config = Config {
-        api_token: Some("pk_test_token_123".to_string()),
-        workspace_id: None,
-        default_list_id: None,
-        api_base_url: "https://api.clickup.com/api/v2".to_string(),
-        rate_limit: RateLimitConfig::default(),
-    };
-
+    
+    // Load test configuration and verify it uses test token
+    let config = Config::load_for_tests().expect("Failed to load test configuration");
+    
+    // Verify we have a test token loaded from .env.test
+    assert!(config.api_token.is_some(), "Test configuration should include API token");
+    
     let api = ClickUpApi::new(config);
     assert!(api.is_ok());
 }
@@ -223,22 +239,23 @@ fn test_api_client_with_whitespace_token() {
 /// Tests creation of multiple API client instances
 ///
 /// This test verifies that multiple API client instances can be created
-/// simultaneously with different configurations without conflicts.
+/// simultaneously without conflicts, ensuring proper isolation between
+/// different client instances.
 #[test]
 fn test_api_client_multiple_instances() {
     setup_test_env();
     let config1 = Config {
         api_token: Some("token1".to_string()),
-        workspace_id: None,
-        default_list_id: None,
+        workspace_id: Some("workspace1".to_string()),
+        default_list_id: Some("list1".to_string()),
         api_base_url: "https://api.clickup.com/api/v2".to_string(),
         rate_limit: RateLimitConfig::default(),
     };
 
     let config2 = Config {
         api_token: Some("token2".to_string()),
-        workspace_id: None,
-        default_list_id: None,
+        workspace_id: Some("workspace2".to_string()),
+        default_list_id: Some("list2".to_string()),
         api_base_url: "https://api.clickup.com/api/v2".to_string(),
         rate_limit: RateLimitConfig::default(),
     };
@@ -250,10 +267,11 @@ fn test_api_client_multiple_instances() {
     assert!(api2.is_ok());
 }
 
-/// Tests API client creation with all None values
+/// Tests API client creation with None values for all optional fields
 ///
-/// This test verifies that the API client can be created with a minimal
-/// configuration where all optional fields are set to None.
+/// This test verifies that the API client can handle configurations
+/// where all optional fields are set to None, ensuring graceful
+/// handling of minimal configurations.
 #[test]
 fn test_api_client_with_none_values() {
     setup_test_env();
@@ -266,17 +284,18 @@ fn test_api_client_with_none_values() {
     };
 
     let api = ClickUpApi::new(config);
-    assert!(api.is_ok());
+    assert!(api.is_ok()); // Should succeed with all None values
 }
 
 /// Tests API client creation with a very long token
 ///
-/// This test verifies that the API client can handle extremely long
-/// authentication tokens without memory or performance issues.
+/// This test verifies that the API client can handle tokens of
+/// arbitrary length without issues, ensuring robustness for
+/// various token formats and lengths.
 #[test]
 fn test_api_client_with_long_token() {
     setup_test_env();
-    let long_token = "a".repeat(1000);
+    let long_token = "a".repeat(1000); // Create a 1000-character token
     let config = Config {
         api_token: Some(long_token),
         workspace_id: None,
@@ -286,19 +305,20 @@ fn test_api_client_with_long_token() {
     };
 
     let api = ClickUpApi::new(config);
-    assert!(api.is_ok());
+    assert!(api.is_ok()); // Should handle long tokens gracefully
 }
 
 /// Tests API client creation with special characters in token
 ///
 /// This test verifies that the API client can handle tokens containing
-/// special characters, symbols, and punctuation marks.
+/// special characters, ensuring robust token handling for various
+/// authentication scenarios.
 #[test]
 fn test_api_client_with_special_characters_in_token() {
     setup_test_env();
-    let special_token = "test_token_with_special_chars_!@#$%^&*()_+-=[]{}|;':\",./<>?".to_string();
+    let special_token = "token!@#$%^&*()_+-=[]{}|;':\",./<>?`~";
     let config = Config {
-        api_token: Some(special_token),
+        api_token: Some(special_token.to_string()),
         workspace_id: None,
         default_list_id: None,
         api_base_url: "https://api.clickup.com/api/v2".to_string(),
@@ -306,7 +326,7 @@ fn test_api_client_with_special_characters_in_token() {
     };
 
     let api = ClickUpApi::new(config);
-    assert!(api.is_ok());
+    assert!(api.is_ok()); // Should handle special characters gracefully
 }
 
 /// Tests the overdue task update functionality with tag filtering

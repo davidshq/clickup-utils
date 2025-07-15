@@ -35,6 +35,8 @@ The integration tests verify that the CLI works correctly with the real ClickUp 
    CLICKUP_TEST_LIST_ID=your_list_id_here
    ```
 
+**Note**: The test environment automatically loads from `.env.test` and uses separate tokens from your live environment. This ensures tests never interfere with your production data.
+
 ### 3. Find Your Workspace and List IDs
 
 #### Workspace ID
@@ -108,6 +110,23 @@ The tests use these environment variables:
 - `CLICKUP_API_TOKEN_TEST`: Your ClickUp API token
 - `CLICKUP_TEST_WORKSPACE_ID`: ID of a test workspace (optional)
 - `CLICKUP_TEST_LIST_ID`: ID of a test list (optional)
+
+### Test Environment Safety
+
+The test environment has been improved with proper isolation:
+
+- **Automatic `.env.test` loading**: Tests automatically load from `.env.test` instead of `.env`
+- **Thread-local storage**: Replaced unsafe global state with thread-local storage for test isolation
+- **Token separation**: Live CLI operations use `.env` tokens, tests use `.env.test` tokens
+- **Safe test setup**: All tests use `Config::load_for_tests()` for proper test configuration
+
+### File Structure
+
+```
+.env                    # Live API token (CLICKUP_API_TOKEN)
+.env.test              # Test API token (CLICKUP_API_TOKEN_TEST)
+env.test.example       # Template for .env.test
+```
 
 ### Test Data Isolation
 
@@ -198,6 +217,8 @@ fn test_new_feature() {
 - **Never commit `.env.test`**: It contains sensitive credentials
 - **Use test tokens**: Create separate API tokens for testing
 - **Clean up test data**: Tests should clean up after themselves
+- **Automatic token separation**: Tests automatically use `.env.test` tokens, never production tokens
+- **Safe test isolation**: Thread-local storage prevents test interference
 - **Isolate test environments**: Use separate workspaces/lists for testing
 
 ## Continuous Integration

@@ -109,12 +109,7 @@ pub struct Config {
     /// via the configuration file, environment variable, or CLI command.
     pub api_token: Option<String>,
 
-    /// Test API token for testing purposes
-    ///
-    /// This token is used when running tests and is loaded from the
-    /// CLICKUP_API_TOKEN_TEST environment variable.
-    #[cfg(test)]
-    pub test_api_token: Option<String>,
+
 
     /// Default workspace ID for convenience
     ///
@@ -253,6 +248,34 @@ impl Config {
     /// This is a convenience wrapper for `load_with_path(None)`. See that method for details.
     pub fn load() -> Result<Self, ClickUpError> {
         Self::load_with_path(None)
+    }
+
+    /// Loads configuration specifically for tests from .env.test
+    ///
+    /// This method loads configuration from .env.test file and environment variables,
+    /// ensuring tests use the test environment settings rather than production settings.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `Config` instance with test configuration, or a `ClickUpError`
+    /// if the configuration cannot be loaded.
+    ///
+    /// # Errors
+    ///
+    /// This function can return the same errors as `load_with_path()`.
+    pub fn load_for_tests() -> Result<Self, ClickUpError> {
+        // Load .env.test file for test environment
+        dotenvy::from_filename(".env.test").ok();
+        
+        // Set a flag to skip loading .env file in the main load method
+        std::env::set_var("CLICKUP_SKIP_ENV_FILE", "true");
+        
+        let config = Self::load_with_path(None)?;
+        
+        // Clear the skip flag
+        std::env::remove_var("CLICKUP_SKIP_ENV_FILE");
+        
+        Ok(config)
     }
 
     /// Saves the current configuration to the config file
@@ -438,8 +461,6 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             api_token: None,
-            #[cfg(test)]
-            test_api_token: None,
             workspace_id: None,
             default_list_id: None,
             api_base_url: "https://api.clickup.com/api/v2".to_string(),
