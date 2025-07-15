@@ -113,6 +113,9 @@ TableHeaders::color()
 
 ## Implementation Status
 
+For current implementation status and quality metrics, see:
+**[dev-docs/PROJECT_STATUS.md](../dev-docs/PROJECT_STATUS.md)**
+
 ### ✅ Completed Patterns (6/7 files)
 
 1. **CommandExecutor trait** - Standardized execution flow

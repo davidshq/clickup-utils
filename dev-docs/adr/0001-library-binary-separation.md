@@ -48,7 +48,7 @@ We implemented a clear separation between the library and binary by:
 - ✅ Improved codebase maintainability, testability, and extensibility
 
 ## Related Documents
-- [Library/Binary Separation Implementation](../LIBRARY_BINARY_SEPARATION_IMPLEMENTATION.md)
+- [Library/Binary Separation Implementation](../ARCHITECTURAL_ANALYSIS_AND_RECOMMENDATIONS.md#1-completed-librarybinary-reorganization)
 - [Architectural Analysis and Recommendations](../ARCHITECTURAL_ANALYSIS_AND_RECOMMENDATIONS.md)
 
 ---

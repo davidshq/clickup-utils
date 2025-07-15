@@ -24,18 +24,15 @@ This project follows modern Rust best practices with a clean separation between 
 - **✅ Configuration-Driven**: Environment variables can override all settings
 - **✅ Enhanced Error Handling**: Comprehensive error context and logging
 
-## ⚠️ Development Status
-**This project is currently in active development.**
+## 📊 Project Status
 
-### Recent Achievements
-- **✅ Code Quality**: Zero clippy warnings, all documentation tests passing (22/22)
-- **✅ Testing**: Comprehensive test suite (200+ unit tests, 9 integration tests)
-- **✅ Architecture**: Complete library/binary separation with clean module organization
-- **✅ Configuration**: Centralized constants with environment variable overrides
-- **✅ Features**: Advanced task features (tag filtering, cross-space search, overdue management)
-- **✅ User Experience**: Interactive prompts for missing parameters and dry-run support
-- **✅ Performance**: Rate limiting with sophisticated retry logic
-- **✅ Documentation**: Enhanced documentation and code quality
+For current project status, quality metrics, and implementation details, see:
+**[dev-docs/PROJECT_STATUS.md](dev-docs/PROJECT_STATUS.md)**
+
+**Quick Overview:**
+- **✅ Zero Clippy Warnings**: All code quality issues resolved
+- **✅ All Documentation Tests Passing**: 22/22 doc tests successful
+- **✅ Comprehensive Test Coverage**: 200+ unit tests, 9 integration tests
 
 ## 🚀 Features
 
@@ -115,16 +112,6 @@ cargo install clickup-cli
 ```
 
 **Note**: This package is not yet published to crates.io. Use the local installation method above.
-
-## 🏆 Quality Status
-
-For detailed project status, quality metrics, and implementation details, see:
-**[dev-docs/PROJECT_STATUS.md](dev-docs/PROJECT_STATUS.md)**
-
-**Quick Overview:**
-- **✅ Zero Clippy Warnings**: All code quality issues resolved
-- **✅ All Documentation Tests Passing**: 22/22 doc tests successful
-- **✅ Comprehensive Test Coverage**: 200+ unit tests, 9 integration tests
 
 ## 🚀 Quick Start
 
@@ -617,10 +604,14 @@ cargo doc --no-deps
 
 ## 📚 Development Documentation
 
-- **`dev-docs/ARCHITECTURAL_ANALYSIS_AND_RECOMMENDATIONS.md`**: Comprehensive architectural analysis and improvement roadmap
-- **`dev-docs/LIBRARY_BINARY_SEPARATION_IMPLEMENTATION.md`**: Details of the recent library/binary separation implementation
-- **`CLICKUP_API_COMPARISON.md`**: Detailed API implementation status
-- **`CODE_REVIEW_RECOMMENDATIONS.md`**: Current development status and planned improvements
+For comprehensive development documentation, see:
+**[dev-docs/PROJECT_STATUS.md](dev-docs/PROJECT_STATUS.md)** - Single source of truth for project status
+
+**Key Documentation:**
+- **`dev-docs/ARCHITECTURAL_ANALYSIS_AND_RECOMMENDATIONS.md`**: Comprehensive architectural analysis
+- **`dev-docs/CLICKUP_API_COMPARISON.md`**: Detailed API implementation status
+- **`dev-docs/CODE_REVIEW_RECOMMENDATIONS.md`**: Code quality recommendations
+- **`dev-docs/adr/`**: Architecture Decision Records (13 documents)
 
 ## 📄 License
 
@@ -637,11 +628,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - **Issues**: [GitHub Issues](https://github.com/davidshq/clickup-utils/issues)
 - **Documentation**: [API Documentation](https://docs.rs/clickup-cli) (when published)
-- **Development Status**: See `CODE_REVIEW_RECOMMENDATIONS.md` for current development status and planned improvements
+- **Development Status**: See [dev-docs/PROJECT_STATUS.md](dev-docs/PROJECT_STATUS.md) for current development status
 
 ## 🔄 Changelog
 
-This project is actively maintained. See [CODE_REVIEW_RECOMMENDATIONS.md](CODE_REVIEW_RECOMMENDATIONS.md) for current development status and planned improvements.
+This project is actively maintained. See [dev-docs/PROJECT_STATUS.md](dev-docs/PROJECT_STATUS.md) for current development status and recent improvements.
 
 ### Recent Changes
 - Added comprehensive integration test suite with real API testing
