@@ -21,7 +21,6 @@
 //! ```
 
 use assert_cmd::prelude::*;
-use chrono;
 use std::env;
 use std::process::Command;
 use std::process::Stdio;
@@ -71,17 +70,7 @@ fn has_test_token() -> bool {
     env::var("CLICKUP_API_TOKEN_TEST").is_ok()
 }
 
-/// Sets up the test environment with proper authentication
-#[allow(dead_code)]
-fn setup_test_authentication() -> Result<(), Box<dyn std::error::Error>> {
-    load_env();
 
-    if !has_test_token() {
-        return Err("CLICKUP_API_TOKEN_TEST not set".into());
-    }
-
-    Ok(())
-}
 
 /// Helper function to get a test list ID for task operations
 fn get_test_list_id() -> Option<String> {
@@ -94,17 +83,7 @@ fn get_test_list_id() -> Option<String> {
     None
 }
 
-/// Helper function to get a test workspace ID
-#[allow(dead_code)]
-fn get_test_workspace_id() -> Option<String> {
-    // Try to get from environment first
-    if let Ok(workspace_id) = env::var("CLICKUP_TEST_WORKSPACE_ID") {
-        return Some(workspace_id);
-    }
 
-    // For now, return None - we'll need to find a workspace dynamically
-    None
-}
 
 /// Helper function to extract task ID from CLI output
 fn extract_task_id(output: &str) -> Option<String> {
@@ -126,19 +105,7 @@ fn extract_task_id(output: &str) -> Option<String> {
     None
 }
 
-/// Helper function to extract comment ID from CLI output
-#[allow(dead_code)]
-fn extract_comment_id(output: &str) -> Option<String> {
-    // Look for patterns like "Comment created with ID: abc123" or similar
-    if let Some(id_start) = output.find("ID:") {
-        let after_id = &output[id_start + 4..];
-        if let Some(id_end) = after_id.find('\n') {
-            return Some(after_id[..id_end].trim().to_string());
-        }
-    }
 
-    None
-}
 
 /// Helper to get or create a test workspace ID
 fn get_or_discover_workspace_id() -> Option<String> {
@@ -151,7 +118,7 @@ fn get_or_discover_workspace_id() -> Option<String> {
     let output = run_cli_with_test_env(&["workspaces", "list"]);
     let stdout = String::from_utf8_lossy(&output.stdout);
     // DEBUG: Print the raw output for diagnosis
-    eprintln!("[DEBUG] Raw output from 'workspaces list':\n{}", stdout);
+    eprintln!("[DEBUG] Raw output from 'workspaces list':\n{stdout}");
     // Try to find a workspace ID in the output (assume table format)
     for line in stdout.lines() {
         if line.trim().starts_with("|")
@@ -159,7 +126,7 @@ fn get_or_discover_workspace_id() -> Option<String> {
             && line.chars().filter(|&c| c == '|').count() > 2
         {
             let parts: Vec<_> = line.split('|').map(|s| s.trim()).collect();
-            if parts.len() > 1 && parts[1].chars().all(|c| c.is_digit(10)) {
+            if parts.len() > 1 && parts[1].chars().all(|c| c.is_ascii_digit()) {
                 return Some(parts[1].to_string());
             }
         }
@@ -177,7 +144,7 @@ fn get_or_discover_space_id(workspace_id: &str) -> Option<String> {
             && line.chars().filter(|&c| c == '|').count() > 2
         {
             let parts: Vec<_> = line.split('|').map(|s| s.trim()).collect();
-            if parts.len() > 1 && parts[1].chars().all(|c| c.is_digit(10)) {
+            if parts.len() > 1 && parts[1].chars().all(|c| c.is_ascii_digit()) {
                 return Some(parts[1].to_string());
             }
         }
@@ -202,7 +169,7 @@ fn get_or_discover_test_list_id(space_id: &str) -> Option<(String, bool)> {
             && line.chars().filter(|&c| c == '|').count() > 2
         {
             let parts: Vec<_> = line.split('|').map(|s| s.trim()).collect();
-            if parts.len() > 1 && parts[1].chars().all(|c| c.is_digit(10)) {
+            if parts.len() > 1 && parts[1].chars().all(|c| c.is_ascii_digit()) {
                 return Some((parts[1].to_string(), false)); // false = not created by test
             }
         }
@@ -269,11 +236,11 @@ fn test_authentication() {
         "Authentication failed: {:?}",
         String::from_utf8_lossy(&output.stderr)
     );
-    assert!(output.stdout.len() > 0, "No output from workspaces list");
+    assert!(!output.stdout.is_empty(), "No output from workspaces list");
 
     // Verify the output contains workspace information
     let output_str = String::from_utf8_lossy(&output.stdout);
-    println!("Workspace list output: {}", output_str);
+    println!("Workspace list output: {output_str}");
     assert!(
         output_str.contains("ID") || output_str.contains("Name"),
         "Output should contain workspace information"
@@ -302,7 +269,7 @@ fn test_workspace_team_listing() {
         "Workspace listing failed: {:?}",
         String::from_utf8_lossy(&output.stderr)
     );
-    assert!(output.stdout.len() > 0, "No output from workspaces list");
+    assert!(!output.stdout.is_empty(), "No output from workspaces list");
 
     // Test listing teams (if any exist)
     let output = run_cli_with_test_env(&["teams", "list"]);
@@ -383,7 +350,7 @@ fn test_task_lifecycle() {
     let task_id = match extract_task_id(&output_str) {
         Some(id) => id,
         None => {
-            eprintln!("Could not extract task ID from output: {}", output_str);
+            eprintln!("Could not extract task ID from output: {output_str}");
             if created {
                 delete_list(&list_id);
             }
@@ -560,7 +527,7 @@ fn test_commenting() {
     let task_id = match extract_task_id(&output_str) {
         Some(id) => id,
         None => {
-            eprintln!("Could not extract task ID from output: {}", output_str);
+            eprintln!("Could not extract task ID from output: {output_str}");
             if created {
                 delete_list(&list_id);
             }
@@ -620,7 +587,7 @@ fn test_commenting() {
     let comment_id = match comment_id {
         Some(id) => id,
         None => {
-            eprintln!("Could not extract comment ID from listing: {}", output_str);
+            eprintln!("Could not extract comment ID from listing: {output_str}");
             if created {
                 delete_list(&list_id);
             }
@@ -715,7 +682,7 @@ fn test_error_handling() {
         !output.status.success(),
         "Expected failure for non-existent task"
     );
-    assert!(output.stderr.len() > 0, "Should have error output");
+    assert!(!output.stderr.is_empty(), "Should have error output");
 
     // Test 2: Try to create a task with invalid list ID
     let mut cmd = Command::cargo_bin("clickup-cli").unwrap();
@@ -735,7 +702,7 @@ fn test_error_handling() {
         !output.status.success(),
         "Expected failure for invalid list ID"
     );
-    assert!(output.stderr.len() > 0, "Should have error output");
+    assert!(!output.stderr.is_empty(), "Should have error output");
 
     // Test 3: Try to show a non-existent list
     let mut cmd = Command::cargo_bin("clickup-cli").unwrap();
@@ -748,7 +715,7 @@ fn test_error_handling() {
         !output.status.success(),
         "Expected failure for non-existent list"
     );
-    assert!(output.stderr.len() > 0, "Should have error output");
+    assert!(!output.stderr.is_empty(), "Should have error output");
 
     // Test 4: Try to add a comment to a non-existent task
     let mut cmd = Command::cargo_bin("clickup-cli").unwrap();
@@ -768,7 +735,7 @@ fn test_error_handling() {
         !output.status.success(),
         "Expected failure for non-existent task in comment creation"
     );
-    assert!(output.stderr.len() > 0, "Should have error output");
+    assert!(!output.stderr.is_empty(), "Should have error output");
 
     // Test 5: Try to update a non-existent comment
     let mut cmd = Command::cargo_bin("clickup-cli").unwrap();
@@ -788,7 +755,7 @@ fn test_error_handling() {
         !output.status.success(),
         "Expected failure for non-existent comment"
     );
-    assert!(output.stderr.len() > 0, "Should have error output");
+    assert!(!output.stderr.is_empty(), "Should have error output");
 }
 
 /// Tests rate limiting handling
@@ -839,8 +806,7 @@ fn test_rate_limiting() {
     // If we hit rate limits, that's expected behavior
     if rate_limit_count > 0 {
         println!(
-            "Rate limiting detected in {} out of 10 requests",
-            rate_limit_count
+            "Rate limiting detected in {rate_limit_count} out of 10 requests"
         );
     }
 }
@@ -922,7 +888,7 @@ fn test_invalid_authentication() {
         !output.status.success(),
         "Expected failure with invalid token"
     );
-    assert!(output.stderr.len() > 0, "Should have error output");
+    assert!(!output.stderr.is_empty(), "Should have error output");
 
     // Restore original token if it existed
     if let Some(token) = original_token {
@@ -944,7 +910,7 @@ fn test_cli_basic_commands() {
 
     let output = cmd.output().unwrap();
     assert!(output.status.success(), "Help command failed");
-    assert!(output.stdout.len() > 0, "Help output should not be empty");
+    assert!(!output.stdout.is_empty(), "Help output should not be empty");
 
     // Test version command
     let mut cmd = Command::cargo_bin("clickup-cli").unwrap();
@@ -953,7 +919,7 @@ fn test_cli_basic_commands() {
     let output = cmd.output().unwrap();
     assert!(output.status.success(), "Version command failed");
     assert!(
-        output.stdout.len() > 0,
+        !output.stdout.is_empty(),
         "Version output should not be empty"
     );
 
@@ -963,5 +929,5 @@ fn test_cli_basic_commands() {
 
     let output = cmd.output().unwrap();
     assert!(!output.status.success(), "Invalid command should fail");
-    assert!(output.stderr.len() > 0, "Error output should not be empty");
+    assert!(!output.stderr.is_empty(), "Error output should not be empty");
 }

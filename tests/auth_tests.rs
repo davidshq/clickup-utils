@@ -20,9 +20,6 @@ use clickup_cli::commands::auth::{execute, AuthCommands};
 use clickup_cli::config::Config;
 mod test_utils;
 use test_utils::TestConfig;
-use std::env;
-use std::fs;
-use tempfile::TempDir;
 
 
 

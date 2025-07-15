@@ -331,7 +331,7 @@ impl DisplayUtils {
     ///
     /// * `item_type` - The type of items that were not found
     pub fn display_empty_message(item_type: &str) {
-        println!("{}", format!("No {} found", item_type).yellow());
+        println!("{}", format!("No {item_type} found").yellow());
     }
     
     /// Display a details header
@@ -340,7 +340,7 @@ impl DisplayUtils {
     ///
     /// * `item_type` - The type of item being displayed
     pub fn display_details_header(item_type: &str) {
-        println!("{}", format!("{} Details", item_type).bold());
+        println!("{}", format!("{item_type} Details").bold());
     }
     
     /// Display a section header
@@ -349,7 +349,7 @@ impl DisplayUtils {
     ///
     /// * `section_name` - The name of the section
     pub fn display_section_header(section_name: &str) {
-        println!("\n{}", format!("{}:", section_name).bold());
+        println!("\n{}", format!("{section_name}:").bold());
     }
     
     /// Display a member with username and email
@@ -360,8 +360,8 @@ impl DisplayUtils {
     /// * `email` - The member's email (optional)
     pub fn display_member(username: &str, email: Option<&str>) {
         match email {
-            Some(email) => println!("  - {} ({})", username, email),
-            None => println!("  - {} (no email)", username),
+            Some(email) => println!("  - {username} ({email})"),
+            None => println!("  - {username} (no email)"),
         }
     }
     
@@ -425,7 +425,7 @@ impl ErrorUtils {
     ///
     /// Returns a `ClickUpError::NotFoundError`
     pub fn not_found_error(item_type: &str, id: &str) -> ClickUpError {
-        ClickUpError::NotFoundError(format!("{} {} not found", item_type, id))
+        ClickUpError::NotFoundError(format!("{item_type} {id} not found"))
     }
     
 

@@ -34,7 +34,7 @@ mod table_builder_tests {
         
         // Test that add_header doesn't panic and returns self for chaining
         let result = builder.add_header(headers);
-        assert!(std::ptr::eq(result, &mut builder));
+        assert!(std::ptr::eq(result, &builder));
     }
 
     #[test]
@@ -44,7 +44,7 @@ mod table_builder_tests {
         
         // Test that add_row doesn't panic and returns self for chaining
         let result = builder.add_row(row_data);
-        assert!(std::ptr::eq(result, &mut builder));
+        assert!(std::ptr::eq(result, &builder));
     }
 
     #[test]
@@ -336,14 +336,7 @@ mod table_headers_tests {
 
 #[cfg(test)]
 mod command_executor_trait_tests {
-    #[test]
-    fn test_command_executor_trait_exists() {
-        // This test verifies that the CommandExecutor trait is accessible
-        // and can be imported. The actual implementation testing is done
-        // in the individual command module tests.
-        // We can't easily test the trait without complex mocking, so we just verify it exists
-        assert!(true); // Placeholder test
-    }
+
 }
 
 #[cfg(test)]

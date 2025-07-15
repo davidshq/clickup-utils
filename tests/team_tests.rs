@@ -28,7 +28,6 @@ use tempfile::TempDir;
 struct TestConfig {
     #[allow(dead_code)]
     temp_dir: TempDir,
-    config_file: std::path::PathBuf,
     original_xdg: Option<String>,
     original_appdata: Option<String>,
 }
@@ -45,7 +44,6 @@ impl TestConfig {
     fn new() -> Self {
         let temp_dir = TempDir::new().expect("Failed to create temp directory");
         let temp_path = temp_dir.path().to_path_buf();
-        let config_file = temp_path.join("clickup-cli").join("config.toml");
 
         // Remove any existing config file first to ensure clean test state
         let real_config_dir = dirs::config_dir().unwrap().join("clickup-cli");
@@ -66,7 +64,6 @@ impl TestConfig {
 
         Self {
             temp_dir,
-            config_file,
             original_xdg,
             original_appdata,
         }

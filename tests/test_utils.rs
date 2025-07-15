@@ -56,10 +56,17 @@ use tempfile::TempDir;
 /// }
 /// ```
 pub struct TestConfig {
+    #[allow(dead_code)]
     temp_dir: TempDir,
     pub config_file: std::path::PathBuf,
     original_xdg: Option<String>,
     original_appdata: Option<String>,
+}
+
+impl Default for TestConfig {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl TestConfig {

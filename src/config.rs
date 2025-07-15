@@ -263,41 +263,6 @@ impl Config {
     /// # Errors
     ///
     /// This function can return the same errors as `load_with_path()`.
-    pub fn load_for_tests() -> Result<Self, ClickUpError> {
-        // Load .env.test file for test environment
-        dotenvy::from_filename(".env.test").ok();
-        
-        // Set a flag to skip loading .env file in the main load method
-        std::env::set_var("CLICKUP_SKIP_ENV_FILE", "true");
-        
-        let config = Self::load_with_path(None)?;
-        
-        // Clear the skip flag
-        std::env::remove_var("CLICKUP_SKIP_ENV_FILE");
-        
-        Ok(config)
-    }
-
-    /// Saves the current configuration to the config file
-    ///
-    /// This function serializes the current configuration to TOML format and
-    /// writes it to the user's config directory or a custom path. The file is created if it
-    /// doesn't exist, or overwritten if it does.
-    ///
-    /// # Arguments
-    ///
-    /// * `config_file_override` - Optional path to a config file. If `Some(path)`, saves to that file. If `None`, uses the default location.
-    ///
-    /// # Returns
-    ///
-    /// Returns `Ok(())` on successful save, or a `ClickUpError` on failure.
-    ///
-    /// # Errors
-    ///
-    /// This function can return:
-    /// - `ClickUpError::ConfigError` if the config directory cannot be created
-    /// - `ClickUpError::SerializationError` if the configuration cannot be serialized
-    /// - `ClickUpError::IoError` if the file cannot be written
     pub fn save_with_path(
         &self,
         config_file_override: Option<&std::path::Path>,

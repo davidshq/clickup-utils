@@ -27,7 +27,7 @@ fn test_cli_help() {
         .expect("Failed to execute CLI");
 
     assert!(output.status.success(), "CLI help command failed");
-    assert!(output.stdout.len() > 0, "Help output should not be empty");
+    assert!(!output.stdout.is_empty(), "Help output should not be empty");
 }
 
 /// Tests that the CLI shows version information
@@ -42,7 +42,7 @@ fn test_cli_version() {
 
     assert!(output.status.success(), "CLI version command failed");
     assert!(
-        output.stdout.len() > 0,
+        !output.stdout.is_empty(),
         "Version output should not be empty"
     );
 }
@@ -60,5 +60,5 @@ fn test_cli_invalid_command() {
     // Should fail with an error code
     assert!(!output.status.success(), "Invalid command should fail");
     // Should have error output
-    assert!(output.stderr.len() > 0, "Error output should not be empty");
+    assert!(!output.stderr.is_empty(), "Error output should not be empty");
 }

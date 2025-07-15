@@ -22,10 +22,7 @@
 use clickup_cli::commands::tasks::{execute, TaskCommands};
 use clickup_cli::config::Config;
 mod test_utils;
-use test_utils::{TestConfig, TestApiUtils};
-use std::env;
-use std::fs;
-use tempfile::TempDir;
+use test_utils::TestConfig;
 
 
 

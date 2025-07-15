@@ -19,9 +19,6 @@
 use clickup_cli::config::Config;
 mod test_utils;
 use test_utils::TestConfig;
-use std::env;
-use std::fs;
-use tempfile::TempDir;
 
 
 
@@ -46,7 +43,7 @@ fn test_config_default() {
 #[test]
 fn test_config_set_and_get_api_token() {
     let test_config = TestConfig::new();
-    let mut config = Config::default();
+    let mut config = Config { api_token: Some("test_token_456".to_string()), workspace_id: Some("workspace_123".to_string()), default_list_id: Some("list_456".to_string()), api_base_url: "https://test.api.clickup.com/api/v2".to_string(), ..Default::default() };
     let test_token = "test_token_123".to_string();
     let _result = config.set_api_token(test_token.clone());
     // Save to temp config file

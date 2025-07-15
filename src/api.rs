@@ -1253,13 +1253,13 @@ impl ClickUpApi {
                 Ok(None) => continue,
                 Err(e) => {
                     // Log the error but continue searching other workspaces
-                    eprintln!("Warning: Error searching workspace: {}", e);
+                    eprintln!("Warning: Error searching workspace: {e}");
                     continue;
                 }
             }
         }
         
         // If we get here, the comment wasn't found
-        Err(ClickUpError::NotFoundError(format!("Comment with ID '{}' not found", comment_id)))
+        Err(ClickUpError::NotFoundError(format!("Comment with ID '{comment_id}' not found")))
     }
 }
