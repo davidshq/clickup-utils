@@ -132,7 +132,7 @@ impl RateLimiter {
                     let wait_time = wait_time + Duration::from_secs(self.config.buffer_seconds);
 
                     // Cap wait time to prevent extremely long waits
-                    let max_wait = Duration::from_secs(120); // 2 minutes max
+                    let max_wait = Duration::from_secs(120);
                     let actual_wait = std::cmp::min(wait_time, max_wait);
 
                     info!(

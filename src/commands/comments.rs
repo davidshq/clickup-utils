@@ -184,8 +184,8 @@ async fn list_comments(api: &ClickUpApi, task_id: &str) -> Result<(), ClickUpErr
     ]);
 
     for comment in &comments.comments {
-        let comment_text = if comment.comment_text.len() > 50 {
-            format!("{}...", &comment.comment_text[..50])
+        let comment_text = if comment.comment_text.len() > 50 { // TODO: Use constant
+            format!("{}...", &comment.comment_text[..50]) // TODO: Use constant
         } else {
             comment.comment_text.clone()
         };

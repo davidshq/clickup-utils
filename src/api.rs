@@ -92,7 +92,7 @@ impl ClickUpApi {
 
         // Create HTTP client with timeout and default headers
         let client = Client::builder()
-            .timeout(Duration::from_secs(30))
+            .timeout(Duration::from_secs(30)) // TODO: Use constant
             .default_headers(headers)
             .build()
             .map_err(|e| {

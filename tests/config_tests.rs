@@ -54,7 +54,15 @@ fn test_config_set_and_get_api_token() {
     assert!(save_result.is_ok());
     let loaded = Config::load_with_path(Some(&test_config.config_file)).unwrap();
     let retrieved_token = loaded.get_api_token().unwrap();
-    assert_eq!(retrieved_token, test_token);
+
+    // Check environment variable precedence
+    if let Ok(env_token) = std::env::var("CLICKUP_API_TOKEN_TEST") {
+        assert_eq!(retrieved_token, env_token);
+    } else if let Ok(env_token) = std::env::var("CLICKUP_API_TOKEN") {
+        assert_eq!(retrieved_token, env_token);
+    } else {
+        assert_eq!(retrieved_token, test_token);
+    }
 }
 
 /// Tests getting API token when none is set

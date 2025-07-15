@@ -276,8 +276,8 @@ fn test_task_creation() {
         }),
         due_date: Some("2023-12-31T23:59:59Z".to_string()),
         start_date: Some("2023-01-01T00:00:00Z".to_string()),
-        time_estimate: Some(3600000), // 1 hour in milliseconds
-        time_spent: Some(1800000),    // 30 minutes in milliseconds
+        time_estimate: Some(3600000), // 1 hour in milliseconds - TODO: Use constant
+        time_spent: Some(1800000),    // 30 minutes in milliseconds - TODO: Use constant
         custom_fields: vec![],
         dependencies: vec![],
         linked_tasks: vec![],

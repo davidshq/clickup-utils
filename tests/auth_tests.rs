@@ -154,7 +154,7 @@ async fn test_auth_rate_limit_valid_config() {
     // but the command structure is valid
     let _result = execute(
         AuthCommands::RateLimit {
-            requests_per_minute: Some(150),
+            requests_per_minute: Some(150), // TODO: Use constant
             auto_retry: Some(true),
             max_retries: Some(3),
             buffer_seconds: Some(5),
@@ -177,7 +177,7 @@ async fn test_auth_rate_limit_invalid_rpm() {
     // Execute the RateLimit command with invalid requests_per_minute
     let result = execute(
         AuthCommands::RateLimit {
-            requests_per_minute: Some(0),
+            requests_per_minute: Some(0), // TODO: Use constant
             auto_retry: None,
             max_retries: None,
             buffer_seconds: None,

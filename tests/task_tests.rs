@@ -272,8 +272,8 @@ async fn test_task_create_no_auth() {
         description: Some("Test description".to_string()),
         status: Some("in progress".to_string()),
         priority: Some(2),
-        due_date: Some(1640995200), // 2022-01-01
-        time_estimate: Some(3600000), // 1 hour in milliseconds
+        due_date: Some(1640995200), // 2022-01-01 - TODO: Use constant
+        time_estimate: Some(3600000), // 1 hour in milliseconds - TODO: Use constant
     }, &config).await;
     assert!(result.is_err());
 }
@@ -299,8 +299,8 @@ async fn test_task_create_with_auth() {
         description: Some("Test description".to_string()),
         status: Some("in progress".to_string()),
         priority: Some(2),
-        due_date: Some(1640995200), // 2022-01-01
-        time_estimate: Some(3600000), // 1 hour in milliseconds
+        due_date: Some(1640995200), // 2022-01-01 - TODO: Use constant
+        time_estimate: Some(3600000), // 1 hour in milliseconds - TODO: Use constant
     }, &config).await;
     // We don't assert on result since it depends on API connectivity
 }
@@ -351,8 +351,8 @@ async fn test_task_update_no_auth() {
         description: Some("Updated description".to_string()),
         status: Some("completed".to_string()),
         priority: Some(1),
-        due_date: Some(1640995200), // 2022-01-01
-        time_estimate: Some(7200000), // 2 hours in milliseconds
+        due_date: Some(1640995200), // 2022-01-01 - TODO: Use constant
+        time_estimate: Some(7200000), // 2 hours in milliseconds - TODO: Use constant
     }, &config).await;
     assert!(result.is_err());
 }
@@ -378,8 +378,8 @@ async fn test_task_update_with_auth() {
         description: Some("Updated description".to_string()),
         status: Some("completed".to_string()),
         priority: Some(1),
-        due_date: Some(1640995200), // 2022-01-01
-        time_estimate: Some(7200000), // 2 hours in milliseconds
+        due_date: Some(1640995200), // 2022-01-01 - TODO: Use constant
+        time_estimate: Some(7200000), // 2 hours in milliseconds - TODO: Use constant
     }, &config).await;
     // We don't assert on result since it depends on API connectivity
 }

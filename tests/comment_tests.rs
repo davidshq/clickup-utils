@@ -154,7 +154,7 @@ async fn test_comment_create_no_auth() {
     let result = execute(CommentCommands::Create { 
         task_id: "task_123".to_string(),
         text: "Test comment".to_string(),
-        assignee: Some(123),
+        assignee: Some(123), // TODO: Use constant
         notify_all: Some(true),
     }, &config).await;
     assert!(result.is_err());
@@ -178,7 +178,7 @@ async fn test_comment_create_with_auth() {
     let _result = execute(CommentCommands::Create { 
         task_id: "task_123".to_string(),
         text: "Test comment".to_string(),
-        assignee: Some(123),
+        assignee: Some(123), // TODO: Use constant
         notify_all: Some(true),
     }, &config).await;
     // We don't assert on result since it depends on API connectivity
@@ -248,7 +248,7 @@ async fn test_comment_update_no_auth() {
     let result = execute(CommentCommands::Update { 
         id: "comment_123".to_string(),
         text: "Updated comment".to_string(),
-        assignee: Some(456),
+        assignee: Some(456), // TODO: Use constant
         notify_all: Some(false),
     }, &config).await;
     assert!(result.is_err());
@@ -272,7 +272,7 @@ async fn test_comment_update_with_auth() {
     let _result = execute(CommentCommands::Update { 
         id: "comment_123".to_string(),
         text: "Updated comment".to_string(),
-        assignee: Some(456),
+        assignee: Some(456), // TODO: Use constant
         notify_all: Some(false),
     }, &config).await;
     // We don't assert on result since it depends on API connectivity

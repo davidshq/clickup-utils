@@ -86,10 +86,10 @@ pub struct RateLimitConfig {
 impl Default for RateLimitConfig {
     fn default() -> Self {
         Self {
-            requests_per_minute: 100, // ClickUp free account limit
+            requests_per_minute: 100, // ClickUp free account limit - TODO: Use constant
             auto_retry: true,
-            max_retries: 3,
-            buffer_seconds: 5, // 5 second buffer
+            max_retries: 3, // TODO: Use constant
+            buffer_seconds: 5, // 5 second buffer - TODO: Use constant
         }
     }
 }
@@ -162,7 +162,7 @@ impl Config {
         config_file_override: Option<&std::path::Path>,
     ) -> Result<Self, ClickUpError> {
         // Load .env file if it exists (highest priority), unless skipped for tests
-        if std::env::var("CLICKUP_SKIP_ENV_FILE").is_err() {
+        if std::env::var("CLICKUP_SKIP_ENV_FILE").is_err() { // TODO: Use constant
             dotenv().ok();
         }
 
@@ -174,11 +174,11 @@ impl Config {
                 .ok_or_else(|| {
                     ClickUpError::ConfigError("Could not find config directory".to_string())
                 })?
-                .join("clickup-cli");
+                .join("clickup-cli"); // TODO: Use constant
             std::fs::create_dir_all(&config_dir).map_err(|e| {
                 ClickUpError::ConfigError(format!("Failed to create config directory: {e}"))
             })?;
-            config_dir.join("config.toml")
+            config_dir.join("config.toml") // TODO: Use constant
         };
 
         // Use ConfigBuilder to avoid deprecated methods
@@ -188,15 +188,15 @@ impl Config {
             builder = builder.add_source(File::from(config_file.as_path()));
         }
         // Load configuration from environment variables
-        builder = builder.add_source(Environment::with_prefix("CLICKUP").separator("_"));
+        builder = builder.add_source(Environment::with_prefix("CLICKUP").separator("_")); // TODO: Use constants
         // Set default values for required fields
         builder = builder
-            .set_default("api_base_url", "https://api.clickup.com/api/v2")
+            .set_default("api_base_url", "https://api.clickup.com/api/v2") // TODO: Use constant
             .map_err(|e| ClickUpError::ConfigError(format!("Failed to set default: {e}")))?;
 
         // Set default values for rate limiting configuration
         builder = builder
-            .set_default("rate_limit.requests_per_minute", 100)
+            .set_default("rate_limit.requests_per_minute", 100) // TODO: Use constant
             .map_err(|e| {
                 ClickUpError::ConfigError(format!("Failed to set rate limit default: {e}"))
             })?;
@@ -206,12 +206,12 @@ impl Config {
                 ClickUpError::ConfigError(format!("Failed to set auto retry default: {e}"))
             })?;
         builder = builder
-            .set_default("rate_limit.max_retries", 3)
+            .set_default("rate_limit.max_retries", 3) // TODO: Use constant
             .map_err(|e| {
                 ClickUpError::ConfigError(format!("Failed to set max retries default: {e}"))
             })?;
         builder = builder
-            .set_default("rate_limit.buffer_seconds", 5)
+            .set_default("rate_limit.buffer_seconds", 5) // TODO: Use constant
             .map_err(|e| {
                 ClickUpError::ConfigError(format!("Failed to set buffer seconds default: {e}"))
             })?;

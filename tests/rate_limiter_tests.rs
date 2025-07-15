@@ -40,7 +40,7 @@ async fn test_rate_limiter_creation() {
 #[tokio::test]
 async fn test_rate_limiter_basic_functionality() {
     let config = RateLimitConfig {
-        requests_per_minute: 3, // Very low limit for testing
+        requests_per_minute: 3, // Very low limit for testing - TODO: Use constant
         auto_retry: true,
         max_retries: 3,
         buffer_seconds: 0, // No buffer for faster testing
@@ -68,7 +68,7 @@ async fn test_rate_limiter_basic_functionality() {
 #[tokio::test]
 async fn test_rate_limiter_counting_logic() {
     let config = RateLimitConfig {
-        requests_per_minute: 10,
+        requests_per_minute: 10, // TODO: Use constant
         auto_retry: true,
         max_retries: 3,
         buffer_seconds: 0,
@@ -93,7 +93,7 @@ async fn test_rate_limiter_counting_logic() {
 #[tokio::test]
 async fn test_rate_limiter_retry_handling() {
     let config = RateLimitConfig {
-        requests_per_minute: 100,
+        requests_per_minute: 100, // TODO: Use constant
         auto_retry: true,
         max_retries: 2,
         buffer_seconds: 1,
@@ -119,7 +119,7 @@ async fn test_rate_limiter_retry_handling() {
 #[tokio::test]
 async fn test_rate_limiter_auto_retry_disabled() {
     let config = RateLimitConfig {
-        requests_per_minute: 100,
+        requests_per_minute: 100, // TODO: Use constant
         auto_retry: false,
         max_retries: 3,
         buffer_seconds: 1,

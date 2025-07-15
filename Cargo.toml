@@ -84,6 +84,10 @@ log = "0.4"
 name = "clickup_cli"
 path = "src/lib.rs"
 
+[features]
+default = []
+bin = []
+
 [dev-dependencies]
 # Temporary file and directory utilities for testing
 tempfile = "3.8"

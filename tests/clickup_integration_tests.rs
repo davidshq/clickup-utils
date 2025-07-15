@@ -808,7 +808,7 @@ fn test_rate_limiting() {
     let mut success_count = 0;
     let mut rate_limit_count = 0;
 
-    for _i in 0..10 {
+            for _i in 0..10 { // TODO: Use constant
         let mut cmd = Command::cargo_bin("clickup-cli").unwrap();
         cmd.args(["workspaces", "list"]);
 
@@ -827,7 +827,7 @@ fn test_rate_limiting() {
         }
 
         // Small delay between requests
-        std::thread::sleep(Duration::from_millis(100));
+        std::thread::sleep(Duration::from_millis(100)); // TODO: Use constant
     }
 
     // At least some requests should succeed
@@ -839,7 +839,7 @@ fn test_rate_limiting() {
     // If we hit rate limits, that's expected behavior
     if rate_limit_count > 0 {
         println!(
-            "Rate limiting detected in {} out of 10 requests",
+            "Rate limiting detected in {} out of 10 requests", // TODO: Use constant
             rate_limit_count
         );
     }
@@ -903,8 +903,8 @@ fn test_invalid_authentication() {
 
     // Temporarily set an invalid token and remove config token
     let original_token = std::env::var("CLICKUP_API_TOKEN_TEST").ok();
-    std::env::set_var("CLICKUP_API_TOKEN", "invalid-token-12345");
-    std::env::set_var("CLICKUP_API_TOKEN_TEST", "invalid-token-12345");
+            std::env::set_var("CLICKUP_API_TOKEN", "invalid-token-12345"); // TODO: Use constant
+        std::env::set_var("CLICKUP_API_TOKEN_TEST", "invalid-token-12345"); // TODO: Use constant
     // Remove config file if it exists
     if let Some(config_dir) = dirs::config_dir() {
         let config_file = config_dir.join("clickup-cli").join("config.toml");
