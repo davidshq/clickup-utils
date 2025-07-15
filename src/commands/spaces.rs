@@ -73,11 +73,12 @@ impl CommandExecutor for SpaceCommands {
     type Commands = SpaceCommands;
     
     async fn execute(command: Self::Commands, config: &Config) -> Result<(), ClickUpError> {
-        let repo = crate::repository::RepositoryFactory::create(config)?;
-        Self::handle_command(command, &*repo).await
+        let container = crate::commands::utils::RepositoryUtils::create_service_container(config)?;
+        Self::handle_command(command, &container).await
     }
     
-    async fn handle_command(command: Self::Commands, repo: &dyn ClickUpRepository) -> Result<(), ClickUpError> {
+    async fn handle_command(command: Self::Commands, container: &crate::di::ServiceContainer) -> Result<(), ClickUpError> {
+        let repo = container.repository();
         match command {
             SpaceCommands::List { workspace_id } => {
                 list_spaces(repo, &workspace_id).await?;

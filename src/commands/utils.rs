@@ -59,7 +59,7 @@ use comfy_table::{Cell, Table};
 ///
 /// Each command module implements this trait to provide:
 /// - Standardized command execution flow
-/// - Centralized repository creation via `RepositoryUtils`
+/// - Centralized service container creation via `RepositoryUtils`
 /// - Consistent error handling
 /// - Separation of concerns between execution and business logic
 ///
@@ -69,10 +69,9 @@ use comfy_table::{Cell, Table};
 /// use clickup_cli::commands::utils::{CommandExecutor, RepositoryUtils};
 /// use clickup_cli::config::Config;
 /// use clickup_cli::error::ClickUpError;
-/// use clickup_cli::repository::ClickUpRepository;
+/// use clickup_cli::di::ServiceContainer;
 /// use clap::Subcommand;
 ///
-/// // Define your command enum
 /// #[derive(Debug, Clone, Subcommand)]
 /// enum MyCommands {
 ///     List,
@@ -81,16 +80,15 @@ use comfy_table::{Cell, Table};
 ///
 /// impl CommandExecutor for MyCommands {
 ///     type Commands = MyCommands;
-///     
 ///     async fn execute(command: Self::Commands, config: &Config) -> Result<(), ClickUpError> {
-///         let repo = RepositoryUtils::create_repository(config)?;
-///         Self::handle_command(command, &*repo).await
+///         let container = RepositoryUtils::create_service_container(config)?;
+///         Self::handle_command(command, &container).await
 ///     }
-///     
-///     async fn handle_command(command: Self::Commands, repo: &dyn ClickUpRepository) -> Result<(), ClickUpError> {
+///     async fn handle_command(command: Self::Commands, container: &ServiceContainer) -> Result<(), ClickUpError> {
+///         let repo = container.repository();
 ///         match command {
-///             MyCommands::List => { /* list logic */ },
-///             MyCommands::Show { id } => { /* show logic */ },
+///             MyCommands::List => { /* list logic using repo */ },
+///             MyCommands::Show { id } => { /* show logic using repo */ },
 ///         }
 ///         Ok(())
 ///     }
@@ -123,12 +121,12 @@ pub trait CommandExecutor {
     /// # Arguments
     ///
     /// * `command` - The command to execute
-    /// * `repo` - Reference to the ClickUp repository
+    /// * `container` - Reference to the service container
     ///
     /// # Returns
     ///
     /// Returns `Ok(())` on successful execution, or a `ClickUpError` on failure.
-    async fn handle_command(command: Self::Commands, repo: &dyn ClickUpRepository) -> Result<(), ClickUpError>;
+    async fn handle_command(command: Self::Commands, container: &crate::di::ServiceContainer) -> Result<(), ClickUpError>;
 }
 
 /// Table builder for consistent table creation
@@ -469,6 +467,28 @@ impl RepositoryUtils {
     /// Returns a repository instance or a `ClickUpError`
     pub fn create_repository(config: &Config) -> Result<Box<dyn ClickUpRepository>, ClickUpError> {
         crate::repository::RepositoryFactory::create(config)
+    }
+    
+    /// Create a service container with the given configuration
+    ///
+    /// # Arguments
+    ///
+    /// * `config` - Reference to the application configuration
+    ///
+    /// # Returns
+    ///
+    /// Returns a service container or a `ClickUpError`
+    pub fn create_service_container(config: &Config) -> Result<crate::di::ServiceContainer, ClickUpError> {
+        crate::di::ServiceContainer::new(config.clone())
+    }
+    
+    /// Create a service container with loaded configuration
+    ///
+    /// # Returns
+    ///
+    /// Returns a service container or a `ClickUpError`
+    pub fn create_service_container_with_loaded_config() -> Result<crate::di::ServiceContainer, ClickUpError> {
+        crate::di::ServiceContainerFactory::with_loaded_config()
     }
 }
 

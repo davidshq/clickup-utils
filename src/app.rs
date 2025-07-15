@@ -13,7 +13,7 @@
 //! main.rs -> app.rs -> library modules (api, commands, etc.)
 //! ```
 
-use clickup_cli::{ClickUpApi, Config, ClickUpError, constants};
+use clickup_cli::{Config, ClickUpError, constants, di::ServiceContainer};
 use clickup_cli::commands::{auth, comments, lists, spaces, tasks, teams, workspaces};
 use clap::{Parser, Subcommand};
 use log::{error, info, warn};
@@ -95,17 +95,15 @@ pub enum Commands {
 /// This struct encapsulates the application state and provides methods for
 /// managing the application lifecycle and command execution.
 pub struct ClickUpApp {
-    /// Application configuration
-    config: Config,
-    /// API client for making requests
-    api: ClickUpApi,
+    /// Service container for dependency injection
+    container: ServiceContainer,
 }
 
 impl ClickUpApp {
     /// Creates a new ClickUp CLI application
     ///
     /// This function initializes the application by loading configuration
-    /// and creating the API client.
+    /// and creating the service container.
     ///
     /// # Returns
     ///
@@ -125,15 +123,15 @@ impl ClickUpApp {
             e
         })?;
         
-        // Create API client
-        let api = ClickUpApi::new(config.clone()).map_err(|e| {
-            error!("Failed to create API client: {e}");
+        // Create service container with loaded configuration
+        let container = ServiceContainer::new(config).map_err(|e| {
+            error!("Failed to create service container: {e}");
             e
         })?;
         
         info!("Application initialized successfully");
         
-        Ok(Self { config, api })
+        Ok(Self { container })
     }
     
     /// Runs the application with the given CLI arguments
@@ -193,7 +191,7 @@ impl ClickUpApp {
     ///
     /// Returns `Ok(())` on success, or a `ClickUpError` on failure.
     async fn handle_auth(&mut self, command: auth::AuthCommands) -> Result<(), ClickUpError> {
-        auth::execute(command, &self.config).await
+        auth::execute(command, self.container.config()).await
     }
     
     /// Handles workspace commands
@@ -206,7 +204,7 @@ impl ClickUpApp {
     ///
     /// Returns `Ok(())` on success, or a `ClickUpError` on failure.
     async fn handle_workspaces(&self, command: workspaces::WorkspaceCommands) -> Result<(), ClickUpError> {
-        workspaces::execute(command, &self.config).await
+        workspaces::execute(command, self.container.config()).await
     }
     
     /// Handles team commands
@@ -219,7 +217,7 @@ impl ClickUpApp {
     ///
     /// Returns `Ok(())` on success, or a `ClickUpError` on failure.
     async fn handle_teams(&self, command: teams::TeamCommands) -> Result<(), ClickUpError> {
-        teams::execute(command, &self.config).await
+        teams::execute(command, self.container.config()).await
     }
     
     /// Handles space commands
@@ -232,7 +230,7 @@ impl ClickUpApp {
     ///
     /// Returns `Ok(())` on success, or a `ClickUpError` on failure.
     async fn handle_spaces(&self, command: spaces::SpaceCommands) -> Result<(), ClickUpError> {
-        spaces::execute(command, &self.config).await
+        spaces::execute(command, self.container.config()).await
     }
     
     /// Handles list commands
@@ -245,7 +243,7 @@ impl ClickUpApp {
     ///
     /// Returns `Ok(())` on success, or a `ClickUpError` on failure.
     async fn handle_lists(&self, command: lists::ListCommands) -> Result<(), ClickUpError> {
-        lists::execute(command, &self.config).await
+        lists::execute(command, self.container.config()).await
     }
     
     /// Handles task commands
@@ -258,7 +256,7 @@ impl ClickUpApp {
     ///
     /// Returns `Ok(())` on success, or a `ClickUpError` on failure.
     async fn handle_tasks(&self, command: tasks::TaskCommands) -> Result<(), ClickUpError> {
-        tasks::execute(command, &self.config).await
+        tasks::execute(command, self.container.config()).await
     }
     
     /// Handles comment commands
@@ -271,7 +269,7 @@ impl ClickUpApp {
     ///
     /// Returns `Ok(())` on success, or a `ClickUpError` on failure.
     async fn handle_comments(&self, command: comments::CommentCommands) -> Result<(), ClickUpError> {
-        comments::execute(command, &self.config).await
+        comments::execute(command, self.container.config()).await
     }
     
 }
@@ -304,13 +302,13 @@ impl ClickUpApp {
         info!("Performing application startup tasks...");
         
         // Validate configuration
-        if !self.config.is_authenticated() {
+        if !self.container.config().is_authenticated() {
             warn!("No API token configured. Some commands may fail.");
         }
         
         // Test API connectivity if authenticated
-        if self.config.is_authenticated() {
-            match self.api.get_user().await {
+        if self.container.config().is_authenticated() {
+            match self.container.repository().get_user().await {
                 Ok(user) => {
                     info!("Successfully connected to ClickUp API as: {}", 
                           user.user.username.unwrap_or_else(|| "Unknown".to_string()));
@@ -337,7 +335,7 @@ impl ClickUpApp {
         info!("Performing application shutdown tasks...");
         
         // Save configuration if modified
-        if let Err(e) = self.config.save() {
+        if let Err(e) = self.container.config().save() {
             warn!("Failed to save configuration: {e}");
         }
         

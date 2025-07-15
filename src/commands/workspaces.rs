@@ -18,7 +18,7 @@
 use crate::config::Config;
 use crate::error::ClickUpError;
 use crate::repository::ClickUpRepository;
-use crate::commands::utils::{CommandExecutor, DisplayUtils, TableBuilder, TableHeaders};
+use crate::commands::utils::{CommandExecutor, DisplayUtils, TableBuilder, TableHeaders, RepositoryUtils};
 use clap::Subcommand;
 
 /// Workspace command variants
@@ -42,11 +42,12 @@ impl CommandExecutor for WorkspaceCommands {
     type Commands = WorkspaceCommands;
     
     async fn execute(command: Self::Commands, config: &Config) -> Result<(), ClickUpError> {
-        let repo = crate::repository::RepositoryFactory::create(config)?;
-        Self::handle_command(command, &*repo).await
+        let container = RepositoryUtils::create_service_container(config)?;
+        Self::handle_command(command, &container).await
     }
     
-    async fn handle_command(command: Self::Commands, repo: &dyn ClickUpRepository) -> Result<(), ClickUpError> {
+    async fn handle_command(command: Self::Commands, container: &crate::di::ServiceContainer) -> Result<(), ClickUpError> {
+        let repo = container.repository();
         match command {
             WorkspaceCommands::List => {
                 list_workspaces(repo).await?;

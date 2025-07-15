@@ -46,6 +46,7 @@ pub mod api;
 pub mod commands;
 pub mod config;
 pub mod constants;
+pub mod di;
 pub mod error;
 pub mod models;
 pub mod rate_limiter;
@@ -57,6 +58,7 @@ pub use config::Config;
 pub use error::ClickUpError;
 pub use models::*;
 pub use repository::{ClickUpRepository, RepositoryFactory};
+pub use di::{ServiceContainer, ServiceContainerBuilder, ServiceContainerFactory};
 
 // Re-export commonly used constants for convenience
 pub use constants::{

@@ -24,15 +24,15 @@
 //!
 //! Each command module implements the `CommandExecutor` trait, which provides:
 //! - Standardized command execution flow
-//! - Centralized API client creation
+//! - Centralized service container creation
 //! - Consistent error handling
 //! - Separation of concerns between execution and business logic
 //!
 //! ```rust
-//! use clickup_cli::commands::utils::CommandExecutor;
+//! use clickup_cli::commands::utils::{CommandExecutor, RepositoryUtils};
 //! use clickup_cli::config::Config;
 //! use clickup_cli::error::ClickUpError;
-//! use clickup_cli::repository::ClickUpRepository;
+//! use clickup_cli::di::ServiceContainer;
 //! use clap::Subcommand;
 //!
 //! // Define your command enum
@@ -44,16 +44,15 @@
 //!
 //! impl CommandExecutor for XCommands {
 //!     type Commands = XCommands;
-//!     
 //!     async fn execute(command: Self::Commands, config: &Config) -> Result<(), ClickUpError> {
-//!         let repo = clickup_cli::repository::RepositoryFactory::create(config)?;
-//!         Self::handle_command(command, &*repo).await
+//!         let container = RepositoryUtils::create_service_container(config)?;
+//!         Self::handle_command(command, &container).await
 //!     }
-//!     
-//!     async fn handle_command(command: Self::Commands, repo: &dyn ClickUpRepository) -> Result<(), ClickUpError> {
+//!     async fn handle_command(command: Self::Commands, container: &ServiceContainer) -> Result<(), ClickUpError> {
+//!         let repo = container.repository();
 //!         match command {
-//!             XCommands::List => { /* list logic */ },
-//!             XCommands::Show { id } => { /* show logic */ },
+//!             XCommands::List => { /* list logic using repo */ },
+//!             XCommands::Show { id } => { /* show logic using repo */ },
 //!         }
 //!         Ok(())
 //!     }
