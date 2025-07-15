@@ -2,10 +2,6 @@
 
 This document outlines the main needs and approach for implementing integration tests for the ClickUp CLI, focusing on real API usage with the `CLICKUP_API_TOKEN_TEST` environment variable.
 
-For detailed setup instructions, environment configuration, and execution details, see [INTEGRATION_TESTS_README.md](INTEGRATION_TESTS_README.md).
-
----
-
 ## Important Note on Test Status
 
 A test is only considered **implemented** when it runs and passes in the current environment. If a test is skipped or fails due to missing data or configuration, it is **not** considered fully implemented.
@@ -89,30 +85,13 @@ See [ADR 0004: Integration Testing Strategy](../adr/0004-integration-testing-str
 
 ## 5. Current Test Implementation Status
 
-### ✅ **All Tests Passing:**
-- `test_authentication()` - Verifies API authentication
-- `test_workspace_team_listing()` - Tests workspace and team listing
-- `test_task_lifecycle()` - Tests full CRUD operations on tasks
-- `test_commenting()` - Tests comment creation and retrieval
-- `test_error_handling()` - Tests error handling scenarios
-- `test_rate_limiting()` - Tests rate limiting behavior
-- `test_list_operations()` - Tests list management functionality
-- `test_invalid_authentication()` - Tests authentication error handling
-- `test_cli_basic_commands()` - Tests basic CLI functionality
+> **Note:** Detailed test implementation status has been moved to [ROADMAP_COMPLETED.md](../ROADMAP_COMPLETED.md)
 
-### ✅ **Basic CLI Tests Passing:**
-- `test_cli_help()` - Tests CLI help command
-- `test_cli_version()` - Tests CLI version command
-- `test_cli_invalid_command()` - Tests CLI error handling
-
-### 🔧 **Helper Functions Implemented:**
-See [ADR 0004: Integration Testing Strategy](../adr/0004-integration-testing-strategy.md) for detailed implementation information about helper functions.
+**Current Status:** All integration tests implemented and passing, covering authentication, CRUD operations, error handling, rate limiting, and CLI functionality.
 
 ---
 
 ## 6. Running Integration Tests
-
-For detailed execution instructions, see [INTEGRATION_TESTS_README.md](INTEGRATION_TESTS_README.md).
 
 ### Using the Test Script ✅ **PASSING**
 ```bash
@@ -139,8 +118,6 @@ cargo test test_authentication -- --ignored --nocapture
 
 ## 7. Test Environment Setup
 
-For detailed environment setup instructions, see [INTEGRATION_TESTS_README.md](INTEGRATION_TESTS_README.md).
-
 ### Required Files:
 - `.env.test` - Test credentials (copy from `env.test.example`)
 - `CLICKUP_API_TOKEN_TEST` environment variable
@@ -156,18 +133,7 @@ If optional IDs are not provided, tests will dynamically discover available work
 
 ## 8. Current Status & Improvements Needed
 
-### ✅ **Major Accomplishments:**
-1. **All Integration Tests Passing:** All 9 main integration tests are now implemented and passing.
-2. **Dynamic Resource Discovery:** Tests can automatically discover workspaces, spaces, and lists when not explicitly configured.
-3. **Comprehensive Coverage:** Tests cover authentication, CRUD operations, error handling, rate limiting, and CLI functionality.
-4. **Robust Test Environment:** Proper environment setup and cleanup working correctly.
-
-### 🔧 **Minor Issues to Address:**
-1. **Dead Code Warnings:** Some helper functions are marked as unused but may be needed for future tests:
-   - `setup_test_authentication()` - Unused function
-   - `get_test_workspace_id()` - Unused function  
-   - `extract_comment_id()` - Unused function
-2. **Test Output Parsing:** The `extract_task_id()` and `extract_comment_id()` functions could be more robust.
+> **Note:** Detailed accomplishments and minor issues have been moved to [ROADMAP_COMPLETED.md](../ROADMAP_COMPLETED.md)
 
 ### 📋 **Potential Enhancements:**
 1. **Test Data Isolation:** Add unique prefixes/tags to all test resources for better isolation.
@@ -181,23 +147,13 @@ If optional IDs are not provided, tests will dynamically discover available work
 
 ## 9. Next Steps
 
-### ✅ **Completed:**
-- All integration tests implemented and passing
-- Environment setup and helper functions working
-- Test script and documentation complete
-- Graceful handling of missing credentials
-- Dynamic resource discovery working
-- Comprehensive error handling and rate limiting tests
-
-### 🔄 **In Progress:**
-- Cleaning up unused helper functions
-- Fine-tuning test reliability and output parsing
-- Improving environment variable loading
-- Adding more robust error handling
+> **Note:** Completed next steps have been moved to [ROADMAP_COMPLETED.md](../ROADMAP_COMPLETED.md)
 
 ### 📋 **Future Enhancements:**
 1. Add more comprehensive test scenarios (e.g., file attachments, time tracking)
 2. Implement test data cleanup automation
+3. Add performance benchmarking tests
+4. Implement mock API support for faster testing
 3. Add performance benchmarks
 4. Create test result reporting and analytics
 5. Add integration tests for new CLI features as they are developed
@@ -208,7 +164,5 @@ If optional IDs are not provided, tests will dynamically discover available work
 
 ## 📚 References
 
-For detailed setup and execution instructions, see:
 - [INTEGRATION_TESTS_README.md](INTEGRATION_TESTS_README.md) - Complete setup and execution guide
-- [ADR 0004: Integration Testing Strategy](../adr/0004-integration-testing-strategy.md) - Implementation details
-- [PROJECT_STATUS.md](PROJECT_STATUS.md) - Overall project status 
+- [ADR 0004: Integration Testing Strategy](../adr/0004-integration-testing-strategy.md) - Implementation details 

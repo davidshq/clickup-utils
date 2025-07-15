@@ -1,9 +1,5 @@
 # ClickUp CLI - Code Review Recommendations
 
-For current project status and quality metrics, see [PROJECT_STATUS.md](PROJECT_STATUS.md).
-
----
-
 ## 📋 Executive Summary
 
 This document contains a comprehensive review of the ClickUp CLI codebase with specific recommendations for improvements. The codebase has made excellent progress in code quality, testing, and documentation, with most critical issues resolved.

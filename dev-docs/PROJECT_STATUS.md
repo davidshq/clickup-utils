@@ -78,13 +78,6 @@ This document serves as the **single source of truth** for all project status in
 
 **Overall Coverage: ~40% (21/49 endpoints) - Core functionality complete**
 
-## ✅ Known Issues RESOLVED
-
-### High Priority - ALL FIXED
-- ✅ **Documentation tests** - All 22 doc tests now passing
-- ✅ **Clippy warnings** - Zero warnings remaining
-- ✅ **Unused methods in app.rs** - All unused methods removed
-
 ### Medium Priority
 - **API coverage gaps** - Missing time tracking, custom fields, attachments
 - **Performance optimization** - No caching layer implemented
@@ -96,53 +89,17 @@ This document serves as the **single source of truth** for all project status in
 
 ## 🎯 Next Milestone Goals
 
-### Phase 1: Critical Fixes (Week 1) ✅ COMPLETED
-- [x] Fix all clippy warnings (13+ remaining) ✅
-- [x] Fix documentation test failures (5 failures) ✅
-- [x] Remove unused methods in app.rs ✅
-- [x] Update status information across all docs ✅
-
-### Phase 2: Documentation Enhancement (Week 2) ✅ COMPLETED
-- [x] Create comprehensive troubleshooting guide ✅
-- [x] Add performance characteristics documentation ✅
-- [x] Update API comparison with latest status ✅
-- [x] Enhance user examples and use cases ✅
-
-### Phase 3: Feature Expansion (Month 1)
+### Feature Expansion
 - [ ] Implement caching layer for API responses
 - [ ] Add time tracking functionality
 - [ ] Implement custom fields support
 - [ ] Add attachment handling
 
-## 🏆 Success Criteria
-
-### Short-term (2 weeks) ✅ COMPLETED
-- [x] Zero clippy warnings ✅
-- [x] All documentation tests passing ✅
-- [x] Updated status information across all docs ✅
-- [x] Clean codebase with no unused code ✅
-
-### Medium-term (1 month) ✅ COMPLETED
-- [x] Status dashboard implemented ✅
-- [x] Enhanced user documentation ✅
-- [x] Performance documentation added ✅
-- [x] Developer onboarding guide ✅
-
-### Long-term (3 months)
+### Long-term
 - [ ] Caching layer implemented
 - [ ] Additional API endpoints added
 - [ ] Architecture decision records
 - [ ] Automated documentation updates
-
-## 📈 Progress Tracking
-
-### Recent Achievements (Last 30 Days)
-- ✅ **200+ unit tests** - Comprehensive test coverage achieved
-- ✅ **Integration test framework** - See [ADR 0004: Integration Testing Strategy](../adr/0004-integration-testing-strategy.md)
-- ✅ **Library/binary separation** - See [ADR 0001: Library/Binary Separation](../adr/0001-library-binary-separation.md)
-- ✅ **Command standardization** - See [ADR 0006: CommandExecutor Pattern](../adr/0006-command-executor-pattern.md)
-- ✅ **Error handling** - See [ADR 0005: Error Handling Strategy](../adr/0005-error-handling-strategy.md)
-- ✅ **Rate limiting** - See [ADR 0003: Rate Limiting and Retry Policy](../adr/0003-rate-limiting-policy.md)
 
 ### Current Sprint Focus
 - 🔧 **Code Quality**: Maintaining zero clippy warnings
@@ -152,58 +109,23 @@ This document serves as the **single source of truth** for all project status in
 
 ## 🔧 Technical Debt
 
-### Code Quality ✅ RESOLVED
-- **Clippy Warnings**: ✅ Zero warnings remaining
-- **Documentation Tests**: ✅ All 22 tests passing
-- **Unused Code**: ✅ All unused methods removed
-
-### Architecture
+### Remaining Technical Debt
 - **Caching**: No response caching implemented
 - **Event System**: No extensibility framework
 - **Dependency Injection**: Limited service container usage
+- **Performance**: No request batching, connection pooling, or request deduplication
 
-### Performance
-- **API Calls**: No request batching
-- **Memory**: No connection pooling optimization
-- **Network**: No request deduplication
+
 
 ## 📝 Development Notes
 
+> **Note:** Detailed development notes have been moved to [ROADMAP_COMPLETED.md](../ROADMAP_COMPLETED.md)
+
 ### Current Focus Areas
-1. **Code Quality**: Maintaining zero clippy warnings
-2. **Documentation**: Keeping status information current
-3. **Testing**: Ensuring comprehensive test coverage
-4. **Performance**: Optimizing API interactions
-
-### Recent Decisions
-- **Architecture**: Library/binary separation completed
-- **Testing**: Integration tests framework implemented
-- **Documentation**: Comprehensive documentation structure established
-- **Code Quality**: Standardized command patterns implemented
-
-### Upcoming Decisions
-- **Caching Strategy**: Whether to implement response caching
-- **API Expansion**: Which additional endpoints to implement
-- **Performance Optimization**: How to optimize API interactions
-- **Documentation Strategy**: How to maintain documentation quality
-
-## 🔄 Update History
-
-### January 2025 ✅ CRITICAL ISSUES RESOLVED
-- **Status Dashboard Created**: Single source of truth for project status
-- **Documentation Review**: Comprehensive analysis of all documentation
-- **Issue Identification**: Clear identification of current problems
-- **Roadmap Planning**: Structured approach to improvements
-- **Critical Fixes Completed**: All clippy warnings and doc test failures resolved
-- **Code Quality Achieved**: Zero warnings, all tests passing
-- **Integration Tests**: Framework implemented and working
-- **Command Standardization**: All command modules standardized
-- **Error Handling**: Comprehensive error types implemented
-- **Rate Limiting**: Sophisticated retry logic added
-- **Library/Binary Separation**: Clean architecture implemented
-- **Test Coverage**: 200+ unit tests added
-- **Documentation**: Comprehensive documentation structure
-- **Code Quality**: Standardized patterns implemented
+1. **Performance**: Optimizing API interactions
+2. **Feature Expansion**: Adding new API endpoints
+3. **Documentation**: Maintaining current status information
+4. **Code Quality**: Maintaining zero clippy warnings
 
 ---
 
@@ -216,5 +138,5 @@ This document serves as the **single source of truth** for all project status in
 
 ---
 
-*Last Updated: January 2025*
+*Last Updated: July 15, 2025*
 *Status: ✅ Production Ready* 
