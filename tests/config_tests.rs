@@ -92,11 +92,13 @@ fn test_config_is_authenticated() {
 fn test_config_save_and_load() {
     let test_config = TestConfig::new();
     // Create a config with all fields set
-    let mut config = Config::default();
-    config.api_token = Some("test_token_456".to_string());
-    config.workspace_id = Some("workspace_123".to_string());
-    config.default_list_id = Some("list_456".to_string());
-    config.api_base_url = "https://test.api.clickup.com/api/v2".to_string();
+    let config = Config {
+        api_token: Some("test_token_456".to_string()),
+        workspace_id: Some("workspace_123".to_string()),
+        default_list_id: Some("list_456".to_string()),
+        api_base_url: "https://test.api.clickup.com/api/v2".to_string(),
+        ..Default::default()
+    };
     // Save the config to the temp file
     let save_result = config.save_with_path(Some(&test_config.config_file));
     assert!(

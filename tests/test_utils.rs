@@ -17,8 +17,7 @@
 //! use clickup_cli::tests::test_utils::{TestConfig, TestApiUtils};
 //! use clickup_cli::config::Config;
 //!
-//! #[test]
-//! fn test_example() {
+//! fn example() {
 //!     let _test_config = TestConfig::new();
 //!     let config = Config::default();
 //!     let api = TestApiUtils::create_test_client(&config).unwrap();
@@ -49,8 +48,7 @@ use tempfile::TempDir;
 /// ## Usage Pattern
 ///
 /// ```rust
-/// #[test]
-/// fn test_example() {
+/// fn example() {
 ///     let _test_config = TestConfig::new();
 ///     // Test logic here - config will be cleaned up automatically
 /// }
@@ -170,8 +168,7 @@ impl TestApiUtils {
     /// use clickup_cli::tests::test_utils::{TestConfig, TestApiUtils};
     /// use clickup_cli::config::Config;
     ///
-    /// #[test]
-    /// fn test_api_client() {
+    /// fn example_api_client() {
     ///     let _test_config = TestConfig::new();
     ///     let config = Config::default();
     ///     let api = TestApiUtils::create_test_client(&config).unwrap();
@@ -200,8 +197,7 @@ impl TestApiUtils {
     /// ```rust
     /// use clickup_cli::tests::test_utils::{TestConfig, TestApiUtils};
     ///
-    /// #[test]
-    /// fn test_with_token() {
+    /// fn example_with_token() {
     ///     let _test_config = TestConfig::new();
     ///     let api = TestApiUtils::create_test_client_with_token("test_token_123").unwrap();
     ///     // Test authenticated operations...
@@ -227,8 +223,7 @@ impl TestApiUtils {
     /// ```rust
     /// use clickup_cli::tests::test_utils::{TestConfig, TestApiUtils};
     ///
-    /// #[test]
-    /// fn test_without_auth() {
+    /// fn example_without_auth() {
     ///     let _test_config = TestConfig::new();
     ///     let api = TestApiUtils::create_test_client_without_auth().unwrap();
     ///     // Test unauthenticated operations...
@@ -261,8 +256,7 @@ impl TestAssertions {
     /// ```rust
     /// use clickup_cli::tests::test_utils::TestAssertions;
     ///
-    /// #[test]
-    /// fn test_auth_error() {
+    /// fn example_auth_error() {
     ///     let result: Result<(), ClickUpError> = Err(ClickUpError::AuthError("Invalid token".to_string()));
     ///     TestAssertions::assert_auth_error(&result);
     /// }
@@ -288,8 +282,7 @@ impl TestAssertions {
     /// ```rust
     /// use clickup_cli::tests::test_utils::TestAssertions;
     ///
-    /// #[test]
-    /// fn test_validation_error() {
+    /// fn example_validation_error() {
     ///     let result: Result<(), ClickUpError> = Err(ClickUpError::ValidationError("Invalid input".to_string()));
     ///     TestAssertions::assert_validation_error(&result);
     /// }
@@ -315,8 +308,7 @@ impl TestAssertions {
     /// ```rust
     /// use clickup_cli::tests::test_utils::TestAssertions;
     ///
-    /// #[test]
-    /// fn test_not_found_error() {
+    /// fn example_not_found_error() {
     ///     let result: Result<(), ClickUpError> = Err(ClickUpError::NotFoundError("Item not found".to_string()));
     ///     TestAssertions::assert_not_found_error(&result);
     /// }
