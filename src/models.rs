@@ -564,7 +564,7 @@ pub struct PortfolioFeatures {
 /// Space status information
 ///
 /// This struct represents a status that can be assigned to tasks in a space.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SpaceStatus {
     /// Unique status identifier
     pub id: String,
@@ -646,7 +646,7 @@ pub struct ListsResponse {
 ///
 /// A list represents a collection of tasks within a space.
 /// It can be organized in folders or directly in the space.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct List {
     #[serde(deserialize_with = "string_or_number")]
     /// Unique list identifier
@@ -683,7 +683,7 @@ pub struct List {
 }
 
 /// List status configuration
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ListStatus {
     /// Status display name
     pub status: String,
@@ -694,7 +694,7 @@ pub struct ListStatus {
 }
 
 /// List priority configuration
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ListPriority {
     /// Priority display name
     pub priority: String,
@@ -703,7 +703,7 @@ pub struct ListPriority {
 }
 
 /// List assignee information
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ListAssignee {
     /// Unique user identifier
     pub id: i64,
@@ -720,7 +720,7 @@ pub struct ListAssignee {
 }
 
 /// List folder information
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ListFolder {
     #[serde(deserialize_with = "string_or_number")]
     /// Unique folder identifier
@@ -734,7 +734,7 @@ pub struct ListFolder {
 }
 
 /// List space information
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ListSpace {
     #[serde(deserialize_with = "string_or_number")]
     /// Unique space identifier

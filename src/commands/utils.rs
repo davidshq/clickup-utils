@@ -43,9 +43,9 @@
 //! ⚠️ **Remaining Work:**
 //! - Auth module API creation (1 file - low priority)
 
-use crate::api::ClickUpApi;
 use crate::config::Config;
 use crate::error::ClickUpError;
+use crate::repository::ClickUpRepository;
 use clap::Subcommand;
 use colored::*;
 use comfy_table::{Cell, Table};
@@ -59,17 +59,17 @@ use comfy_table::{Cell, Table};
 ///
 /// Each command module implements this trait to provide:
 /// - Standardized command execution flow
-/// - Centralized API client creation via `ApiUtils`
+/// - Centralized repository creation via `RepositoryUtils`
 /// - Consistent error handling
 /// - Separation of concerns between execution and business logic
 ///
 /// ## Example Usage
 ///
 /// ```rust
-/// use clickup_cli::commands::utils::{CommandExecutor, ApiUtils};
+/// use clickup_cli::commands::utils::{CommandExecutor, RepositoryUtils};
 /// use clickup_cli::config::Config;
 /// use clickup_cli::error::ClickUpError;
-/// use clickup_cli::api::ClickUpApi;
+/// use clickup_cli::repository::ClickUpRepository;
 /// use clap::Subcommand;
 ///
 /// // Define your command enum
@@ -83,11 +83,11 @@ use comfy_table::{Cell, Table};
 ///     type Commands = MyCommands;
 ///     
 ///     async fn execute(command: Self::Commands, config: &Config) -> Result<(), ClickUpError> {
-///         let api = ApiUtils::create_client(config)?;
-///         Self::handle_command(command, &api).await
+///         let repo = RepositoryUtils::create_repository(config)?;
+///         Self::handle_command(command, &*repo).await
 ///     }
 ///     
-///     async fn handle_command(command: Self::Commands, api: &ClickUpApi) -> Result<(), ClickUpError> {
+///     async fn handle_command(command: Self::Commands, repo: &dyn ClickUpRepository) -> Result<(), ClickUpError> {
 ///         match command {
 ///             MyCommands::List => { /* list logic */ },
 ///             MyCommands::Show { id } => { /* show logic */ },
@@ -123,12 +123,12 @@ pub trait CommandExecutor {
     /// # Arguments
     ///
     /// * `command` - The command to execute
-    /// * `api` - Reference to the ClickUp API client
+    /// * `repo` - Reference to the ClickUp repository
     ///
     /// # Returns
     ///
     /// Returns `Ok(())` on successful execution, or a `ClickUpError` on failure.
-    async fn handle_command(command: Self::Commands, api: &ClickUpApi) -> Result<(), ClickUpError>;
+    async fn handle_command(command: Self::Commands, repo: &dyn ClickUpRepository) -> Result<(), ClickUpError>;
 }
 
 /// Table builder for consistent table creation
@@ -431,34 +431,34 @@ impl ErrorUtils {
 
 }
 
-/// API client utilities for consistent client creation
+/// Repository utilities for consistent repository creation
 ///
-/// This struct provides standardized methods for creating ClickUp API clients
+/// This struct provides standardized methods for creating ClickUp repository instances
 /// across command modules, ensuring consistent configuration and error handling.
 ///
 /// ## Usage Pattern
 ///
 /// ```rust
-/// use clickup_cli::commands::utils::ApiUtils;
+/// use clickup_cli::commands::utils::RepositoryUtils;
 /// use clickup_cli::config::Config;
 /// use clickup_cli::error::ClickUpError;
 ///
 /// fn example() -> Result<(), ClickUpError> {
 ///     let config = Config::default(); // Your config
-///     let api = ApiUtils::create_client(&config)?;
+///     let repo = RepositoryUtils::create_repository(&config)?;
 ///     Ok(())
 /// }
 /// ```
 ///
 /// ## Benefits
 ///
-/// - **Centralized Configuration**: All API clients use the same configuration pattern
+/// - **Centralized Configuration**: All repositories use the same configuration pattern
 /// - **Consistent Error Handling**: Standardized error propagation
-/// - **Future-Proof**: Easy to modify API client creation behavior globally
-pub struct ApiUtils;
+/// - **Future-Proof**: Easy to modify repository creation behavior globally
+pub struct RepositoryUtils;
 
-impl ApiUtils {
-    /// Create a new ClickUp API client
+impl RepositoryUtils {
+    /// Create a new ClickUp repository instance
     ///
     /// # Arguments
     ///
@@ -466,9 +466,9 @@ impl ApiUtils {
     ///
     /// # Returns
     ///
-    /// Returns a `ClickUpApi` instance or a `ClickUpError`
-    pub fn create_client(config: &Config) -> Result<ClickUpApi, ClickUpError> {
-        ClickUpApi::new(config.clone())
+    /// Returns a repository instance or a `ClickUpError`
+    pub fn create_repository(config: &Config) -> Result<Box<dyn ClickUpRepository>, ClickUpError> {
+        crate::repository::RepositoryFactory::create(config)
     }
 }
 

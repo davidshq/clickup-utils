@@ -22,11 +22,11 @@
 //! tag-based filtering, overdue task management with dry-run support, and
 //! comprehensive task details display.
 
-use crate::api::ClickUpApi;
 use crate::config::Config;
 use crate::error::ClickUpError;
 use crate::models::{CreateTaskRequest, UpdateTaskRequest};
-use crate::commands::utils::{ApiUtils, CommandExecutor, DisplayUtils, TableBuilder, TableHeaders};
+use crate::repository::ClickUpRepository;
+use crate::commands::utils::{CommandExecutor, DisplayUtils, TableBuilder, TableHeaders};
 use chrono::NaiveTime;
 use clap::Subcommand;
 use colored::*;
@@ -174,24 +174,24 @@ impl CommandExecutor for TaskCommands {
     type Commands = TaskCommands;
     
     async fn execute(command: Self::Commands, config: &Config) -> Result<(), ClickUpError> {
-        let api = ApiUtils::create_client(config)?;
-        Self::handle_command(command, &api).await
+        let repo = crate::repository::RepositoryFactory::create(config)?;
+        Self::handle_command(command, &*repo).await
     }
     
-    async fn handle_command(command: Self::Commands, api: &ClickUpApi) -> Result<(), ClickUpError> {
+    async fn handle_command(command: Self::Commands, repo: &dyn ClickUpRepository) -> Result<(), ClickUpError> {
         match command {
             TaskCommands::List { list_id } => {
-                list_tasks(api, &list_id).await?;
+                list_tasks(repo, &list_id).await?;
             }
             TaskCommands::ListByTag { list_id, tag } => {
-                list_tasks_by_tag(api, &list_id, &tag).await?;
+                list_tasks_by_tag(repo, &list_id, &tag).await?;
             }
             TaskCommands::SearchByTag {
                 tag,
                 workspace_id,
                 space_id,
             } => {
-                search_tasks_by_tag(api, tag, workspace_id, space_id).await?;
+                search_tasks_by_tag(repo, tag, workspace_id, space_id).await?;
             }
             TaskCommands::UpdateOverdueByTag {
                 tag,
@@ -199,10 +199,10 @@ impl CommandExecutor for TaskCommands {
                 space_id,
                 dry_run,
             } => {
-                update_overdue_by_tag(api, tag, workspace_id, space_id, dry_run).await?;
+                update_overdue_by_tag(repo, tag, workspace_id, space_id, dry_run).await?;
             }
             TaskCommands::Show { id } => {
-                show_task(api, &id).await?;
+                show_task(repo, &id).await?;
             }
             TaskCommands::Create {
                 list_id,
@@ -222,7 +222,7 @@ impl CommandExecutor for TaskCommands {
                     due_date,
                     time_estimate,
                 };
-                create_task(api, params).await?;
+                create_task(repo, params).await?;
             }
             TaskCommands::Update {
                 id,
@@ -242,10 +242,10 @@ impl CommandExecutor for TaskCommands {
                     due_date,
                     time_estimate,
                 };
-                update_task(api, params).await?;
+                update_task(repo, params).await?;
             }
             TaskCommands::Delete { id } => {
-                delete_task(api, &id).await?;
+                delete_task(repo, &id).await?;
             }
         }
         Ok(())
@@ -286,7 +286,7 @@ pub async fn execute(command: TaskCommands, config: &Config) -> Result<(), Click
 ///
 /// # Arguments
 ///
-/// * `api` - Reference to the ClickUp API client
+/// * `repo` - Reference to the ClickUp repository
 /// * `list_id` - The ID of the list to list tasks for
 ///
 /// # Returns
@@ -298,8 +298,8 @@ pub async fn execute(command: TaskCommands, config: &Config) -> Result<(), Click
 /// This function can return:
 /// - `ClickUpError::NetworkError` if the API request fails
 /// - `ClickUpError::NotFoundError` if the list doesn't exist
-async fn list_tasks(api: &ClickUpApi, list_id: &str) -> Result<(), ClickUpError> {
-    let tasks = api.get_tasks(list_id).await?;
+async fn list_tasks(repo: &dyn ClickUpRepository, list_id: &str) -> Result<(), ClickUpError> {
+    let tasks = repo.get_tasks(list_id).await?;
 
     if tasks.tasks.is_empty() {
         DisplayUtils::display_empty_message("tasks");
@@ -354,7 +354,7 @@ async fn list_tasks(api: &ClickUpApi, list_id: &str) -> Result<(), ClickUpError>
 ///
 /// # Arguments
 ///
-/// * `api` - Reference to the ClickUp API client
+/// * `repo` - Reference to the ClickUp repository
 /// * `list_id` - The ID of the list to search in
 /// * `tag` - The tag name to filter by
 ///
@@ -367,9 +367,9 @@ async fn list_tasks(api: &ClickUpApi, list_id: &str) -> Result<(), ClickUpError>
 /// This function can return:
 /// - `ClickUpError::NetworkError` if the API request fails
 /// - `ClickUpError::NotFoundError` if the list doesn't exist
-async fn list_tasks_by_tag(api: &ClickUpApi, list_id: &str, tag: &str) -> Result<(), ClickUpError> {
+async fn list_tasks_by_tag(repo: &dyn ClickUpRepository, list_id: &str, tag: &str) -> Result<(), ClickUpError> {
     println!("{}", format!("Fetching tasks with tag '{tag}'...").blue());
-    let tasks = api.get_tasks_by_tag(list_id, tag).await?;
+    let tasks = repo.get_tasks_by_tag(list_id, tag).await?;
 
     if tasks.tasks.is_empty() {
         println!("{}", format!("No tasks found with tag '{tag}'").yellow());
@@ -435,7 +435,7 @@ async fn list_tasks_by_tag(api: &ClickUpApi, list_id: &str, tag: &str) -> Result
 ///
 /// # Arguments
 ///
-/// * `api` - Reference to the ClickUp API client
+/// * `repo` - Reference to the ClickUp repository
 /// * `tag` - The tag name to search for
 /// * `workspace_id` - Optional workspace ID to limit search scope
 /// * `space_id` - Optional space ID to limit search scope
@@ -450,7 +450,7 @@ async fn list_tasks_by_tag(api: &ClickUpApi, list_id: &str, tag: &str) -> Result
 /// - `ClickUpError::NetworkError` if the API request fails
 /// - `ClickUpError::NotFoundError` if the workspace or space doesn't exist
 async fn search_tasks_by_tag(
-    api: &ClickUpApi,
+    repo: &dyn ClickUpRepository,
     tag: String,
     workspace_id: Option<String>,
     space_id: Option<String>,
@@ -459,7 +459,7 @@ async fn search_tasks_by_tag(
         "{}",
         format!("Searching for tasks with tag '{tag}'...").blue()
     );
-    let tasks = api
+    let tasks = repo
         .search_tasks_by_tag(tag.clone(), workspace_id, space_id)
         .await?;
 
@@ -544,7 +544,7 @@ async fn search_tasks_by_tag(
 /// - `ClickUpError::ValidationError` if date parsing fails
 /// - `ClickUpError::NotFoundError` if the workspace or space doesn't exist
 async fn update_overdue_by_tag(
-    api: &ClickUpApi,
+    repo: &dyn ClickUpRepository,
     tag: String,
     workspace_id: Option<String>,
     space_id: Option<String>,
@@ -554,7 +554,7 @@ async fn update_overdue_by_tag(
         "{}",
         format!("Searching for overdue tasks with tag '{tag}'...").blue()
     );
-    let tasks = api
+    let tasks = repo
         .search_tasks_by_tag(tag.clone(), workspace_id, space_id)
         .await?;
 
@@ -642,7 +642,7 @@ async fn update_overdue_by_tag(
                         notify_all: None,
                     };
 
-                    match api.update_task(&task.id, update_data).await {
+                    match repo.update_task(&task.id, update_data).await {
                         Ok(_) => {
                             println!(
                                 "{}",
@@ -739,7 +739,7 @@ async fn update_overdue_by_tag(
 ///
 /// # Arguments
 ///
-/// * `api` - Reference to the ClickUp API client
+/// * `repo` - Reference to the ClickUp repository
 /// * `task_id` - The ID of the task to show
 ///
 /// # Returns
@@ -751,8 +751,8 @@ async fn update_overdue_by_tag(
 /// This function can return:
 /// - `ClickUpError::NetworkError` if the API request fails
 /// - `ClickUpError::NotFoundError` if the task doesn't exist
-async fn show_task(api: &ClickUpApi, task_id: &str) -> Result<(), ClickUpError> {
-    let task = api.get_task(task_id).await?;
+async fn show_task(repo: &dyn ClickUpRepository, task_id: &str) -> Result<(), ClickUpError> {
+    let task = repo.get_task(task_id).await?;
 
     println!("{}", "Task Details".bold());
     println!("ID: {}", task.id);
@@ -825,7 +825,7 @@ async fn show_task(api: &ClickUpApi, task_id: &str) -> Result<(), ClickUpError> 
 ///
 /// # Arguments
 ///
-/// * `api` - Reference to the ClickUp API client
+/// * `repo` - Reference to the ClickUp repository
 /// * `params` - Task creation parameters
 ///
 /// # Returns
@@ -838,7 +838,7 @@ async fn show_task(api: &ClickUpApi, task_id: &str) -> Result<(), ClickUpError> 
 /// - `ClickUpError::NetworkError` if the API request fails
 /// - `ClickUpError::ValidationError` if required parameters are missing
 /// - `ClickUpError::NotFoundError` if the list doesn't exist
-async fn create_task(api: &ClickUpApi, params: CreateTaskParams) -> Result<(), ClickUpError> {
+async fn create_task(repo: &dyn ClickUpRepository, params: CreateTaskParams) -> Result<(), ClickUpError> {
     let task_data = CreateTaskRequest {
         name: params.name,
         description: params.description,
@@ -857,7 +857,7 @@ async fn create_task(api: &ClickUpApi, params: CreateTaskParams) -> Result<(), C
         notify_all: None,
     };
 
-    let task = api.create_task(&params.list_id, task_data).await?;
+    let task = repo.create_task(&params.list_id, task_data).await?;
 
     println!("{}", "✓ Task created successfully!".green());
     println!("ID: {}", task.id);
@@ -875,7 +875,7 @@ async fn create_task(api: &ClickUpApi, params: CreateTaskParams) -> Result<(), C
 ///
 /// # Arguments
 ///
-/// * `api` - Reference to the ClickUp API client
+/// * `repo` - Reference to the ClickUp repository
 /// * `params` - Task update parameters
 ///
 /// # Returns
@@ -888,7 +888,7 @@ async fn create_task(api: &ClickUpApi, params: CreateTaskParams) -> Result<(), C
 /// - `ClickUpError::NetworkError` if the API request fails
 /// - `ClickUpError::ValidationError` if invalid parameters are provided
 /// - `ClickUpError::NotFoundError` if the task doesn't exist
-async fn update_task(api: &ClickUpApi, params: UpdateTaskParams) -> Result<(), ClickUpError> {
+async fn update_task(repo: &dyn ClickUpRepository, params: UpdateTaskParams) -> Result<(), ClickUpError> {
     let task_data = UpdateTaskRequest {
         name: params.name,
         description: params.description,
@@ -907,7 +907,7 @@ async fn update_task(api: &ClickUpApi, params: UpdateTaskParams) -> Result<(), C
         notify_all: None,
     };
 
-    let task = api.update_task(&params.task_id, task_data).await?;
+    let task = repo.update_task(&params.task_id, task_data).await?;
 
     println!("{}", "✓ Task updated successfully!".green());
     println!("ID: {}", task.id);
@@ -925,7 +925,7 @@ async fn update_task(api: &ClickUpApi, params: UpdateTaskParams) -> Result<(), C
 ///
 /// # Arguments
 ///
-/// * `api` - Reference to the ClickUp API client
+/// * `repo` - Reference to the ClickUp repository
 /// * `task_id` - The ID of the task to delete
 ///
 /// # Returns
@@ -937,8 +937,8 @@ async fn update_task(api: &ClickUpApi, params: UpdateTaskParams) -> Result<(), C
 /// This function can return:
 /// - `ClickUpError::NetworkError` if the API request fails
 /// - `ClickUpError::NotFoundError` if the task doesn't exist
-async fn delete_task(api: &ClickUpApi, task_id: &str) -> Result<(), ClickUpError> {
-    api.delete_task(task_id).await?;
+async fn delete_task(repo: &dyn ClickUpRepository, task_id: &str) -> Result<(), ClickUpError> {
+    repo.delete_task(task_id).await?;
 
     println!("{}", "✓ Task deleted successfully!".green());
     println!("Deleted task ID: {task_id}");

@@ -14,10 +14,10 @@
 //! Lists are displayed in a formatted table showing key information
 //! including task counts, folder organization, and content descriptions.
 
-use crate::api::ClickUpApi;
 use crate::config::Config;
 use crate::error::ClickUpError;
-use crate::commands::utils::{ApiUtils, CommandExecutor, DisplayUtils, ErrorUtils, TableBuilder, TableHeaders};
+use crate::repository::ClickUpRepository;
+use crate::commands::utils::{CommandExecutor, DisplayUtils, ErrorUtils, TableBuilder, TableHeaders};
 use clap::Subcommand;
 
 /// List command variants
@@ -32,11 +32,11 @@ pub enum ListCommands {
         #[arg(short, long)]
         space_id: String,
     },
-    /// Show details of a specific list
+    /// Show detailed information about a specific list
     Show {
         /// List ID
         #[arg(short, long)]
-        id: String,
+        list_id: String,
     },
 }
 
@@ -44,17 +44,17 @@ impl CommandExecutor for ListCommands {
     type Commands = ListCommands;
     
     async fn execute(command: Self::Commands, config: &Config) -> Result<(), ClickUpError> {
-        let api = ApiUtils::create_client(config)?;
-        Self::handle_command(command, &api).await
+        let repo = crate::repository::RepositoryFactory::create(config)?;
+        Self::handle_command(command, &*repo).await
     }
     
-    async fn handle_command(command: Self::Commands, api: &ClickUpApi) -> Result<(), ClickUpError> {
+    async fn handle_command(command: Self::Commands, repo: &dyn ClickUpRepository) -> Result<(), ClickUpError> {
         match command {
             ListCommands::List { space_id } => {
-                list_lists(api, &space_id).await?;
+                list_lists(repo, &space_id).await?;
             }
-            ListCommands::Show { id } => {
-                show_list(api, &id).await?;
+            ListCommands::Show { list_id } => {
+                show_list(repo, &list_id).await?;
             }
         }
         Ok(())
@@ -94,7 +94,7 @@ pub async fn execute(command: ListCommands, config: &Config) -> Result<(), Click
 ///
 /// # Arguments
 ///
-/// * `api` - Reference to the ClickUp API client
+/// * `repo` - Reference to the ClickUp repository
 /// * `space_id` - The ID of the space to list lists for
 ///
 /// # Returns
@@ -106,8 +106,8 @@ pub async fn execute(command: ListCommands, config: &Config) -> Result<(), Click
 /// This function can return:
 /// - `ClickUpError::NetworkError` if the API request fails
 /// - `ClickUpError::NotFoundError` if the space doesn't exist
-async fn list_lists(api: &ClickUpApi, space_id: &str) -> Result<(), ClickUpError> {
-    let lists = api.get_lists(space_id).await?;
+async fn list_lists(repo: &dyn ClickUpRepository, space_id: &str) -> Result<(), ClickUpError> {
+    let lists = repo.get_lists(space_id).await?;
 
     if lists.lists.is_empty() {
         DisplayUtils::display_empty_message("lists");
@@ -147,51 +147,49 @@ async fn list_lists(api: &ClickUpApi, space_id: &str) -> Result<(), ClickUpError
 
 /// Show detailed information about a specific list
 ///
-/// This function searches for a list across all accessible workspaces
-/// and displays its detailed information. Note that this operation may
-/// be slow as it searches through all spaces.
+/// This function retrieves and displays detailed information about a
+/// specific list, including its name, content, task count, and folder.
 ///
 /// # Arguments
 ///
-/// * `api` - Reference to the ClickUp API client
+/// * `repo` - Reference to the ClickUp repository
 /// * `list_id` - The ID of the list to show
 ///
 /// # Returns
 ///
-/// Returns `Ok(())` on successful display, or a `ClickUpError` on failure.
+/// Returns `Ok(())` on successful showing, or a `ClickUpError` on failure.
 ///
 /// # Errors
 ///
 /// This function can return:
 /// - `ClickUpError::NetworkError` if the API request fails
 /// - `ClickUpError::NotFoundError` if the list doesn't exist
-async fn show_list(api: &ClickUpApi, list_id: &str) -> Result<(), ClickUpError> {
-    // For now, we'll need to search through spaces to find the list
-    // In a real implementation, you might want to store space_id in config
-    let workspaces = api.get_workspaces().await?;
+async fn show_list(repo: &dyn ClickUpRepository, list_id: &str) -> Result<(), ClickUpError> {
+    let list = repo.get_list(list_id).await?;
 
-    for workspace in &workspaces.teams {
-        let spaces = api.get_spaces(&workspace.id).await?;
-        for space in &spaces.spaces {
-            let lists = api.get_lists(&space.id).await?;
-            if let Some(list) = lists.lists.into_iter().find(|l| l.id == list_id) {
-                DisplayUtils::display_details_header("List");
-                println!("ID: {}", list.id);
-                println!("Name: {}", list.name.as_deref().unwrap_or(""));
-                println!("Content: {}", list.content.as_deref().unwrap_or(""));
-                println!("Order Index: {}", list.orderindex);
-                println!("Task Count: {}", list.task_count.map_or(0, |c| c));
+    let mut table_builder = TableBuilder::new();
+    table_builder.add_header(vec![
+        TableHeaders::id(),
+        TableHeaders::name(),
+        TableHeaders::content(),
+        TableHeaders::task_count(),
+        TableHeaders::folder(),
+    ]);
 
-                if let Some(folder) = &list.folder {
-                    println!("Folder: {} ({})", folder.name, folder.id);
-                }
+    table_builder.add_row(vec![
+        list.id.clone(),
+        list.name.as_deref().unwrap_or("").to_string(),
+        list.content.as_deref().unwrap_or("").to_string(),
+        list.task_count.map_or("".to_string(), |c| c.to_string()),
+        list.folder
+            .as_ref()
+            .map(|f| f.name.as_str())
+            .unwrap_or("None")
+            .to_string(),
+    ]);
 
-                println!("Space: {} ({})", list.space.name, list.space.id);
-
-                return Ok(());
-            }
-        }
-    }
-
-    Err(ErrorUtils::not_found_error("List", list_id))
+    table_builder.print();
+    Ok(())
 }
+
+

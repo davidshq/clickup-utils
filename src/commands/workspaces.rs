@@ -15,10 +15,10 @@
 //! including member counts, colors, and roles. Detailed workspace views
 //! include member lists and role information.
 
-use crate::api::ClickUpApi;
 use crate::config::Config;
 use crate::error::ClickUpError;
-use crate::commands::utils::{ApiUtils, CommandExecutor, DisplayUtils, TableBuilder, TableHeaders};
+use crate::repository::ClickUpRepository;
+use crate::commands::utils::{CommandExecutor, DisplayUtils, TableBuilder, TableHeaders};
 use clap::Subcommand;
 
 /// Workspace command variants
@@ -42,17 +42,17 @@ impl CommandExecutor for WorkspaceCommands {
     type Commands = WorkspaceCommands;
     
     async fn execute(command: Self::Commands, config: &Config) -> Result<(), ClickUpError> {
-        let api = ApiUtils::create_client(config)?;
-        Self::handle_command(command, &api).await
+        let repo = crate::repository::RepositoryFactory::create(config)?;
+        Self::handle_command(command, &*repo).await
     }
     
-    async fn handle_command(command: Self::Commands, api: &ClickUpApi) -> Result<(), ClickUpError> {
+    async fn handle_command(command: Self::Commands, repo: &dyn ClickUpRepository) -> Result<(), ClickUpError> {
         match command {
             WorkspaceCommands::List => {
-                list_workspaces(api).await?;
+                list_workspaces(repo).await?;
             }
             WorkspaceCommands::Show { id } => {
-                show_workspace(api, &id).await?;
+                show_workspace(repo, &id).await?;
             }
         }
         Ok(())
@@ -92,7 +92,7 @@ pub async fn execute(command: WorkspaceCommands, config: &Config) -> Result<(), 
 ///
 /// # Arguments
 ///
-/// * `api` - Reference to the ClickUp API client
+/// * `repo` - Reference to the ClickUp repository
 ///
 /// # Returns
 ///
@@ -103,9 +103,9 @@ pub async fn execute(command: WorkspaceCommands, config: &Config) -> Result<(), 
 /// This function can return:
 /// - `ClickUpError::NetworkError` if the API request fails
 /// - `ClickUpError::AuthError` if not properly authenticated
-async fn list_workspaces(api: &ClickUpApi) -> Result<(), ClickUpError> {
+async fn list_workspaces(repo: &dyn ClickUpRepository) -> Result<(), ClickUpError> {
     println!("Fetching workspaces from ClickUp API...");
-    let workspaces = api.get_workspaces().await?;
+    let workspaces = repo.get_workspaces().await?;
     println!("Received {} workspaces", workspaces.teams.len());
 
     if workspaces.teams.is_empty() {
@@ -141,7 +141,7 @@ async fn list_workspaces(api: &ClickUpApi) -> Result<(), ClickUpError> {
 ///
 /// # Arguments
 ///
-/// * `api` - Reference to the ClickUp API client
+/// * `repo` - Reference to the ClickUp repository
 /// * `workspace_id` - The ID of the workspace to show
 ///
 /// # Returns
@@ -153,8 +153,8 @@ async fn list_workspaces(api: &ClickUpApi) -> Result<(), ClickUpError> {
 /// This function can return:
 /// - `ClickUpError::NetworkError` if the API request fails
 /// - `ClickUpError::NotFoundError` if the workspace doesn't exist
-async fn show_workspace(api: &ClickUpApi, workspace_id: &str) -> Result<(), ClickUpError> {
-    let workspace = api.get_workspace(workspace_id).await?;
+async fn show_workspace(repo: &dyn ClickUpRepository, workspace_id: &str) -> Result<(), ClickUpError> {
+    let workspace = repo.get_workspace(workspace_id).await?;
 
     DisplayUtils::display_details_header("Workspace");
     println!("ID: {}", workspace.id);

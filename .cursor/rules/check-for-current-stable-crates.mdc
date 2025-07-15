@@ -1,0 +1,4 @@
+---
+description: When adding new dependencies, make sure to use cargo to check that we are using latest stable whenever possible.
+alwaysApply: false
+---

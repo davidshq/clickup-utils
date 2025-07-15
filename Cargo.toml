@@ -74,6 +74,8 @@ chrono = { version = "0.4", features = ["serde"] }
 # Async utilities
 # Provides utilities for async operations like join_all
 futures = "0.3"
+# Async trait support for repository pattern
+async-trait = "0.1"
 
 # Logging
 # Provides structured logging throughout the application

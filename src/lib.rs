@@ -43,12 +43,14 @@ pub mod constants;
 pub mod error;
 pub mod models;
 pub mod rate_limiter;
+pub mod repository;
 
 // Clean library exports - main public API
 pub use api::ClickUpApi;
 pub use config::Config;
 pub use error::ClickUpError;
 pub use models::*;
+pub use repository::{ClickUpRepository, RepositoryFactory};
 
 // Re-export commonly used constants for convenience
 pub use constants::{

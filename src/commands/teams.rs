@@ -15,10 +15,10 @@
 //! including member counts, colors, and roles. Detailed team views
 //! include member lists and role information.
 
-use crate::api::ClickUpApi;
 use crate::config::Config;
 use crate::error::ClickUpError;
-use crate::commands::utils::{ApiUtils, CommandExecutor, DisplayUtils, ErrorUtils, TableBuilder, TableHeaders};
+use crate::repository::ClickUpRepository;
+use crate::commands::utils::{CommandExecutor, DisplayUtils, ErrorUtils, TableBuilder, TableHeaders};
 use clap::Subcommand;
 
 /// Team command variants
@@ -42,17 +42,17 @@ impl CommandExecutor for TeamCommands {
     type Commands = TeamCommands;
     
     async fn execute(command: Self::Commands, config: &Config) -> Result<(), ClickUpError> {
-        let api = ApiUtils::create_client(config)?;
-        Self::handle_command(command, &api).await
+        let repo = crate::repository::RepositoryFactory::create(config)?;
+        Self::handle_command(command, &*repo).await
     }
     
-    async fn handle_command(command: Self::Commands, api: &ClickUpApi) -> Result<(), ClickUpError> {
+    async fn handle_command(command: Self::Commands, repo: &dyn ClickUpRepository) -> Result<(), ClickUpError> {
         match command {
             TeamCommands::List => {
-                list_teams(api).await?;
+                list_teams(repo).await?;
             }
             TeamCommands::Show { id } => {
-                show_team(api, &id).await?;
+                show_team(repo, &id).await?;
             }
         }
         Ok(())
@@ -91,7 +91,7 @@ pub async fn execute(command: TeamCommands, config: &Config) -> Result<(), Click
 ///
 /// # Arguments
 ///
-/// * `api` - Reference to the ClickUp API client
+/// * `repo` - Reference to the ClickUp repository
 ///
 /// # Returns
 ///
@@ -102,8 +102,8 @@ pub async fn execute(command: TeamCommands, config: &Config) -> Result<(), Click
 /// This function can return:
 /// - `ClickUpError::NetworkError` if the API request fails
 /// - `ClickUpError::AuthError` if not properly authenticated
-async fn list_teams(api: &ClickUpApi) -> Result<(), ClickUpError> {
-    let workspaces = api.get_workspaces().await?;
+async fn list_teams(repo: &dyn ClickUpRepository) -> Result<(), ClickUpError> {
+    let workspaces = repo.get_workspaces().await?;
 
     if workspaces.teams.is_empty() {
         DisplayUtils::display_empty_message("teams");
@@ -138,7 +138,7 @@ async fn list_teams(api: &ClickUpApi) -> Result<(), ClickUpError> {
 ///
 /// # Arguments
 ///
-/// * `api` - Reference to the ClickUp API client
+/// * `repo` - Reference to the ClickUp repository
 /// * `team_id` - The ID of the team to show
 ///
 /// # Returns
@@ -150,8 +150,8 @@ async fn list_teams(api: &ClickUpApi) -> Result<(), ClickUpError> {
 /// This function can return:
 /// - `ClickUpError::NetworkError` if the API request fails
 /// - `ClickUpError::NotFoundError` if the team doesn't exist
-async fn show_team(api: &ClickUpApi, team_id: &str) -> Result<(), ClickUpError> {
-    let workspaces = api.get_workspaces().await?;
+async fn show_team(repo: &dyn ClickUpRepository, team_id: &str) -> Result<(), ClickUpError> {
+    let workspaces = repo.get_workspaces().await?;
 
     let team = workspaces
         .teams

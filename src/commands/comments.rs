@@ -18,11 +18,11 @@
 //! to specific team members. Comments are displayed in a formatted table
 //! for easy reading.
 
-use crate::api::ClickUpApi;
 use crate::config::Config;
 use crate::error::ClickUpError;
 use crate::models::CreateCommentRequest;
-use crate::commands::utils::{ApiUtils, CommandExecutor, DisplayUtils, TableBuilder, TableHeaders};
+use crate::repository::ClickUpRepository;
+use crate::commands::utils::{CommandExecutor, DisplayUtils, TableBuilder, TableHeaders};
 use clap::Subcommand;
 use colored::*;
 
@@ -59,21 +59,7 @@ pub enum CommentCommands {
         #[arg(short, long)]
         notify_all: Option<bool>,
     },
-    /// Update an existing comment
-    Update {
-        /// Comment ID
-        #[arg(short, long)]
-        id: String,
-        /// New comment text
-        #[arg(short = 't', long)]
-        text: String,
-        /// Assignee ID (optional)
-        #[arg(short, long)]
-        assignee: Option<i64>,
-        /// Notify all team members
-        #[arg(short, long)]
-        notify_all: Option<bool>,
-    },
+
     /// Delete a comment
     Delete {
         /// Comment ID
@@ -86,17 +72,17 @@ impl CommandExecutor for CommentCommands {
     type Commands = CommentCommands;
     
     async fn execute(command: Self::Commands, config: &Config) -> Result<(), ClickUpError> {
-        let api = ApiUtils::create_client(config)?;
-        Self::handle_command(command, &api).await
+        let repo = crate::repository::RepositoryFactory::create(config)?;
+        Self::handle_command(command, &*repo).await
     }
     
-    async fn handle_command(command: Self::Commands, api: &ClickUpApi) -> Result<(), ClickUpError> {
+    async fn handle_command(command: Self::Commands, repo: &dyn ClickUpRepository) -> Result<(), ClickUpError> {
         match command {
             CommentCommands::List { task_id } => {
-                list_comments(api, &task_id).await?;
+                list_comments(repo, &task_id).await?;
             }
             CommentCommands::Show { id } => {
-                show_comment(api, &id).await?;
+                show_comment(repo, &id).await?;
             }
             CommentCommands::Create {
                 task_id,
@@ -104,18 +90,11 @@ impl CommandExecutor for CommentCommands {
                 assignee,
                 notify_all,
             } => {
-                create_comment(api, &task_id, text, assignee, notify_all).await?;
+                create_comment(repo, &task_id, text, assignee, notify_all).await?;
             }
-            CommentCommands::Update {
-                id,
-                text,
-                assignee,
-                notify_all,
-            } => {
-                update_comment(api, &id, text, assignee, notify_all).await?;
-            }
+
             CommentCommands::Delete { id } => {
-                delete_comment(api, &id).await?;
+                delete_comment(repo, &id).await?;
             }
         }
         Ok(())
@@ -154,7 +133,7 @@ pub async fn execute(command: CommentCommands, config: &Config) -> Result<(), Cl
 ///
 /// # Arguments
 ///
-/// * `api` - Reference to the ClickUp API client
+/// * `repo` - Reference to the ClickUp repository
 /// * `task_id` - The ID of the task to list comments for
 ///
 /// # Returns
@@ -166,8 +145,8 @@ pub async fn execute(command: CommentCommands, config: &Config) -> Result<(), Cl
 /// This function can return:
 /// - `ClickUpError::NetworkError` if the API request fails
 /// - `ClickUpError::NotFoundError` if the task doesn't exist
-async fn list_comments(api: &ClickUpApi, task_id: &str) -> Result<(), ClickUpError> {
-    let comments = api.get_comments(task_id).await?;
+async fn list_comments(repo: &dyn ClickUpRepository, task_id: &str) -> Result<(), ClickUpError> {
+    let comments = repo.get_comments(task_id).await?;
 
     if comments.comments.is_empty() {
         DisplayUtils::display_empty_message("comments");
@@ -211,7 +190,7 @@ async fn list_comments(api: &ClickUpApi, task_id: &str) -> Result<(), ClickUpErr
 ///
 /// # Arguments
 ///
-/// * `api` - Reference to the ClickUp API client
+/// * `repo` - Reference to the ClickUp repository
 /// * `comment_id` - The ID of the comment to show
 ///
 /// # Returns
@@ -223,9 +202,9 @@ async fn list_comments(api: &ClickUpApi, task_id: &str) -> Result<(), ClickUpErr
 /// This function can return:
 /// - `ClickUpError::NetworkError` if the API request fails
 /// - `ClickUpError::NotFoundError` if the comment doesn't exist
-async fn show_comment(api: &ClickUpApi, comment_id: &str) -> Result<(), ClickUpError> {
+async fn show_comment(repo: &dyn ClickUpRepository, comment_id: &str) -> Result<(), ClickUpError> {
     // Use the efficient comment search method
-    let comment = api.get_comment(comment_id).await?;
+    let comment = repo.get_comment(comment_id).await?;
 
     DisplayUtils::display_details_header("Comment");
     println!("ID: {}", comment.id);
@@ -258,47 +237,7 @@ async fn show_comment(api: &ClickUpApi, comment_id: &str) -> Result<(), ClickUpE
     Ok(())
 }
 
-/// Update an existing comment
-///
-/// This function updates a comment with new text and optional parameters.
-/// Only the provided fields will be updated.
-///
-/// # Arguments
-///
-/// * `api` - Reference to the ClickUp API client
-/// * `comment_id` - The ID of the comment to update
-/// * `text` - The new comment text
-/// * `assignee` - Optional assignee ID to mention
-/// * `notify_all` - Optional flag to notify all team members
-///
-/// # Returns
-///
-/// Returns `Ok(())` on successful update, or a `ClickUpError` on failure.
-///
-/// # Errors
-///
-/// This function can return:
-/// - `ClickUpError::NetworkError` if the API request fails
-/// - `ClickUpError::NotFoundError` if the comment doesn't exist
-/// - `ClickUpError::ValidationError` if the text is empty
-async fn update_comment(
-    api: &ClickUpApi,
-    comment_id: &str,
-    text: String,
-    assignee: Option<i64>,
-    notify_all: Option<bool>,
-) -> Result<(), ClickUpError> {
-    let comment_data = CreateCommentRequest {
-        comment_text: text,
-        assignee,
-        notify_all,
-    };
 
-    api.update_comment(comment_id, comment_data).await?;
-
-    println!("✓ Comment updated successfully!");
-    Ok(())
-}
 
 /// Delete a comment
 ///
@@ -307,7 +246,7 @@ async fn update_comment(
 ///
 /// # Arguments
 ///
-/// * `api` - Reference to the ClickUp API client
+/// * `repo` - Reference to the ClickUp repository
 /// * `comment_id` - The ID of the comment to delete
 ///
 /// # Returns
@@ -319,8 +258,8 @@ async fn update_comment(
 /// This function can return:
 /// - `ClickUpError::NetworkError` if the API request fails
 /// - `ClickUpError::NotFoundError` if the comment doesn't exist
-async fn delete_comment(api: &ClickUpApi, comment_id: &str) -> Result<(), ClickUpError> {
-    api.delete_comment(comment_id).await?;
+async fn delete_comment(repo: &dyn ClickUpRepository, comment_id: &str) -> Result<(), ClickUpError> {
+    repo.delete_comment(comment_id).await?;
 
     println!("{}", "✓ Comment deleted successfully!".green());
     println!("Deleted comment ID: {comment_id}");
@@ -335,7 +274,7 @@ async fn delete_comment(api: &ClickUpApi, comment_id: &str) -> Result<(), ClickU
 ///
 /// # Arguments
 ///
-/// * `api` - Reference to the ClickUp API client
+/// * `repo` - Reference to the ClickUp repository
 /// * `task_id` - The ID of the task to comment on
 /// * `text` - The comment text content
 /// * `assignee` - Optional assignee ID to mention in the comment
@@ -352,7 +291,7 @@ async fn delete_comment(api: &ClickUpApi, comment_id: &str) -> Result<(), ClickU
 /// - `ClickUpError::NotFoundError` if the task doesn't exist
 /// - `ClickUpError::ValidationError` if the text is empty
 async fn create_comment(
-    api: &ClickUpApi,
+    repo: &dyn ClickUpRepository,
     task_id: &str,
     text: String,
     assignee: Option<i64>,
@@ -364,7 +303,7 @@ async fn create_comment(
         notify_all,
     };
 
-    api.create_comment(task_id, comment_data).await?;
+    repo.create_comment(task_id, comment_data).await?;
 
     println!("✓ Comment created successfully!");
     Ok(())

@@ -497,6 +497,29 @@ impl ClickUpApi {
             .await
     }
 
+    /// Retrieves a specific list by its ID using the direct API endpoint
+    ///
+    /// # Arguments
+    ///
+    /// * `list_id` - The ID of the list to retrieve
+    ///
+    /// # Returns
+    ///
+    /// Returns the `List` if found.
+    ///
+    /// # Errors
+    ///
+    /// This function can return authentication, permission, or network errors.
+    pub async fn get_list_by_id(&self, list_id: &str) -> Result<List, ClickUpError> {
+        let endpoint = format!("/list/{list_id}");
+        self.make_request(reqwest::Method::GET, &endpoint, None, None).await
+    }
+
+    /// Retrieves a specific list by ID (now uses direct endpoint)
+    pub async fn get_list(&self, list_id: &str) -> Result<List, ClickUpError> {
+        self.get_list_by_id(list_id).await
+    }
+
     // Folder endpoints
 
     /// Retrieves all folders within a specific space

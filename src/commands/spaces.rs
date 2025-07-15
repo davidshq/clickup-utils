@@ -17,11 +17,11 @@
 //! The backup feature creates complete JSON backups including all nested
 //! content with optional comment inclusion.
 
-use crate::api::ClickUpApi;
 use crate::config::Config;
 use crate::error::ClickUpError;
 use crate::models::{Comment, Folder, List, Space, Task};
-use crate::commands::utils::{ApiUtils, CommandExecutor, DisplayUtils, ErrorUtils, TableBuilder, TableHeaders};
+use crate::repository::ClickUpRepository;
+use crate::commands::utils::{CommandExecutor, DisplayUtils, ErrorUtils, TableBuilder, TableHeaders};
 use chrono::Utc;
 use clap::Subcommand;
 use colored::*;
@@ -73,20 +73,20 @@ impl CommandExecutor for SpaceCommands {
     type Commands = SpaceCommands;
     
     async fn execute(command: Self::Commands, config: &Config) -> Result<(), ClickUpError> {
-        let api = ApiUtils::create_client(config)?;
-        Self::handle_command(command, &api).await
+        let repo = crate::repository::RepositoryFactory::create(config)?;
+        Self::handle_command(command, &*repo).await
     }
     
-    async fn handle_command(command: Self::Commands, api: &ClickUpApi) -> Result<(), ClickUpError> {
+    async fn handle_command(command: Self::Commands, repo: &dyn ClickUpRepository) -> Result<(), ClickUpError> {
         match command {
             SpaceCommands::List { workspace_id } => {
-                list_spaces(api, &workspace_id).await?;
+                list_spaces(repo, &workspace_id).await?;
             }
             SpaceCommands::Show { id } => {
-                show_space(api, &id).await?;
+                show_space(repo, &id).await?;
             }
             SpaceCommands::ListFolders { space_id } => {
-                list_folders(api, &space_id).await?;
+                list_folders(repo, &space_id).await?;
             }
             SpaceCommands::Backup {
                 space_id,
@@ -95,9 +95,9 @@ impl CommandExecutor for SpaceCommands {
             } => {
                 let space_id = match space_id {
                     Some(id) => id,
-                    None => select_space_interactive(api).await?,
+                    None => select_space_interactive(repo).await?,
                 };
-                backup_space(api, &space_id, &output_dir, include_comments).await?;
+                backup_space(repo, &space_id, &output_dir, include_comments).await?;
             }
         }
         Ok(())
@@ -150,8 +150,8 @@ pub async fn execute(command: SpaceCommands, config: &Config) -> Result<(), Clic
 /// This function can return:
 /// - `ClickUpError::NetworkError` if the API request fails
 /// - `ClickUpError::NotFoundError` if the workspace doesn't exist
-async fn list_spaces(api: &ClickUpApi, workspace_id: &str) -> Result<(), ClickUpError> {
-    let spaces = api.get_spaces(workspace_id).await?;
+async fn list_spaces(repo: &dyn ClickUpRepository, workspace_id: &str) -> Result<(), ClickUpError> {
+    let spaces = repo.get_spaces(workspace_id).await?;
 
     if spaces.spaces.is_empty() {
         DisplayUtils::display_empty_message("spaces");
@@ -205,13 +205,13 @@ async fn list_spaces(api: &ClickUpApi, workspace_id: &str) -> Result<(), ClickUp
 /// This function can return:
 /// - `ClickUpError::NetworkError` if the API request fails
 /// - `ClickUpError::NotFoundError` if the space doesn't exist
-async fn show_space(api: &ClickUpApi, space_id: &str) -> Result<(), ClickUpError> {
+async fn show_space(repo: &dyn ClickUpRepository, space_id: &str) -> Result<(), ClickUpError> {
     // For now, we'll need to search through workspaces to find the space
     // In a real implementation, you might want to store workspace_id in config
-    let workspaces = api.get_workspaces().await?;
+    let workspaces = repo.get_workspaces().await?;
 
     for workspace in &workspaces.teams {
-        let spaces = api.get_spaces(&workspace.id).await?;
+        let spaces = repo.get_spaces(&workspace.id).await?;
         if let Some(space) = spaces.spaces.into_iter().find(|s| s.id == space_id) {
             DisplayUtils::display_details_header("Space");
             println!("ID: {}", space.id);
@@ -295,8 +295,8 @@ async fn show_space(api: &ClickUpApi, space_id: &str) -> Result<(), ClickUpError
 /// This function can return:
 /// - `ClickUpError::NetworkError` if the API request fails
 /// - `ClickUpError::NotFoundError` if the space doesn't exist
-async fn list_folders(api: &ClickUpApi, space_id: &str) -> Result<(), ClickUpError> {
-    let folders = api.get_folders(space_id).await?;
+async fn list_folders(repo: &dyn ClickUpRepository, space_id: &str) -> Result<(), ClickUpError> {
+    let folders = repo.get_folders(space_id).await?;
 
     if folders.folders.is_empty() {
         DisplayUtils::display_empty_message("folders");
@@ -409,7 +409,7 @@ struct TaskComments {
 /// - `ClickUpError::NotFoundError` if the space doesn't exist
 /// - File system errors if the output directory cannot be created or written to
 async fn backup_space(
-    api: &ClickUpApi,
+    repo: &dyn ClickUpRepository,
     space_id: &str,
     output_dir: &str,
     include_comments: bool,
@@ -426,23 +426,23 @@ async fn backup_space(
 
     // Get space information
     println!("Fetching space information...");
-    let space = get_space_info(api, space_id).await?;
+    let space = get_space_info(repo, space_id).await?;
 
     // Get folders
     println!("Fetching folders...");
-    let folders = api.get_folders(space_id).await?;
+    let folders = repo.get_folders(space_id).await?;
 
     // Get lists (both in space and in folders)
     println!("Fetching lists...");
     let mut all_lists = Vec::new();
 
     // Get lists directly in the space
-    let space_lists = api.get_lists(space_id).await?;
+    let space_lists = repo.get_lists(space_id).await?;
     all_lists.extend(space_lists.lists);
 
     // Get lists in folders
     for folder in &folders.folders {
-        let folder_lists = api.get_folder_lists(&folder.id).await?;
+        let folder_lists = repo.get_folder_lists(&folder.id).await?;
         all_lists.extend(folder_lists.lists);
     }
 
@@ -456,13 +456,13 @@ async fn backup_space(
             "  Fetching tasks from list: {}",
             list.name.as_deref().unwrap_or("Unknown")
         );
-        let tasks = api.get_tasks(&list.id).await?;
+        let tasks = repo.get_tasks(&list.id).await?;
         all_tasks.extend(tasks.tasks.clone());
 
         // Get comments for each task if requested
         if include_comments {
             for task in &tasks.tasks {
-                match api.get_comments(&task.id).await {
+                match repo.get_comments(&task.id).await {
                     Ok(comments_response) => {
                         if !comments_response.comments.is_empty() {
                             all_comments.push(TaskComments {
@@ -538,7 +538,7 @@ async fn backup_space(
 ///
 /// # Arguments
 ///
-/// * `api` - Reference to the ClickUp API client
+/// * `repo` - Reference to the ClickUp repository
 /// * `space_id` - The ID of the space to retrieve
 ///
 /// # Returns
@@ -550,12 +550,12 @@ async fn backup_space(
 /// This function can return:
 /// - `ClickUpError::NetworkError` if the API request fails
 /// - `ClickUpError::NotFoundError` if the space doesn't exist
-async fn get_space_info(api: &ClickUpApi, space_id: &str) -> Result<Space, ClickUpError> {
+async fn get_space_info(repo: &dyn ClickUpRepository, space_id: &str) -> Result<Space, ClickUpError> {
     // Search through workspaces to find the space
-    let workspaces = api.get_workspaces().await?;
+    let workspaces = repo.get_workspaces().await?;
 
     for workspace in &workspaces.teams {
-        let spaces = api.get_spaces(&workspace.id).await?;
+        let spaces = repo.get_spaces(&workspace.id).await?;
         if let Some(space) = spaces.spaces.into_iter().find(|s| s.id == space_id) {
             return Ok(space);
         }
@@ -574,7 +574,7 @@ async fn get_space_info(api: &ClickUpApi, space_id: &str) -> Result<Space, Click
 ///
 /// # Arguments
 ///
-/// * `api` - Reference to the ClickUp API client
+/// * `repo` - Reference to the ClickUp repository
 ///
 /// # Returns
 ///
@@ -586,9 +586,9 @@ async fn get_space_info(api: &ClickUpApi, space_id: &str) -> Result<Space, Click
 /// - `ClickUpError::NetworkError` if the API request fails
 /// - `ClickUpError::NotFoundError` if no workspaces or spaces are found
 /// - `ClickUpError::IoError` if user input fails
-async fn select_space_interactive(api: &ClickUpApi) -> Result<String, ClickUpError> {
+async fn select_space_interactive(repo: &dyn ClickUpRepository) -> Result<String, ClickUpError> {
     // List workspaces
-    let workspaces = api.get_workspaces().await?;
+    let workspaces = repo.get_workspaces().await?;
     if workspaces.teams.is_empty() {
         return Err(ClickUpError::NotFoundError(
             "No workspaces found".to_string(),
@@ -616,7 +616,7 @@ async fn select_space_interactive(api: &ClickUpApi) -> Result<String, ClickUpErr
     let workspace = &workspaces.teams[ws_index - 1];
 
     // List spaces in the selected workspace
-    let spaces = api.get_spaces(&workspace.id).await?;
+    let spaces = repo.get_spaces(&workspace.id).await?;
     if spaces.spaces.is_empty() {
         return Err(ClickUpError::NotFoundError(
             "No spaces found in selected workspace".to_string(),
