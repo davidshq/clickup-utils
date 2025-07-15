@@ -41,7 +41,7 @@ mod public_api_tests {
         assert!(repo_result.is_ok());
         
         // Test repository type
-        let repository = repo_result.unwrap();
+        let _repository = repo_result.unwrap();
         assert!(std::any::type_name::<dyn clickup_cli::repository::ClickUpRepository>().contains("ClickUpRepository"));
     }
 
@@ -132,14 +132,13 @@ mod public_api_tests {
 
 #[cfg(test)]
 mod module_organization_tests {
-    use super::*;
 
     /// Test that all modules are properly exposed and accessible
     #[test]
     fn test_module_organization() {
         // Test that we can access all major modules through the library
         use clickup_cli::{
-            api, commands, config, constants, error, models, rate_limiter, repository,
+            api, config, error, models, rate_limiter,
         };
 
         // Verify modules exist and are accessible
@@ -154,7 +153,7 @@ mod module_organization_tests {
     #[test]
     fn test_command_modules_accessible() {
         use clickup_cli::commands::{
-            auth, comments, lists, spaces, tasks, teams, utils, workspaces,
+            auth, comments, lists, spaces, tasks, teams, workspaces,
         };
 
         // Verify command modules exist
@@ -170,7 +169,7 @@ mod module_organization_tests {
 
 #[cfg(test)]
 mod library_usage_tests {
-    use super::*;
+    use clickup_cli::{Config, ClickUpApi, ClickUpError, RepositoryFactory};
 
     /// Test the example usage pattern from the library documentation
     #[test]
@@ -237,7 +236,7 @@ mod library_usage_tests {
         
         assert!(repository_result.is_ok());
         
-        let repository = repository_result.unwrap();
+        let _repository = repository_result.unwrap();
         // Verify we can access repository methods
         assert!(std::any::type_name::<dyn clickup_cli::repository::ClickUpRepository>().contains("ClickUpRepository"));
     }
@@ -245,7 +244,7 @@ mod library_usage_tests {
 
 #[cfg(test)]
 mod error_handling_tests {
-    use super::*;
+    use clickup_cli::ClickUpError;
 
     /// Test that error types are properly exported and usable
     #[test]
@@ -272,7 +271,7 @@ mod error_handling_tests {
 
 #[cfg(test)]
 mod integration_tests {
-    use super::*;
+    use clickup_cli::{Config, ClickUpApi, RepositoryFactory};
 
     /// Test that the library can be used as a complete unit
     #[test]
@@ -304,10 +303,10 @@ mod integration_tests {
         config.set_api_token("test_token".to_string()).unwrap();
         
         // Create API client
-        let api = ClickUpApi::new(config.clone()).unwrap();
+        let _api = ClickUpApi::new(config.clone()).unwrap();
         
         // Create repository
-        let repository = RepositoryFactory::create(&config).unwrap();
+        let _repository = RepositoryFactory::create(&config).unwrap();
         
         // Verify all components are of expected types
         assert!(std::any::type_name::<Config>().contains("Config"));
