@@ -25,12 +25,18 @@
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     let config = Config::load()?;
+//!     // Create a default config (no authentication)
+//!     let config = Config::default();
+//!     
+//!     // Create API client (will fail without auth, but shows the pattern)
 //!     let api = ClickUpApi::new(config)?;
 //!     
-//!     // Use the API client
-//!     let workspaces = api.get_workspaces().await?;
-//!     println!("Found {} workspaces", workspaces.teams.len());
+//!     // Use the API client (this would fail without proper authentication)
+//!     match api.get_workspaces().await {
+//!         Ok(workspaces) => println!("Found {} workspaces", workspaces.teams.len()),
+//!         Err(ClickUpError::AuthError(_)) => println!("Authentication required"),
+//!         Err(e) => eprintln!("Error: {}", e),
+//!     }
 //!     
 //!     Ok(())
 //! }

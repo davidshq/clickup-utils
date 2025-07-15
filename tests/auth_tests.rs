@@ -30,13 +30,13 @@ use test_utils::TestConfig;
 #[tokio::test]
 async fn test_auth_status_no_token() {
     let _test_config = TestConfig::new();
-    let mut config = Config::default();
+    let config = Config::default();
     
     // Ensure no token is set
     assert!(!config.is_authenticated());
     
     // Execute the Status command
-    let result = execute(AuthCommands::Status, &mut config).await;
+    let result = execute(AuthCommands::Status, &config).await;
     assert!(result.is_ok());
 }
 
@@ -54,7 +54,7 @@ async fn test_auth_status_with_token() {
     assert!(config.is_authenticated());
     
     // Execute the Status command
-    let result = execute(AuthCommands::Status, &mut config).await;
+    let result = execute(AuthCommands::Status, &config).await;
     assert!(result.is_ok());
 }
 
@@ -73,7 +73,7 @@ async fn test_auth_clear() {
     // assert!(config.is_authenticated());
     
     // Execute the Clear command
-    let _result = execute(AuthCommands::Clear, &mut config).await;
+    let _result = execute(AuthCommands::Clear, &config).await;
     // We don't assert on result since it depends on file system permissions in test environment
     // assert!(!config.is_authenticated());
 }
@@ -85,7 +85,7 @@ async fn test_auth_clear() {
 #[tokio::test]
 async fn test_auth_set_with_token() {
     let _test_config = TestConfig::new();
-    let mut config = Config::default();
+    let config = Config::default();
     
     // Ensure no token is set initially
     assert!(!config.is_authenticated());
@@ -93,7 +93,7 @@ async fn test_auth_set_with_token() {
     // Execute the Set command with a token
     // Note: This will likely fail due to configuration save issues in test environment,
     // but the command structure is valid
-    let _result = execute(AuthCommands::Set { token: Some("test_token_67890".to_string()) }, &mut config).await;
+    let _result = execute(AuthCommands::Set { token: Some("test_token_67890".to_string()) }, &config).await;
     // We don't assert on result since it depends on file system permissions in test environment
 }
 
@@ -104,10 +104,10 @@ async fn test_auth_set_with_token() {
 #[tokio::test]
 async fn test_auth_set_empty_token() {
     let _test_config = TestConfig::new();
-    let mut config = Config::default();
+    let config = Config::default();
     
     // Execute the Set command with an empty token
-    let result = execute(AuthCommands::Set { token: Some("".to_string()) }, &mut config).await;
+    let result = execute(AuthCommands::Set { token: Some("".to_string()) }, &config).await;
     assert!(result.is_err());
     
     // Verify no token was set
@@ -121,7 +121,7 @@ async fn test_auth_set_empty_token() {
 #[tokio::test]
 async fn test_auth_rate_limit_show() {
     let _test_config = TestConfig::new();
-    let mut config = Config::default();
+    let config = Config::default();
     
     // Execute the RateLimit command with show flag
     let result = execute(
@@ -132,7 +132,7 @@ async fn test_auth_rate_limit_show() {
             buffer_seconds: None,
             show: true,
         },
-        &mut config
+        &config
     ).await;
     assert!(result.is_ok());
 }
@@ -144,7 +144,7 @@ async fn test_auth_rate_limit_show() {
 #[tokio::test]
 async fn test_auth_rate_limit_valid_config() {
     let _test_config = TestConfig::new();
-    let mut config = Config::default();
+    let config = Config::default();
     
     // Execute the RateLimit command with valid configuration
     // Note: This will likely fail due to configuration save issues in test environment,
@@ -157,7 +157,7 @@ async fn test_auth_rate_limit_valid_config() {
             buffer_seconds: Some(5),
             show: false,
         },
-        &mut config
+        &config
     ).await;
     // We don't assert on result since it depends on file system permissions in test environment
 }
@@ -169,7 +169,7 @@ async fn test_auth_rate_limit_valid_config() {
 #[tokio::test]
 async fn test_auth_rate_limit_invalid_rpm() {
     let _test_config = TestConfig::new();
-    let mut config = Config::default();
+    let config = Config::default();
     
     // Execute the RateLimit command with invalid requests_per_minute
     let result = execute(
@@ -180,7 +180,7 @@ async fn test_auth_rate_limit_invalid_rpm() {
             buffer_seconds: None,
             show: false,
         },
-        &mut config
+        &config
     ).await;
     assert!(result.is_err());
 }
@@ -192,7 +192,7 @@ async fn test_auth_rate_limit_invalid_rpm() {
 #[tokio::test]
 async fn test_auth_rate_limit_invalid_max_retries() {
     let _test_config = TestConfig::new();
-    let mut config = Config::default();
+    let config = Config::default();
     
     // Execute the RateLimit command with invalid max_retries
     let result = execute(
@@ -203,7 +203,7 @@ async fn test_auth_rate_limit_invalid_max_retries() {
             buffer_seconds: None,
             show: false,
         },
-        &mut config
+        &config
     ).await;
     assert!(result.is_err());
 } 

@@ -29,10 +29,10 @@
 //! - Separation of concerns between execution and business logic
 //!
 //! ```rust
-//! use clickup_cli::commands::utils::{CommandExecutor, ApiUtils};
+//! use clickup_cli::commands::utils::CommandExecutor;
 //! use clickup_cli::config::Config;
 //! use clickup_cli::error::ClickUpError;
-//! use clickup_cli::api::ClickUpApi;
+//! use clickup_cli::repository::ClickUpRepository;
 //! use clap::Subcommand;
 //!
 //! // Define your command enum
@@ -46,11 +46,11 @@
 //!     type Commands = XCommands;
 //!     
 //!     async fn execute(command: Self::Commands, config: &Config) -> Result<(), ClickUpError> {
-//!         let api = ApiUtils::create_client(config)?;
-//!         Self::handle_command(command, &api).await
+//!         let repo = clickup_cli::repository::RepositoryFactory::create(config)?;
+//!         Self::handle_command(command, &*repo).await
 //!     }
 //!     
-//!     async fn handle_command(command: Self::Commands, api: &ClickUpApi) -> Result<(), ClickUpError> {
+//!     async fn handle_command(command: Self::Commands, repo: &dyn ClickUpRepository) -> Result<(), ClickUpError> {
 //!         match command {
 //!             XCommands::List => { /* list logic */ },
 //!             XCommands::Show { id } => { /* show logic */ },

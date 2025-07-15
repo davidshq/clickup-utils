@@ -195,12 +195,11 @@ async fn configure_rate_limit(
         // Show current configuration
         println!("{}", "Rate Limiting Configuration:".blue().bold());
         println!(
-            "Requests per minute: {}",
-            "100" // Default value - in real implementation this would come from config
+            "Requests per minute: 100" // Default value - in real implementation this would come from config
         );
-        println!("Auto-retry: {}", "true"); // Default value
-        println!("Max retries: {}", "3"); // Default value
-        println!("Buffer seconds: {}", "5"); // Default value
+        println!("Auto-retry: true"); // Default value
+        println!("Max retries: 3"); // Default value
+        println!("Buffer seconds: 5"); // Default value
         return Ok(());
     }
 

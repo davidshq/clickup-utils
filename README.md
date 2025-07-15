@@ -2,8 +2,8 @@
 
 [![Rust](https://img.shields.io/badge/rust-1.70+-orange.svg)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-95%2B%20passing-brightgreen.svg)](https://github.com/davidshq/clickup-utils)
-[![Clippy](https://img.shields.io/badge/clippy-mostly%20clean-yellow.svg)](https://github.com/davidshq/clickup-utils)
+[![Tests](https://img.shields.io/badge/tests-200%2B%20passing-brightgreen.svg)](https://github.com/davidshq/clickup-utils)
+[![Clippy](https://img.shields.io/badge/clippy-clean-brightgreen.svg)](https://github.com/davidshq/clickup-utils)
 
 A powerful command-line interface for the ClickUp API that allows you to manage your ClickUp workspaces, spaces, lists, tasks, and comments directly from the terminal.
 
@@ -27,13 +27,11 @@ This project follows modern Rust best practices with a clean separation between 
 ## ⚠️ Development Status
 **This project is currently in active development.**
 
-**Note**: There is currently one minor clippy warning in the integration tests that will be addressed in a future update.
-
 
 ### Recent Improvements
 - **Architecture**: Complete library/binary separation with clean module organization
 - **Configuration**: Centralized constants with environment variable overrides
-- **Testing**: Comprehensive test suite (95+ unit tests, integration tests available)
+- **Testing**: Comprehensive test suite (200+ unit tests, integration tests available)
 - **Features**: Advanced task features (tag filtering, cross-space search, overdue management)
 - **User Experience**: Interactive prompts for missing parameters and dry-run support
 - **Performance**: Rate limiting with sophisticated retry logic

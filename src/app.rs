@@ -274,32 +274,6 @@ impl ClickUpApp {
         comments::execute(command, &self.config).await
     }
     
-    /// Gets the application configuration
-    ///
-    /// # Returns
-    ///
-    /// Returns a reference to the application configuration.
-    pub fn config(&self) -> &Config {
-        &self.config
-    }
-    
-    /// Gets the API client
-    ///
-    /// # Returns
-    ///
-    /// Returns a reference to the API client.
-    pub fn api(&self) -> &ClickUpApi {
-        &self.api
-    }
-    
-    /// Gets a mutable reference to the API client
-    ///
-    /// # Returns
-    ///
-    /// Returns a mutable reference to the API client.
-    pub fn api_mut(&mut self) -> &mut ClickUpApi {
-        &mut self.api
-    }
 }
 
 /// Application lifecycle management

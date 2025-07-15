@@ -16,11 +16,10 @@
 //!
 //! ## Architecture
 //!
-//! ```
-//! Command Modules → Repository Trait → ClickUpApi → HTTP Client → ClickUp API
-//!      ↓                ↓                ↓              ↓
-//! Business Logic → Repository Methods → API Methods → HTTP Requests
-//! ```
+//! The repository pattern provides a clean abstraction layer:
+//!
+//! - Command Modules -> Repository Trait -> ClickUpApi -> HTTP Client -> ClickUp API
+//! - Business Logic -> Repository Methods -> API Methods -> HTTP Requests
 //!
 //! ## Usage
 //!
@@ -30,12 +29,16 @@
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     let config = Config::load()?;
+//!     // Create a default config (no authentication)
+//!     let config = Config::default();
 //!     let repo = RepositoryFactory::create(&config)?;
 //!     
 //!     // Use repository instead of direct API calls
-//!     let workspaces = repo.get_workspaces().await?;
-//!     let tasks = repo.get_tasks("list_id").await?;
+//!     // Note: These calls will fail without proper authentication
+//!     match repo.get_workspaces().await {
+//!         Ok(workspaces) => println!("Found {} workspaces", workspaces.teams.len()),
+//!         Err(e) => println!("Error: {}", e),
+//!     }
 //!     
 //!     Ok(())
 //! }
@@ -227,8 +230,11 @@ impl ClickUpRepository for ClickUpApiRepository {
 /// use clickup_cli::repository::RepositoryFactory;
 /// use clickup_cli::config::Config;
 ///
-/// let config = Config::load()?;
-/// let repo = RepositoryFactory::create(&config)?;
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let config = Config::load()?;
+///     let repo = RepositoryFactory::create(&config)?;
+///     Ok(())
+/// }
 /// ```
 pub struct RepositoryFactory;
 
