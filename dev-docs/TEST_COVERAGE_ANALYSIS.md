@@ -2,6 +2,8 @@
 
 This document provides a comprehensive analysis of the current test coverage for the ClickUp CLI application, identifying well-tested areas and gaps that need attention.
 
+For current project status and quality metrics, see [PROJECT_STATUS.md](PROJECT_STATUS.md).
+
 ## Overview
 
 The ClickUp CLI application now has **test coverage for both core infrastructure, command modules, utility functions, and the main CLI logic**, covering the main user-facing functionality as well as the underlying API, models, utilities, CLI logic, and entrypoint.
@@ -11,67 +13,28 @@ The ClickUp CLI application now has **test coverage for both core infrastructure
 ### ✅ Well-Tested Areas
 
 #### 1. API Client (`src/api.rs`) - `tests/api_tests.rs` (508 lines)
-- ✅ API client creation with various configurations
-- ✅ Token handling (personal vs OAuth tokens)
-- ✅ Configuration validation
-- ✅ Task operations including overdue task handling
-- ✅ Edge cases and error scenarios
+- ✅ See [ADR 0002: Repository Pattern](../adr/0002-repository-pattern.md) for detailed implementation information
 
 #### 2. Data Models (`src/models.rs`) - `tests/models_tests.rs` (1238 lines)
-- ✅ Comprehensive model creation and validation
-- ✅ All data structures (User, Workspace, Space, List, Task, Comment)
-- ✅ Request/response models
-- ✅ Optional fields and nested structures
-- ✅ Serialization/deserialization edge cases
+- ✅ See [ADR 0002: Repository Pattern](../adr/0002-repository-pattern.md) for detailed implementation information
 
 #### 3. Configuration (`src/config.rs`) - `tests/config_tests.rs` (221 lines)
-- ✅ Default configuration values
-- ✅ Token management (set/get/validation)
-- ✅ File operations (save/load)
-- ✅ Environment setup
-- ✅ Configuration validation
+- ✅ See [ADR 0008: Configuration Management Pattern](../adr/0008-configuration-management.md) for detailed implementation information
 
 #### 4. Error Handling (`src/error.rs`) - `tests/error_tests.rs` (222 lines)
-- ✅ All error variants
-- ✅ String representations
-- ✅ Error conversions
-- ✅ Error context and debugging
+- ✅ See [ADR 0005: Error Handling Strategy](../adr/0005-error-handling-strategy.md) for detailed implementation information
 
 #### 5. Rate Limiting (`src/rate_limiter.rs`) - `tests/rate_limiter_tests.rs` (150 lines)
-- ✅ Rate limiter creation and initialization
-- ✅ Request counting logic
-- ✅ Retry handling
-- ✅ Configuration scenarios
-- ✅ Edge cases
+- ✅ See [ADR 0003: Rate Limiting and Retry Policy](../adr/0003-rate-limiting-policy.md) for detailed implementation information
 
 #### 6. Command Modules (`src/commands/`) -
-- ✅ **Auth Commands** (`auth.rs`) - `tests/auth_tests.rs`
-- ✅ **Workspace Commands** (`workspaces.rs`) - `tests/workspace_tests.rs`
-- ✅ **Team Commands** (`teams.rs`) - `tests/team_tests.rs`
-- ✅ **Space Commands** (`spaces.rs`) - `tests/space_tests.rs`
-- ✅ **List Commands** (`lists.rs`) - `tests/list_tests.rs`
-- ✅ **Task Commands** (`tasks.rs`) - `tests/task_tests.rs`
-- ✅ **Comment Commands** (`comments.rs`) - `tests/comment_tests.rs`
-- ✅ All major command flows, argument validation, error handling, and edge cases
+- ✅ See [ADR 0006: CommandExecutor Pattern](../adr/0006-command-executor-pattern.md) for detailed implementation information
 
 #### 7. Utility Functions (`src/commands/utils.rs`) - `tests/utils_tests.rs`
-- ✅ Table building functionality
-- ✅ Display formatting
-- ✅ Error utilities
-- ✅ API utilities
-- ✅ Command execution trait presence
-- ✅ Header management
-- ✅ Member display formatting
+- ✅ See [ADR 0007: Utility Modules Pattern](../adr/0007-utility-modules-pattern.md) for detailed implementation information
 
 #### 8. Integration Tests - `tests/clickup_integration_tests.rs` (968 lines)
-- ✅ Authentication flow
-- ✅ Workspace/team listing
-- ✅ Task lifecycle (create/read/update/delete)
-- ✅ Commenting system
-- ✅ Error handling
-- ✅ Rate limiting
-- ✅ List operations
-- ✅ End-to-end workflows
+- ✅ See [ADR 0004: Integration Testing Strategy](../adr/0004-integration-testing-strategy.md) for detailed implementation information
 
 #### 9. Basic CLI Tests - `tests/integration_tests.rs` (65 lines)
 - ✅ CLI help and version commands
@@ -79,13 +42,7 @@ The ClickUp CLI application now has **test coverage for both core infrastructure
 - ✅ Basic CLI functionality
 
 #### 10. Main CLI Logic (`src/main.rs`) - `tests/main_tests.rs`
-- ✅ Command routing logic
-- ✅ Logging setup (debug/info)
-- ✅ Error handling in main
-- ✅ CLI argument parsing
-- ✅ Subcommand execution
-- ✅ Subcommand help and error output
-- ✅ Handling of invalid commands and missing configuration
+- ✅ See [ADR 0001: Library/Binary Separation](../adr/0001-library-binary-separation.md) for detailed implementation information
 
 ## ❌ Missing or Incomplete Test Coverage
 
@@ -163,4 +120,11 @@ The ClickUp CLI application now has **test coverage for core infrastructure, com
 - Easier debugging
 - Better maintainability
 
-**Recommendation:** Focus next on adding unit tests for the library interface, and consider performance and security testing for full coverage. 
+**Recommendation:** Focus next on adding unit tests for the library interface, and consider performance and security testing for full coverage.
+
+## References
+
+For current project status and quality metrics, see:
+- [PROJECT_STATUS.md](PROJECT_STATUS.md) - Overall project status and quality metrics
+- [INTEGRATION_TESTS_README.md](INTEGRATION_TESTS_README.md) - Integration test setup and execution
+- [INTEGRATION_TEST_PLAN.md](INTEGRATION_TEST_PLAN.md) - Integration test scenarios and status 

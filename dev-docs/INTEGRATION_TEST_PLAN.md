@@ -2,6 +2,8 @@
 
 This document outlines the main needs and approach for implementing integration tests for the ClickUp CLI, focusing on real API usage with the `CLICKUP_API_TOKEN_TEST` environment variable.
 
+For detailed setup instructions, environment configuration, and execution details, see [INTEGRATION_TESTS_README.md](INTEGRATION_TESTS_README.md).
+
 ---
 
 ## Important Note on Test Status
@@ -12,20 +14,9 @@ A test is only considered **implemented** when it runs and passes in the current
 
 ## 1. Environment Setup ✅ **PASSING**
 
-- **Use `CLICKUP_API_TOKEN_TEST`:**
-  - All integration tests should read the `CLICKUP_API_TOKEN_TEST` environment variable for authentication.
-- **Use `.env.test` for Test Credentials:**
-  - Store test credentials and test workspace/list IDs in a `.env.test` file (not checked into version control).
-  - Example `.env.test`:
-    ```env
-    CLICKUP_API_TOKEN_TEST=your_test_token
-    CLICKUP_TEST_LIST_ID=your_test_list_id
-    CLICKUP_TEST_WORKSPACE_ID=your_test_workspace_id
-    ```
-- **Isolate Test Data:**
-  - Use unique names or tags for resources created during tests to avoid interfering with real data.
-- **Clean Up:**
-  - Ensure tests clean up any resources (tasks, lists, etc.) they create.
+See [ADR 0004: Integration Testing Strategy](../adr/0004-integration-testing-strategy.md) for detailed implementation information about the integration testing environment setup.
+
+For setup instructions, see [INTEGRATION_TESTS_README.md](INTEGRATION_TESTS_README.md).
 
 ---
 
@@ -86,35 +77,13 @@ A test is only considered **implemented** when it runs and passes in the current
 
 ## 3. Test Structure & Best Practices ✅ **PASSING**
 
-- **Use `#[ignore]` Attribute:**
-  - Mark integration tests with `#[ignore]` by default, so they only run when explicitly requested (e.g., `cargo test -- --ignored`).
-- **Parallel Safety:**
-  - Avoid tests that could interfere with each other if run in parallel (e.g., by using unique resource names).
-  - For tests that must not run in parallel, use the [`serial_test`](https://docs.rs/serial_test/latest/serial_test/) crate.
-- **Minimal External Dependencies:**
-  - Only depend on the ClickUp API and the test token; avoid requiring other setup.
-- **Use Ergonomic Testing Crates:**
-  - [`assert_cmd`](https://docs.rs/assert_cmd/latest/assert_cmd/) for running and asserting on CLI commands.
-  - [`predicates`](https://docs.rs/predicates/latest/predicates/) for output assertions.
-  - [`dotenvy`](https://docs.rs/dotenvy/latest/dotenvy/) for loading environment variables from `.env.test`.
+See [ADR 0004: Integration Testing Strategy](../adr/0004-integration-testing-strategy.md) for detailed implementation information about test structure and best practices.
 
 ---
 
 ## 4. Loading Environment Variables in Tests ✅ **PASSING**
 
-The current implementation uses this pattern:
-
-```rust
-fn load_env() {
-    let _ = dotenvy::from_filename(".env.test");
-}
-
-fn has_test_token() -> bool {
-    env::var("CLICKUP_API_TOKEN_TEST").is_ok()
-}
-```
-
-Tests call `load_env()` at the start and check `has_test_token()` before proceeding.
+See [ADR 0004: Integration Testing Strategy](../adr/0004-integration-testing-strategy.md) for detailed implementation information about environment variable loading.
 
 ---
 
@@ -137,19 +106,13 @@ Tests call `load_env()` at the start and check `has_test_token()` before proceed
 - `test_cli_invalid_command()` - Tests CLI error handling
 
 ### 🔧 **Helper Functions Implemented:**
-- `setup_test_env()` - Temporary environment setup
-- `run_cli_with_test_env()` - CLI execution with test environment
-- `get_or_discover_workspace_id()` - Dynamic workspace discovery
-- `get_or_discover_space_id()` - Dynamic space discovery
-- `get_or_discover_test_list_id()` - Dynamic list discovery
-- `extract_task_id()` - Parse task IDs from CLI output
-- `extract_comment_id()` - Parse comment IDs from CLI output
-- `delete_list()` - Cleanup helper
-- `get_list_statuses()` - Get available statuses for a list
+See [ADR 0004: Integration Testing Strategy](../adr/0004-integration-testing-strategy.md) for detailed implementation information about helper functions.
 
 ---
 
 ## 6. Running Integration Tests
+
+For detailed execution instructions, see [INTEGRATION_TESTS_README.md](INTEGRATION_TESTS_README.md).
 
 ### Using the Test Script ✅ **PASSING**
 ```bash
@@ -175,6 +138,8 @@ cargo test test_authentication -- --ignored --nocapture
 ---
 
 ## 7. Test Environment Setup
+
+For detailed environment setup instructions, see [INTEGRATION_TESTS_README.md](INTEGRATION_TESTS_README.md).
 
 ### Required Files:
 - `.env.test` - Test credentials (copy from `env.test.example`)
@@ -237,4 +202,13 @@ If optional IDs are not provided, tests will dynamically discover available work
 4. Create test result reporting and analytics
 5. Add integration tests for new CLI features as they are developed
 6. Implement test coverage reporting
-7. Add automated test result notifications 
+7. Add automated test result notifications
+
+---
+
+## 📚 References
+
+For detailed setup and execution instructions, see:
+- [INTEGRATION_TESTS_README.md](INTEGRATION_TESTS_README.md) - Complete setup and execution guide
+- [ADR 0004: Integration Testing Strategy](../adr/0004-integration-testing-strategy.md) - Implementation details
+- [PROJECT_STATUS.md](PROJECT_STATUS.md) - Overall project status 

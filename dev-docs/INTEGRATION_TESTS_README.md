@@ -113,35 +113,7 @@ The tests use these environment variables:
 
 ### Test Environment Safety
 
-The test environment has been improved with proper isolation:
-
-- **Automatic `.env.test` loading**: Tests automatically load from `.env.test` instead of `.env`
-- **Thread-local storage**: Replaced unsafe global state with thread-local storage for test isolation
-- **Token separation**: Live CLI operations use `.env` tokens, tests use `.env.test` tokens
-- **Safe test setup**: All tests use `Config::load_for_tests()` for proper test configuration
-
-### File Structure
-
-```
-.env                    # Live API token (CLICKUP_API_TOKEN)
-.env.test              # Test API token (CLICKUP_API_TOKEN_TEST)
-env.test.example       # Template for .env.test
-```
-
-### Test Data Isolation
-
-- Tests create resources with unique timestamps to avoid conflicts
-- Tests clean up after themselves by deleting created resources
-- Tests are marked with `#[ignore]` to prevent accidental execution
-
-### Test Dependencies
-
-The tests use these crates:
-- `assert_cmd`: For running and asserting on CLI commands
-- `predicates`: For output assertions
-- `tempfile`: For temporary file management
-- `regex`: For parsing output patterns
-- `serial_test`: For sequential test execution (when needed)
+The test environment has been improved with proper isolation. See [ADR 0004: Integration Testing Strategy](../adr/0004-integration-testing-strategy.md) for detailed implementation information.
 
 ## Troubleshooting
 

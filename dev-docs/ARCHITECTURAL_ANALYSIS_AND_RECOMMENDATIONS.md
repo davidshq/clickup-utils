@@ -4,6 +4,8 @@
 
 This document provides a comprehensive architectural analysis of the ClickUp CLI codebase from both architectural and best practices standpoints, incorporating the latest Rust best practices from 2024-2025. The analysis covers code organization, design patterns, performance considerations, security practices, and recommendations for improvement.
 
+For current project status and quality metrics, see [PROJECT_STATUS.md](PROJECT_STATUS.md).
+
 **Current Assessment:**
 - **Architecture Quality**: 10/10 (Excellent foundation with clean separation and repository pattern)
 - **Code Organization**: 10/10 (Well-structured with excellent separation of concerns)
@@ -87,46 +89,13 @@ The codebase follows an excellent layered architecture with clean separation and
    }
    ```
 
-3. **Factory Pattern** - Repository creation with `RepositoryFactory`
-   ```rust
-   pub struct RepositoryFactory;
-   
-   impl RepositoryFactory {
-       pub fn create(config: &Config) -> Result<Box<dyn ClickUpRepository>, ClickUpError> {
-           let api = ClickUpApi::new(config.clone())?;
-           let repository = ClickUpApiRepository::new(api);
-           Ok(Box::new(repository))
-       }
-   }
-   ```
+3. **Factory Pattern** - Repository creation with `RepositoryFactory` (see [ADR 0002: Repository Pattern](../adr/0002-repository-pattern.md))
 
-4. **Builder Pattern** - Excellent table creation with `TableBuilder`
-   ```rust
-   let mut table_builder = TableBuilder::new();
-   table_builder.add_header(vec![
-       TableHeaders::id(),
-       TableHeaders::name(),
-   ]);
-   ```
+4. **Builder Pattern** - Excellent table creation with `TableBuilder` (see [ADR 0007: Utility Modules Pattern](../adr/0007-utility-modules-pattern.md))
 
-5. **Strategy Pattern** - Rate limiting configuration
-   ```rust
-   pub struct RateLimitConfig {
-       pub requests_per_minute: u32,
-       pub auto_retry: bool,
-       pub max_retries: u32,
-   }
-   ```
+5. **Strategy Pattern** - Rate limiting configuration (see [ADR 0003: Rate Limiting and Retry Policy](../adr/0003-rate-limiting-policy.md))
 
-6. **Utility Pattern** - Centralized utilities in `commands/utils.rs`
-   ```rust
-   // Standardized utilities used across all command modules
-   - TableBuilder: Builder pattern for consistent table creation
-   - DisplayUtils: Standardized output formatting
-   - ErrorUtils: Consistent error creation and handling
-   - RepositoryUtils: Centralized repository creation
-   - TableHeaders: Standardized table header constants
-   ```
+6. **Utility Pattern** - Centralized utilities in `commands/utils.rs` (see [ADR 0007: Utility Modules Pattern](../adr/0007-utility-modules-pattern.md))
 
 #### ⚠️ **Missing Patterns**
 
@@ -160,23 +129,7 @@ async fn handle_command(command: Self::Commands, repo: &dyn ClickUpRepository) -
 
 ### 2. **Error Handling** ✅ **Excellent**
 
-**Current Implementation:**
-```rust
-#[derive(Error, Debug)]
-pub enum ClickUpError {
-    #[error("API request failed: {0}")]
-    ApiError(String),
-    #[error("Authentication failed: {0}")]
-    AuthError(String),
-    // ... comprehensive error types
-}
-```
-
-**Strengths:**
-- Comprehensive error types with `thiserror`
-- Proper error conversion with `From` traits
-- User-friendly error messages
-- Good error context
+**Current Implementation:** The codebase has comprehensive error handling with custom error types. See [ADR 0005: Error Handling Strategy](../adr/0005-error-handling-strategy.md) for detailed implementation information.
 
 ### 3. **Type Safety** ✅ **Good**
 
@@ -219,29 +172,7 @@ pub struct ClickUpApiRepository {
 
 ### 5. **Configuration Management** ✅ **Excellent**
 
-**Current Implementation:**
-```rust
-pub struct Config {
-    pub api_token: Option<String>,
-    pub workspace_id: Option<String>,
-    pub rate_limit: RateLimitConfig,
-}
-
-// Centralized constants
-pub mod constants {
-    pub mod api {
-        pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(30);
-        pub const MAX_RETRIES: u32 = 3;
-        pub const BASE_URL: &str = "https://api.clickup.com/api/v2";
-    }
-}
-```
-
-**Strengths:**
-- Multi-source configuration (env vars, files, defaults)
-- Type-safe configuration
-- Excellent separation of concerns
-- **Centralized constants** - All magic values eliminated
+**Current Implementation:** The codebase has comprehensive configuration management. See [ADR 0008: Configuration Management Pattern](../adr/0008-configuration-management.md) for detailed implementation information.
 
 ---
 
@@ -251,236 +182,19 @@ pub mod constants {
 
 **Status:** ✅ **IMPLEMENTED**
 
-The codebase has successfully implemented the recommended library/binary reorganization:
-
-#### **✅ Clean Library API (`src/lib.rs`):**
-```rust
-// Clean library exports - main public API
-pub use api::ClickUpApi;
-pub use config::Config;
-pub use error::ClickUpError;
-pub use models::*;
-pub use repository::{ClickUpRepository, RepositoryFactory};
-
-// Re-export commonly used constants for convenience
-pub use constants::{
-    api::{BASE_URL, DEFAULT_TIMEOUT, MAX_RETRIES},
-    rate_limiting::{DEFAULT_RPM, DEFAULT_BUFFER, MAX_WAIT},
-    validation::{MAX_TASK_NAME_LENGTH, MAX_TASK_DESCRIPTION_LENGTH},
-};
-```
-
-#### **✅ Centralized Constants (`src/constants.rs`):**
-```rust
-pub mod api {
-    pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(30);
-    pub const MAX_RETRIES: u32 = 3;
-    pub const BASE_URL: &str = "https://api.clickup.com/api/v2";
-}
-
-pub mod rate_limiting {
-    pub const DEFAULT_RPM: u32 = 100;
-    pub const DEFAULT_BUFFER: Duration = Duration::from_secs(5);
-    pub const MAX_WAIT: Duration = Duration::from_secs(120);
-}
-```
-
-#### **✅ Application Layer (`src/app.rs`):**
-```rust
-pub struct ClickUpApp {
-    config: Config,
-    api: ClickUpApi,
-}
-
-impl ClickUpApp {
-    pub fn new() -> Result<Self, ClickUpError> {
-        let config = Config::load()?;
-        let api = ClickUpApi::new(config.clone())?;
-        Ok(Self { config, api })
-    }
-    
-    pub async fn run(&mut self, cli: Cli) -> Result<(), ClickUpError> {
-        match cli.command {
-            Commands::Auth { command } => {
-                self.handle_auth(command).await
-            }
-            // ... other command handlers
-        }
-    }
-}
-```
-
-#### **✅ Simplified Main (`src/main.rs`):**
-```rust
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let cli = Cli::parse();
-    ClickUpApp::init_logging(cli.debug);
-    
-    let mut app = ClickUpApp::new().map_err(|e| {
-        error!("Failed to initialize application: {e}");
-        e
-    })?;
-    
-    app.run(cli).await.map_err(|e| {
-        error!("Application error: {e}");
-        e
-    })?;
-    
-    Ok(())
-}
-```
+The codebase has successfully implemented the recommended library/binary reorganization. See [ADR 0001: Library/Binary Separation](../adr/0001-library-binary-separation.md) for detailed implementation information.
 
 ### 2. **✅ COMPLETED: Standardized Command Architecture**
 
 **Status:** ✅ **IMPLEMENTED**
 
-The codebase has successfully implemented the standardized command architecture:
-
-#### **✅ CommandExecutor Trait Pattern:**
-```rust
-#[allow(async_fn_in_trait)]
-pub trait CommandExecutor {
-    type Commands: Subcommand;
-    
-    async fn execute(command: Self::Commands, config: &Config) -> Result<(), ClickUpError>;
-    async fn handle_command(command: Self::Commands, repo: &dyn ClickUpRepository) -> Result<(), ClickUpError>;
-}
-```
-
-#### **✅ Utility Modules (`src/commands/utils.rs`):**
-- **TableBuilder**: Builder pattern for consistent table creation
-- **DisplayUtils**: Standardized output formatting
-- **ErrorUtils**: Consistent error creation and handling
-- **RepositoryUtils**: Centralized repository creation
-- **TableHeaders**: Standardized table header constants
-
-#### **✅ Implementation Status:**
-- **7 out of 7** command modules standardized
-- **~200+ lines** of duplicate code eliminated
-- **30-40% reduction** in command file sizes
+The codebase has successfully implemented the standardized command architecture. See [ADR 0006: CommandExecutor Pattern](../adr/0006-command-executor-pattern.md) and [ADR 0007: Utility Modules Pattern](../adr/0007-utility-modules-pattern.md) for detailed implementation information.
 
 ### 3. **✅ COMPLETED: Repository Pattern Implementation**
 
 **Status:** ✅ **IMPLEMENTED**
 
-The codebase has successfully implemented the repository pattern with the following components:
-
-#### **✅ Repository Trait (`src/repository.rs`):**
-```rust
-#[async_trait]
-pub trait ClickUpRepository: Send + Sync {
-    // User operations
-    async fn get_user(&self) -> Result<User, ClickUpError>;
-    
-    // Workspace operations
-    async fn get_workspaces(&self) -> Result<WorkspacesResponse, ClickUpError>;
-    async fn get_workspace(&self, workspace_id: &str) -> Result<Workspace, ClickUpError>;
-    
-    // Space operations
-    async fn get_spaces(&self, workspace_id: &str) -> Result<SpacesResponse, ClickUpError>;
-    
-    // List operations
-    async fn get_lists(&self, space_id: &str) -> Result<ListsResponse, ClickUpError>;
-    async fn get_list(&self, list_id: &str) -> Result<List, ClickUpError>;
-    
-    // Folder operations
-    async fn get_folders(&self, space_id: &str) -> Result<FoldersResponse, ClickUpError>;
-    async fn get_folder_lists(&self, folder_id: &str) -> Result<ListsResponse, ClickUpError>;
-    
-    // Task operations
-    async fn get_tasks(&self, list_id: &str) -> Result<TasksResponse, ClickUpError>;
-    async fn get_task(&self, task_id: &str) -> Result<Task, ClickUpError>;
-    async fn create_task(&self, list_id: &str, task: CreateTaskRequest) -> Result<Task, ClickUpError>;
-    async fn update_task(&self, task_id: &str, task: UpdateTaskRequest) -> Result<Task, ClickUpError>;
-    async fn delete_task(&self, task_id: &str) -> Result<(), ClickUpError>;
-    async fn get_tasks_by_tag(&self, list_id: &str, tag: &str) -> Result<TasksResponse, ClickUpError>;
-    async fn search_tasks_by_tag(&self, tag: String, workspace_id: Option<String>, space_id: Option<String>) -> Result<TasksResponse, ClickUpError>;
-    
-    // Comment operations
-    async fn get_comments(&self, task_id: &str) -> Result<CommentsResponse, ClickUpError>;
-    async fn get_comment(&self, comment_id: &str) -> Result<Comment, ClickUpError>;
-    async fn create_comment(&self, task_id: &str, comment: CreateCommentRequest) -> Result<(), ClickUpError>;
-    async fn delete_comment(&self, comment_id: &str) -> Result<(), ClickUpError>;
-}
-```
-
-#### **✅ Repository Implementation:**
-```rust
-pub struct ClickUpApiRepository {
-    api: ClickUpApi,
-}
-
-impl ClickUpApiRepository {
-    pub fn new(api: ClickUpApi) -> Self {
-        Self { api }
-    }
-}
-
-#[async_trait]
-impl ClickUpRepository for ClickUpApiRepository {
-    async fn get_workspaces(&self) -> Result<WorkspacesResponse, ClickUpError> {
-        self.api.get_workspaces().await
-    }
-    
-    async fn get_list(&self, list_id: &str) -> Result<List, ClickUpError> {
-        self.api.get_list(list_id).await
-    }
-    
-    // ... all other methods delegate to ClickUpApi
-}
-```
-
-#### **✅ Repository Factory:**
-```rust
-pub struct RepositoryFactory;
-
-impl RepositoryFactory {
-    pub fn create(config: &Config) -> Result<Box<dyn ClickUpRepository>, ClickUpError> {
-        let api = ClickUpApi::new(config.clone())?;
-        let repository = ClickUpApiRepository::new(api);
-        Ok(Box::new(repository))
-    }
-}
-```
-
-#### **✅ Updated Command Architecture:**
-```rust
-// Updated CommandExecutor trait
-#[allow(async_fn_in_trait)]
-pub trait CommandExecutor {
-    type Commands: Subcommand;
-    
-    async fn execute(command: Self::Commands, config: &Config) -> Result<(), ClickUpError> {
-        let repo = RepositoryFactory::create(config)?;
-        Self::handle_command(command, &*repo).await
-    }
-    
-    async fn handle_command(command: Self::Commands, repo: &dyn ClickUpRepository) -> Result<(), ClickUpError>;
-}
-
-// Updated command handlers
-async fn show_list(repo: &dyn ClickUpRepository, list_id: &str) -> Result<(), ClickUpError> {
-    let list = repo.get_list(list_id).await?;
-    // Display list details...
-    Ok(())
-}
-```
-
-#### **✅ Implementation Status:**
-- **Repository trait**: ✅ Complete with all API operations
-- **Repository implementation**: ✅ Complete with direct API delegation
-- **Repository factory**: ✅ Complete for dependency injection
-- **Command modules updated**: ✅ All 7 modules (Auth, Comments, Lists, Spaces, Tasks, Teams, Workspaces)
-- **Direct API usage eliminated**: ✅ All commands now use repository pattern
-- **Efficient list retrieval**: ✅ Uses direct `GET /list/{list_id}` endpoint
-
-#### **✅ Benefits Achieved:**
-- **Separation of Concerns**: Business logic decoupled from API implementation
-- **Testability**: Easy to mock repository for unit testing
-- **Maintainability**: API changes only affect repository implementation
-- **Extensibility**: Ready for caching, logging, or other cross-cutting concerns
-- **Performance**: Direct API endpoints used where available (e.g., `show_list`)
+The codebase has successfully implemented the repository pattern. See [ADR 0002: Repository Pattern](../adr/0002-repository-pattern.md) for detailed implementation information.
 
 ### 4. **⚠️ PENDING: Add Caching Layer**
 
@@ -648,32 +362,7 @@ impl CreateTaskRequest {
 
 **Status:** ✅ **EXCELLENT IMPLEMENTATION**
 
-The codebase has an excellent rate limiting implementation:
-
-```rust
-pub struct RateLimiter {
-    config: RateLimitConfig,
-    request_history: Arc<Mutex<VecDeque<Instant>>>,
-    current_retry_count: Arc<Mutex<u32>>,
-}
-
-impl RateLimiter {
-    pub fn wait_if_needed(&self) -> Pin<Box<dyn Future<Output = Result<(), ClickUpError>> + Send + '_>> {
-        // Sophisticated sliding window rate limiting
-    }
-    
-    pub async fn handle_rate_limit(&self, retry_after_seconds: Option<u64>) -> Result<(), ClickUpError> {
-        // Intelligent retry logic with backoff
-    }
-}
-```
-
-**Strengths:**
-- ✅ Sliding window rate limiting
-- ✅ Automatic retry with exponential backoff
-- ✅ Progress reporting for long waits
-- ✅ Configurable limits and timeouts
-- ✅ Thread-safe implementation
+The codebase has an excellent rate limiting implementation. See [ADR 0003: Rate Limiting and Retry Policy](../adr/0003-rate-limiting-policy.md) for detailed implementation information.
 
 ---
 
@@ -813,55 +502,17 @@ proptest! {
 }
 ```
 
-### 2. **⚠️ PENDING: Integration Test Framework**
+### 2. **✅ COMPLETED: Integration Test Framework**
 
-**Current Issue:** Limited integration testing
-**Solution:** Comprehensive integration test framework
+**Status:** ✅ **IMPLEMENTED**
 
-```rust
-use testcontainers::*;
-use testcontainers_modules::postgres::Postgres;
-
-#[tokio::test]
-async fn test_full_workflow() {
-    let docker = clients::Cli::default();
-    let postgres = docker.run(Postgres::default());
-    
-    let config = TestConfig::new(&postgres);
-    let api = ClickUpApi::new(config).unwrap();
-    
-    // Test complete workflow
-    let workspace = api.get_workspaces().await.unwrap();
-    let space = api.get_spaces(&workspace.teams[0].id).await.unwrap();
-    let list = api.get_lists(&space.spaces[0].id).await.unwrap();
-    
-    let task = api.create_task(
-        &list.lists[0].id,
-        CreateTaskRequest {
-            name: "Test Task".to_string(),
-            ..Default::default()
-        }
-    ).await.unwrap();
-    
-    assert_eq!(task.name, Some("Test Task".to_string()));
-}
-```
+The codebase has successfully implemented a comprehensive integration test framework. See [ADR 0004: Integration Testing Strategy](../adr/0004-integration-testing-strategy.md) for detailed implementation information.
 
 ---
 
 ## 📊 Code Quality Metrics
 
-| Metric | Current Score | Target Score | Priority |
-|--------|---------------|--------------|----------|
-| Architecture Separation | ✅ **10/10** | 10/10 | ✅ **COMPLETED** |
-| Magic Constants | ✅ **10/10** | 10/10 | ✅ **COMPLETED** |
-| Cyclomatic Complexity | 6.8 | <5 | Medium |
-| Code Duplication | ✅ **2%** | <5% | ✅ **COMPLETED** |
-| Test Coverage | 94% | 95% | Low |
-| Documentation Coverage | 85% | 90% | Medium |
-| Security Score | 7/10 | 9/10 | High |
-| Performance Score | 8/10 | 9/10 | Medium |
-| Repository Pattern | ✅ **10/10** | 10/10 | ✅ **COMPLETED** |
+For current quality metrics and status, see [PROJECT_STATUS.md](PROJECT_STATUS.md).
 
 ---
 
@@ -922,158 +573,17 @@ async fn test_full_workflow() {
 
 ## 🔧 Quick Wins (1-2 weeks)
 
-### ✅ **1. Extract Magic Constants** ✅ **COMPLETED**
-```rust
-// src/constants.rs - ✅ IMPLEMENTED: Centralized constants
-pub mod api {
-    use std::time::Duration;
-    
-    pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(30);
-    pub const MAX_RETRIES: u32 = 3;
-    pub const BASE_URL: &str = "https://api.clickup.com/api/v2";
-}
+### ✅ **1-3. Core Architecture Improvements** ✅ **COMPLETED**
 
-// ✅ All hard-coded values replaced:
-// Before: .timeout(Duration::from_secs(30))
-// After:  .timeout(constants::api::DEFAULT_TIMEOUT)
-```
+See [ADR 0001: Library/Binary Separation](../adr/0001-library-binary-separation.md) and [ADR 0008: Configuration Management Pattern](../adr/0008-configuration-management.md) for detailed implementation information.
 
-### ✅ **2. Create Application Layer** ✅ **COMPLETED**
-```rust
-// src/app.rs - ✅ IMPLEMENTED: Application layer
-pub struct ClickUpApp {
-    config: Config,
-    api: ClickUpApi,
-}
+### ✅ **4-6. Async Patterns and Error Handling** ✅ **COMPLETED**
 
-impl ClickUpApp {
-    pub fn new() -> Result<Self, ClickUpError> {
-        let config = Config::load()?;
-        let api = ClickUpApi::new(config.clone())?;
-        Ok(Self { config, api })
-    }
-    
-    pub async fn run(&mut self, cli: Cli) -> Result<(), ClickUpError> {
-        // ✅ CLI logic moved here from main.rs
-        match cli.command {
-            Commands::Auth { command } => {
-                auth::execute(command, &mut self.config).await
-            }
-            // ... other commands
-        }
-    }
-}
-```
-
-### ✅ **3. Add Configuration-Driven Constants** ✅ **COMPLETED**
-```rust
-// src/config.rs - ✅ IMPLEMENTED: Configuration methods
-impl Config {
-    pub fn get_api_timeout(&self) -> Duration {
-        std::env::var("CLICKUP_API_TIMEOUT")
-            .ok()
-            .and_then(|s| s.parse::<u64>().ok())
-            .map(Duration::from_secs)
-            .unwrap_or(constants::api::DEFAULT_TIMEOUT)
-    }
-    
-    pub fn get_rate_limit_config(&self) -> RateLimitConfig {
-        RateLimitConfig {
-            requests_per_minute: self.rate_limit.requests_per_minute,
-            auto_retry: self.rate_limit.auto_retry,
-            max_retries: self.rate_limit.max_retries,
-            buffer_seconds: self.rate_limit.buffer_seconds,
-        }
-    }
-}
-```
-
-### ✅ **4. Add Async Cancellation** ✅ **COMPLETED**
-```rust
-use tokio::time::{timeout, Duration};
-
-pub async fn execute_with_timeout<F, T>(
-    future: F,
-    timeout_duration: Duration
-) -> Result<T, ClickUpError>
-where
-    F: Future<Output = Result<T, ClickUpError>>,
-{
-    timeout(timeout_duration, future)
-        .await
-        .map_err(|_| ClickUpError::NetworkError("Operation timed out".to_string()))?
-}
-```
-
-### ✅ **5. Improve Error Context** ✅ **COMPLETED**
-```rust
-use std::error::Error;
-
-impl ClickUpError {
-    pub fn with_context(self, context: &str) -> Self {
-        match self {
-            ClickUpError::ApiError(msg) => ClickUpError::ApiError(format!("{}: {}", context, msg)),
-            ClickUpError::NetworkError(msg) => ClickUpError::NetworkError(format!("{}: {}", context, msg)),
-            _ => self,
-        }
-    }
-}
-```
-
-### ✅ **6. Add Request Tracing** ✅ **COMPLETED**
-```rust
-use tracing::{info, warn, error};
-
-pub async fn traced_request<T>(
-    endpoint: &str,
-    request_fn: impl Future<Output = Result<T, ClickUpError>>
-) -> Result<T, ClickUpError> {
-    let start = std::time::Instant::now();
-    info!("Starting request to {}", endpoint);
-    
-    let result = request_fn.await;
-    
-    match &result {
-        Ok(_) => info!("Request to {} completed in {:?}", endpoint, start.elapsed()),
-        Err(e) => error!("Request to {} failed after {:?}: {}", endpoint, start.elapsed(), e),
-    }
-    
-    result
-}
-```
+See [ADR 0009: Async Patterns and Error Handling](../adr/0009-async-patterns.md) for detailed implementation information.
 
 ### ✅ **7. Repository Pattern Implementation** ✅ **COMPLETED**
-```rust
-// ✅ Complete repository abstraction
-#[async_trait]
-pub trait ClickUpRepository: Send + Sync {
-    async fn get_workspaces(&self) -> Result<WorkspacesResponse, ClickUpError>;
-    async fn get_list(&self, list_id: &str) -> Result<List, ClickUpError>;
-    // ... all API operations
-}
 
-// ✅ Repository factory for dependency injection
-pub struct RepositoryFactory;
-impl RepositoryFactory {
-    pub fn create(config: &Config) -> Result<Box<dyn ClickUpRepository>, ClickUpError> {
-        let api = ClickUpApi::new(config.clone())?;
-        let repository = ClickUpApiRepository::new(api);
-        Ok(Box::new(repository))
-    }
-}
-
-// ✅ Updated command architecture
-impl CommandExecutor for TaskCommands {
-    async fn execute(command: Self::Commands, config: &Config) -> Result<(), ClickUpError> {
-        let repo = RepositoryFactory::create(config)?;
-        Self::handle_command(command, &*repo).await
-    }
-    
-    async fn handle_command(command: Self::Commands, repo: &dyn ClickUpRepository) -> Result<(), ClickUpError> {
-        // All commands now use repository pattern
-    }
-}
-```
+See [ADR 0002: Repository Pattern](../adr/0002-repository-pattern.md) for detailed implementation information.
 
 ---
 
@@ -1155,6 +665,8 @@ The ClickUp CLI codebase has made **exceptional architectural improvements** sin
 The repository pattern implementation is now **100% complete**, providing excellent separation of concerns and testability. All command modules have been successfully migrated to use the repository abstraction, eliminating direct API usage and providing a clean, maintainable architecture.
 
 With focused implementation of the remaining recommendations, this codebase can become a **production-ready, high-performance CLI tool** that follows the latest Rust best practices and provides excellent user experience.
+
+For current project status and quality metrics, see [PROJECT_STATUS.md](PROJECT_STATUS.md).
 
 ---
 
