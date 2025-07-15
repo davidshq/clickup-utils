@@ -18,6 +18,8 @@
 
 use clickup_cli::api::ClickUpApi;
 use clickup_cli::config::{Config, RateLimitConfig};
+mod test_utils;
+use test_utils::{TestApiUtils, TestConfig};
 use std::sync::Once;
 use tempfile::TempDir;
 use std::cell::RefCell;
@@ -74,7 +76,7 @@ fn test_api_client_creation_with_valid_config() {
     // Verify we have a test token loaded
     assert!(config.api_token.is_some(), "Test configuration should include API token");
     
-    let api = ClickUpApi::new(config);
+    let api = TestApiUtils::create_test_client(&config);
     assert!(api.is_ok());
 }
 
@@ -96,7 +98,7 @@ fn test_api_client_creation_without_token() {
         rate_limit: RateLimitConfig::default(),
     };
 
-    let api = ClickUpApi::new(config);
+    let api = TestApiUtils::create_test_client(&config);
     assert!(api.is_ok()); // API client can be created without token
 }
 
@@ -114,7 +116,7 @@ fn test_api_client_with_personal_token() {
     // Verify we have a test token loaded from .env.test
     assert!(config.api_token.is_some(), "Test configuration should include API token");
     
-    let api = ClickUpApi::new(config);
+    let api = TestApiUtils::create_test_client(&config);
     assert!(api.is_ok());
 }
 
@@ -133,7 +135,7 @@ fn test_api_client_with_oauth_token() {
         rate_limit: RateLimitConfig::default(),
     };
 
-    let api = ClickUpApi::new(config);
+    let api = TestApiUtils::create_test_client(&config);
     assert!(api.is_ok());
 }
 
@@ -152,7 +154,7 @@ fn test_api_client_with_custom_base_url() {
         rate_limit: RateLimitConfig::default(),
     };
 
-    let api = ClickUpApi::new(config);
+    let api = TestApiUtils::create_test_client(&config);
     assert!(api.is_ok());
 }
 
@@ -171,7 +173,7 @@ fn test_api_client_creation_failure() {
         rate_limit: RateLimitConfig::default(),
     };
 
-    let api = ClickUpApi::new(config);
+    let api = TestApiUtils::create_test_client(&config);
     assert!(api.is_ok()); // The client creation itself should succeed
 }
 
@@ -190,8 +192,8 @@ fn test_api_client_config_clone() {
         rate_limit: RateLimitConfig::default(),
     };
 
-    let api1 = ClickUpApi::new(config.clone());
-    let api2 = ClickUpApi::new(config);
+    let api1 = TestApiUtils::create_test_client(&config);
+    let api2 = TestApiUtils::create_test_client(&config);
 
     // Both should be created successfully
     assert!(api1.is_ok());
@@ -213,7 +215,7 @@ fn test_api_client_with_empty_token() {
         rate_limit: RateLimitConfig::default(),
     };
 
-    let api = ClickUpApi::new(config);
+    let api = TestApiUtils::create_test_client(&config);
     assert!(api.is_ok()); // Client creation should succeed even with empty token
 }
 
@@ -232,7 +234,7 @@ fn test_api_client_with_whitespace_token() {
         rate_limit: RateLimitConfig::default(),
     };
 
-    let api = ClickUpApi::new(config);
+    let api = TestApiUtils::create_test_client(&config);
     assert!(api.is_ok()); // Client creation should succeed even with whitespace token
 }
 
@@ -260,8 +262,8 @@ fn test_api_client_multiple_instances() {
         rate_limit: RateLimitConfig::default(),
     };
 
-    let api1 = ClickUpApi::new(config1);
-    let api2 = ClickUpApi::new(config2);
+    let api1 = TestApiUtils::create_test_client(&config1);
+    let api2 = TestApiUtils::create_test_client(&config2);
 
     assert!(api1.is_ok());
     assert!(api2.is_ok());
@@ -283,7 +285,7 @@ fn test_api_client_with_none_values() {
         rate_limit: RateLimitConfig::default(),
     };
 
-    let api = ClickUpApi::new(config);
+    let api = TestApiUtils::create_test_client(&config);
     assert!(api.is_ok()); // Should succeed with all None values
 }
 
@@ -304,7 +306,7 @@ fn test_api_client_with_long_token() {
         rate_limit: RateLimitConfig::default(),
     };
 
-    let api = ClickUpApi::new(config);
+    let api = TestApiUtils::create_test_client(&config);
     assert!(api.is_ok()); // Should handle long tokens gracefully
 }
 
@@ -325,7 +327,7 @@ fn test_api_client_with_special_characters_in_token() {
         rate_limit: RateLimitConfig::default(),
     };
 
-    let api = ClickUpApi::new(config);
+    let api = TestApiUtils::create_test_client(&config);
     assert!(api.is_ok()); // Should handle special characters gracefully
 }
 

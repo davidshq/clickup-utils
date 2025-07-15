@@ -48,6 +48,11 @@ The following improvements have been fully implemented and verified:
   - Added `Config::load_for_tests()` method for test-specific configuration
   - Ensured automatic separation between live and test tokens
   - All tests now use safe, isolated environments
+- **Test code deduplication completed:**
+  - All test files now use a shared `test_utils` module for test environment setup and API client creation
+  - All local `TestConfig` definitions and direct API client creation have been removed from test files
+  - Error handling assertions are standardized using helpers in `test_utils`
+  - Test code is now DRY, consistent, and maintainable
 
 ---
 
@@ -105,6 +110,12 @@ static mut TEMP_DIR: Option<TempDir> = None;
 - Ensured tests use separate test tokens instead of production tokens
 - Added automatic `.env.test` loading in test setup
 **Result**: All tests now use safe, isolated environments with proper token separation
+
+### 4. **Remaining Code Duplication in Tests** ✅ FIXED
+**Location**: Multiple test files
+**Issue**: Test environment setup, API client creation, and error handling patterns were duplicated across test files.
+**Solution**: All test files now use a shared `test_utils` module for test environment setup and API client creation. Local `TestConfig` definitions and direct API client creation have been removed. Error handling assertions are standardized using helpers in `test_utils`.
+**Result**: Test code is now DRY, consistent, and maintainable across the codebase.
 
 ---
 
@@ -400,7 +411,7 @@ cargo audit
 - [x] Fix inefficient comment search algorithm
 - [x] Fix all failing documentation tests
 - [x] Fix unsafe test state management
-- [ ] Remove remaining code duplication
+- [x] Remove remaining code duplication in tests
 
 ### Week 2-3
 - [ ] Implement caching layer for API responses
@@ -438,7 +449,7 @@ The codebase has made significant improvements:
 
 ## 📚 Conclusion
 
-The ClickUp CLI codebase has made excellent progress in code quality, testing, and documentation. All critical issues have been resolved, including the unsafe global state in tests, inefficient comment search algorithm, and failing documentation tests. The codebase now has robust test environment isolation with proper separation between live and test tokens.
+The ClickUp CLI codebase has made excellent progress in code quality, testing, and documentation. All critical issues have been resolved, including the unsafe global state in tests, inefficient comment search algorithm, failing documentation tests, and all remaining code duplication in test setup and error handling. The codebase now has robust test environment isolation with proper separation between live and test tokens, and test code is DRY and maintainable.
 
 The codebase would benefit significantly from:
 - Performance optimizations (caching, batch operations)

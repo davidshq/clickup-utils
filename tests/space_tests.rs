@@ -18,81 +18,8 @@
 
 use clickup_cli::commands::spaces::{execute, SpaceCommands};
 use clickup_cli::config::Config;
-use std::env;
-use std::fs;
-use tempfile::TempDir;
-
-/// Test configuration that properly isolates tests from user configuration
-///
-/// This struct manages temporary directories and environment variables
-/// to ensure tests don't interfere with the user's actual configuration.
-/// It automatically cleans up when dropped.
-struct TestConfig {
-    #[allow(dead_code)]
-    temp_dir: TempDir,
-    config_file: std::path::PathBuf,
-    original_xdg: Option<String>,
-    original_appdata: Option<String>,
-}
-
-impl TestConfig {
-    /// Creates a new test configuration with isolated environment
-    ///
-    /// This function sets up a temporary directory and modifies environment
-    /// variables to ensure tests use isolated configuration files.
-    ///
-    /// # Returns
-    ///
-    /// Returns a `TestConfig` instance that will clean up automatically.
-    fn new() -> Self {
-        let temp_dir = TempDir::new().expect("Failed to create temp directory");
-        let temp_path = temp_dir.path().to_path_buf();
-        let config_file = temp_path.join("clickup-cli").join("config.toml");
-
-        // Remove any existing config file first to ensure clean test state
-        let real_config_dir = dirs::config_dir().unwrap().join("clickup-cli");
-        let real_config_file = real_config_dir.join("config.toml");
-        let _ = fs::remove_file(&real_config_file);
-
-        // Store original environment variables
-        let original_xdg = env::var("XDG_CONFIG_HOME").ok();
-        let original_appdata = env::var("APPDATA").ok();
-
-        // Set environment variables to use temp directory
-        env::set_var("XDG_CONFIG_HOME", &temp_path);
-        env::set_var("APPDATA", &temp_path);
-
-        // Create the config directory in temp
-        let temp_config_dir = temp_path.join("clickup-cli");
-        fs::create_dir_all(&temp_config_dir).expect("Failed to create config directory");
-
-        Self {
-            temp_dir,
-            config_file,
-            original_xdg,
-            original_appdata,
-        }
-    }
-}
-
-impl Drop for TestConfig {
-    fn drop(&mut self) {
-        // Restore original environment variables
-        if let Some(xdg) = &self.original_xdg {
-            env::set_var("XDG_CONFIG_HOME", xdg);
-        } else {
-            env::remove_var("XDG_CONFIG_HOME");
-        }
-
-        if let Some(appdata) = &self.original_appdata {
-            env::set_var("APPDATA", appdata);
-        } else {
-            env::remove_var("APPDATA");
-        }
-
-        // Clean up temp directory (this happens automatically when temp_dir is dropped)
-    }
-}
+mod test_utils;
+use test_utils::TestConfig;
 
 /// Tests the List command with no authentication
 ///
