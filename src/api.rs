@@ -48,7 +48,6 @@ use reqwest::Client;
 use serde_json::Value;
 use std::future::Future;
 use std::pin::Pin;
-use std::time::Duration;
 
 /// ClickUp API client for making authenticated requests
 ///
@@ -92,7 +91,7 @@ impl ClickUpApi {
 
         // Create HTTP client with timeout and default headers
         let client = Client::builder()
-            .timeout(Duration::from_secs(30))
+            .timeout(config.get_api_timeout())
             .default_headers(headers)
             .build()
             .map_err(|e| {

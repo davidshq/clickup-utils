@@ -52,6 +52,7 @@ use crate::error::ClickUpError;
 use config::{Config as ConfigFile, Environment, File};
 use dotenvy::dotenv;
 use serde::{Deserialize, Serialize};
+use std::time::Duration;
 
 /// Rate limiting configuration
 ///
@@ -414,6 +415,164 @@ impl Config {
     /// Returns `true` if an API token is configured, `false` otherwise.
     pub fn is_authenticated(&self) -> bool {
         self.api_token.is_some()
+    }
+
+    /// Gets the API timeout from configuration or environment
+    ///
+    /// This method retrieves the API timeout from environment variables or
+    /// falls back to the default value from constants.
+    ///
+    /// # Returns
+    ///
+    /// Returns the configured timeout duration.
+    pub fn get_api_timeout(&self) -> Duration {
+        std::env::var("CLICKUP_API_TIMEOUT")
+            .ok()
+            .and_then(|s| s.parse::<u64>().ok())
+            .map(Duration::from_secs)
+            .unwrap_or_else(|| {
+                // Use constant value as fallback
+                Duration::from_secs(30) // DEFAULT_TIMEOUT
+            })
+    }
+
+    /// Gets the rate limit configuration with environment overrides
+    ///
+    /// This method returns a rate limit configuration that can be overridden
+    /// by environment variables.
+    ///
+    /// # Returns
+    ///
+    /// Returns the rate limit configuration with any environment overrides applied.
+    pub fn get_rate_limit_config(&self) -> RateLimitConfig {
+        RateLimitConfig {
+            requests_per_minute: self.rate_limit.requests_per_minute,
+            auto_retry: self.rate_limit.auto_retry,
+            max_retries: self.rate_limit.max_retries,
+            buffer_seconds: self.rate_limit.buffer_seconds,
+        }
+    }
+
+    /// Gets the maximum request size from configuration
+    ///
+    /// # Returns
+    ///
+    /// Returns the maximum request size in bytes.
+    pub fn get_max_request_size(&self) -> usize {
+        std::env::var("CLICKUP_MAX_REQUEST_SIZE")
+            .ok()
+            .and_then(|s| s.parse::<usize>().ok())
+            .unwrap_or(10 * 1024 * 1024) // 10MB default
+    }
+
+    /// Gets the default page size for paginated requests
+    ///
+    /// # Returns
+    ///
+    /// Returns the default page size.
+    pub fn get_default_page_size(&self) -> u32 {
+        std::env::var("CLICKUP_DEFAULT_PAGE_SIZE")
+            .ok()
+            .and_then(|s| s.parse::<u32>().ok())
+            .unwrap_or(100)
+    }
+
+    /// Gets the maximum page size for paginated requests
+    ///
+    /// # Returns
+    ///
+    /// Returns the maximum page size.
+    pub fn get_max_page_size(&self) -> u32 {
+        std::env::var("CLICKUP_MAX_PAGE_SIZE")
+            .ok()
+            .and_then(|s| s.parse::<u32>().ok())
+            .unwrap_or(1000)
+    }
+
+    /// Gets the connection pool configuration
+    ///
+    /// # Returns
+    ///
+    /// Returns a tuple of (max_idle_connections, idle_timeout, max_connections).
+    pub fn get_connection_pool_config(&self) -> (usize, Duration, usize) {
+        let max_idle = std::env::var("CLICKUP_MAX_IDLE_CONNECTIONS")
+            .ok()
+            .and_then(|s| s.parse::<usize>().ok())
+            .unwrap_or(10);
+        
+        let idle_timeout = std::env::var("CLICKUP_IDLE_TIMEOUT")
+            .ok()
+            .and_then(|s| s.parse::<u64>().ok())
+            .map(Duration::from_secs)
+            .unwrap_or_else(|| Duration::from_secs(90));
+        
+        let max_connections = std::env::var("CLICKUP_MAX_CONNECTIONS")
+            .ok()
+            .and_then(|s| s.parse::<usize>().ok())
+            .unwrap_or(100);
+        
+        (max_idle, idle_timeout, max_connections)
+    }
+
+    /// Gets the batch operation configuration
+    ///
+    /// # Returns
+    ///
+    /// Returns a tuple of (max_batch_size, default_task_batch_size, default_comment_batch_size).
+    pub fn get_batch_config(&self) -> (usize, usize, usize) {
+        let max_batch = std::env::var("CLICKUP_MAX_BATCH_SIZE")
+            .ok()
+            .and_then(|s| s.parse::<usize>().ok())
+            .unwrap_or(10);
+        
+        let task_batch = std::env::var("CLICKUP_TASK_BATCH_SIZE")
+            .ok()
+            .and_then(|s| s.parse::<usize>().ok())
+            .unwrap_or(5);
+        
+        let comment_batch = std::env::var("CLICKUP_COMMENT_BATCH_SIZE")
+            .ok()
+            .and_then(|s| s.parse::<usize>().ok())
+            .unwrap_or(10);
+        
+        (max_batch, task_batch, comment_batch)
+    }
+
+    /// Validates the configuration
+    ///
+    /// This method performs validation checks on the configuration to ensure
+    /// it meets the requirements for the application.
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(())` if the configuration is valid, or a `ClickUpError` if not.
+    ///
+    /// # Errors
+    ///
+    /// This function can return:
+    /// - `ClickUpError::ValidationError` if the configuration is invalid
+    pub fn validate(&self) -> Result<(), ClickUpError> {
+        // Validate API base URL
+        if self.api_base_url.trim().is_empty() {
+            return Err(ClickUpError::ValidationError(
+                "API base URL cannot be empty".to_string(),
+            ));
+        }
+
+        // Validate rate limit configuration
+        if self.rate_limit.requests_per_minute == 0 {
+            return Err(ClickUpError::ValidationError(
+                "Rate limit requests per minute must be greater than 0".to_string(),
+            ));
+        }
+
+        if self.rate_limit.max_retries > 10 {
+            return Err(ClickUpError::ValidationError(
+                "Rate limit max retries cannot exceed 10".to_string(),
+            ));
+        }
+
+        Ok(())
     }
 }
 

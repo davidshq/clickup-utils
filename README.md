@@ -7,8 +7,22 @@
 
 A powerful command-line interface for the ClickUp API that allows you to manage your ClickUp workspaces, spaces, lists, tasks, and comments directly from the terminal.
 
-## WARNING: Vibe Coded
-This has been vibe coded using primarily Cursor. Expect the code quality to be low.
+## 🏗️ Architecture
+
+This project follows modern Rust best practices with a clean separation between library and binary concerns:
+
+- **Library/Binary Separation**: Clean separation between reusable library code and CLI-specific logic
+- **Configuration-Driven Design**: All constants centralized and environment-overridable
+- **Application Layer**: Proper lifecycle management with startup/shutdown procedures
+- **Type Safety**: Comprehensive error handling with custom error types
+- **Async/Await**: Modern async patterns throughout the codebase
+
+### Recent Architectural Improvements
+- **✅ Library/Binary Separation**: Eliminated module duplication and created clean architecture
+- **✅ Centralized Constants**: All magic values moved to `src/constants.rs`
+- **✅ Application Layer**: Created `src/app.rs` for proper lifecycle management
+- **✅ Configuration-Driven**: Environment variables can override all settings
+- **✅ Enhanced Error Handling**: Comprehensive error context and logging
 
 ## ⚠️ Development Status
 **This project is currently in active development.**
@@ -17,12 +31,13 @@ This has been vibe coded using primarily Cursor. Expect the code quality to be l
 
 
 ### Recent Improvements
-- Comprehensive test suite implemented (95+ unit tests, integration tests available)
-- Advanced task features (tag filtering, cross-space search, overdue management)
-- Interactive prompts for missing parameters
-- Dry-run support for destructive operations
-- Rate limiting with sophisticated retry logic
-- Integration test suite with real API testing capabilities
+- **Architecture**: Complete library/binary separation with clean module organization
+- **Configuration**: Centralized constants with environment variable overrides
+- **Testing**: Comprehensive test suite (95+ unit tests, integration tests available)
+- **Features**: Advanced task features (tag filtering, cross-space search, overdue management)
+- **User Experience**: Interactive prompts for missing parameters and dry-run support
+- **Performance**: Rate limiting with sophisticated retry logic
+- **Documentation**: Enhanced documentation and code quality
 
 ## 🚀 Features
 
@@ -50,6 +65,27 @@ This has been vibe coded using primarily Cursor. Expect the code quality to be l
 
 - **Rust 1.70+** (install from [rustup.rs](https://rustup.rs/))
 - **ClickUp API token** (get from your ClickUp settings)
+
+### Library Usage
+
+The ClickUp CLI can also be used as a library in other Rust projects:
+
+```rust
+use clickup_cli::{ClickUpApi, Config, ClickUpError};
+use clickup_cli::constants::api::DEFAULT_TIMEOUT;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let config = Config::load()?;
+    let api = ClickUpApi::new(config)?;
+    
+    // Use the API client
+    let workspaces = api.get_workspaces().await?;
+    println!("Found {} workspaces", workspaces.teams.len());
+    
+    Ok(())
+}
+```
 
 ### Build from Source (Recommended)
 
@@ -312,10 +348,31 @@ api_base_url = "https://api.clickup.com/api/v2"
 You can also set configuration via environment variables:
 
 ```bash
+# Required: API token for authentication
 export CLICKUP_API_TOKEN="your-api-token"
+
+# Optional: Default workspace and list IDs
 export CLICKUP_WORKSPACE_ID="workspace-id"
 export CLICKUP_DEFAULT_LIST_ID="list-id"
+
+# Optional: API configuration
 export CLICKUP_API_BASE_URL="https://api.clickup.com/api/v2"
+export CLICKUP_API_TIMEOUT="30"  # API request timeout in seconds
+export CLICKUP_MAX_REQUEST_SIZE="10485760"  # Maximum request size in bytes (10MB)
+
+# Optional: Pagination settings
+export CLICKUP_DEFAULT_PAGE_SIZE="100"
+export CLICKUP_MAX_PAGE_SIZE="1000"
+
+# Optional: Connection pooling
+export CLICKUP_MAX_IDLE_CONNECTIONS="10"
+export CLICKUP_IDLE_TIMEOUT="90"  # Idle connection timeout in seconds
+export CLICKUP_MAX_CONNECTIONS="100"
+
+# Optional: Batch operation settings
+export CLICKUP_MAX_BATCH_SIZE="10"
+export CLICKUP_TASK_BATCH_SIZE="5"
+export CLICKUP_COMMENT_BATCH_SIZE="10"
 ```
 
 ### .env Files (Recommended for Development)
@@ -550,7 +607,12 @@ cargo doc --no-deps
 
 **Overall Coverage: ~40% (21/49 endpoints)** - Focused on core task management functionality.
 
-See `CLICKUP_API_COMPARISON.md` for detailed API implementation status and `CODE_REVIEW_RECOMMENDATIONS.md` for current development status.
+## 📚 Development Documentation
+
+- **`dev-docs/ARCHITECTURAL_ANALYSIS_AND_RECOMMENDATIONS.md`**: Comprehensive architectural analysis and improvement roadmap
+- **`dev-docs/LIBRARY_BINARY_SEPARATION_IMPLEMENTATION.md`**: Details of the recent library/binary separation implementation
+- **`CLICKUP_API_COMPARISON.md`**: Detailed API implementation status
+- **`CODE_REVIEW_RECOMMENDATIONS.md`**: Current development status and planned improvements
 
 ## 📄 License
 
