@@ -158,7 +158,7 @@ async fn test_list_show_no_auth() {
     assert!(!config.is_authenticated());
     
     // Execute the Show command
-    let result = execute(ListCommands::Show { id: "list_123".to_string() }, &config).await;
+    let result = execute(ListCommands::Show { list_id: "list_123".to_string() }, &config).await;
     assert!(result.is_err());
 }
 
@@ -178,7 +178,7 @@ async fn test_list_show_with_auth() {
     
     // Execute the Show command
     // Note: This will likely fail due to invalid token, but the command structure is valid
-    let _result = execute(ListCommands::Show { id: "list_123".to_string() }, &config).await;
+    let _result = execute(ListCommands::Show { list_id: "list_123".to_string() }, &config).await;
     // We don't assert on result since it depends on API connectivity
 }
 
@@ -196,7 +196,7 @@ async fn test_list_show_empty_id() {
     assert!(config.is_authenticated());
     
     // Execute the Show command with empty ID
-    let result = execute(ListCommands::Show { id: "".to_string() }, &config).await;
+    let result = execute(ListCommands::Show { list_id: "".to_string() }, &config).await;
     // This should fail due to invalid list ID
     assert!(result.is_err());
 }
@@ -215,7 +215,7 @@ async fn test_list_show_invalid_id_format() {
     assert!(config.is_authenticated());
     
     // Execute the Show command with invalid ID format
-    let result = execute(ListCommands::Show { id: "invalid_list_id".to_string() }, &config).await;
+    let result = execute(ListCommands::Show { list_id: "invalid_list_id".to_string() }, &config).await;
     // This should fail due to invalid list ID format
     assert!(result.is_err());
 } 

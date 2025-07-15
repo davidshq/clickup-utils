@@ -26,9 +26,9 @@
 //! ```
 
 use clickup_cli::api::ClickUpApi;
-use clickup_cli::commands::utils::ApiUtils;
 use clickup_cli::config::Config;
 use clickup_cli::error::ClickUpError;
+
 use std::env;
 use std::fs;
 use tempfile::TempDir;
@@ -176,7 +176,7 @@ impl TestApiUtils {
     /// }
     /// ```
     pub fn create_test_client(config: &Config) -> Result<ClickUpApi, ClickUpError> {
-        ApiUtils::create_client(config)
+        ClickUpApi::new(config.clone())
     }
 
     /// Create a test API client with a custom token

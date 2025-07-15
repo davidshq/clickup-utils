@@ -17,7 +17,7 @@
 use crate::config::Config;
 use crate::error::ClickUpError;
 use crate::repository::ClickUpRepository;
-use crate::commands::utils::{CommandExecutor, DisplayUtils, ErrorUtils, TableBuilder, TableHeaders};
+use crate::commands::utils::{CommandExecutor, DisplayUtils, TableBuilder, TableHeaders};
 use clap::Subcommand;
 
 /// List command variants

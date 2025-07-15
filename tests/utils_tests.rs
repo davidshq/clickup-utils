@@ -1,5 +1,5 @@
 use clickup_cli::commands::utils::{
-    ApiUtils, DisplayUtils, ErrorUtils, TableBuilder, TableHeaders,
+    DisplayUtils, ErrorUtils, TableBuilder, TableHeaders,
 };
 use clickup_cli::config::Config;
 use clickup_cli::error::ClickUpError;
@@ -190,24 +190,25 @@ mod error_utils_tests {
 }
 
 #[cfg(test)]
-mod api_utils_tests {
+mod repository_utils_tests {
     use super::*;
+    use clickup_cli::repository::RepositoryFactory;
 
     #[test]
-    fn test_create_client_with_valid_config() {
+    fn test_repository_factory_creation() {
         let config = Config::default();
-        let result = ApiUtils::create_client(&config);
+        let result = RepositoryFactory::create(&config);
         
-        // The API client creation should succeed with default config
+        // Repository creation should succeed with default config
         assert!(result.is_ok());
     }
 
     #[test]
-    fn test_create_client_with_custom_config() {
+    fn test_repository_factory_with_custom_config() {
         let config = Config::default();
-        let result = ApiUtils::create_client(&config);
+        let result = RepositoryFactory::create(&config);
         
-        // The API client creation should succeed with default config
+        // Repository creation should succeed with default config
         assert!(result.is_ok());
     }
 }
@@ -376,13 +377,5 @@ mod integration_tests {
         }
     }
 
-    #[test]
-    fn test_api_utils_with_config() {
-        let config = Config::default();
-        let result = ApiUtils::create_client(&config);
-        
-        assert!(result.is_ok());
-        
-        // If we get here without panic, the API client was created successfully
-    }
+
 } 

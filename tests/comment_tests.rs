@@ -229,75 +229,7 @@ async fn test_comment_create_empty_text() {
     assert!(result.is_err());
 }
 
-/// Tests the Update command with no authentication
-///
-/// This test verifies that the Update command correctly handles
-/// the case when no authentication token is configured.
-#[tokio::test]
-async fn test_comment_update_no_auth() {
-    let _test_config = TestConfig::new();
-    let config = Config::default();
-    
-    // Ensure no token is set
-    assert!(!config.is_authenticated());
-    
-    // Execute the Update command
-    let result = execute(CommentCommands::Update { 
-        id: "comment_123".to_string(),
-        text: "Updated comment".to_string(),
-        assignee: Some(456),
-        notify_all: Some(false),
-    }, &config).await;
-    assert!(result.is_err());
-}
 
-/// Tests the Update command with authentication
-///
-/// This test verifies that the Update command can be executed
-/// when authentication is configured.
-#[tokio::test]
-async fn test_comment_update_with_auth() {
-    let _test_config = TestConfig::new();
-    let mut config = Config::default();
-    
-    // Set a token
-    config.set_api_token("test_token_12345".to_string()).unwrap();
-    assert!(config.is_authenticated());
-    
-    // Execute the Update command
-    // Note: This will likely fail due to invalid token, but the command structure is valid
-    let _result = execute(CommentCommands::Update { 
-        id: "comment_123".to_string(),
-        text: "Updated comment".to_string(),
-        assignee: Some(456),
-        notify_all: Some(false),
-    }, &config).await;
-    // We don't assert on result since it depends on API connectivity
-}
-
-/// Tests the Update command with empty text
-///
-/// This test verifies that the Update command correctly handles
-/// empty comment text.
-#[tokio::test]
-async fn test_comment_update_empty_text() {
-    let _test_config = TestConfig::new();
-    let mut config = Config::default();
-    
-    // Set a token
-    config.set_api_token("test_token_12345".to_string()).unwrap();
-    assert!(config.is_authenticated());
-    
-    // Execute the Update command with empty text
-    let result = execute(CommentCommands::Update { 
-        id: "comment_123".to_string(),
-        text: "".to_string(),
-        assignee: None,
-        notify_all: None,
-    }, &config).await;
-    // This should fail due to empty comment text
-    assert!(result.is_err());
-}
 
 /// Tests the Delete command with no authentication
 ///

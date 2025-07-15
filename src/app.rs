@@ -193,7 +193,7 @@ impl ClickUpApp {
     ///
     /// Returns `Ok(())` on success, or a `ClickUpError` on failure.
     async fn handle_auth(&mut self, command: auth::AuthCommands) -> Result<(), ClickUpError> {
-        auth::execute(command, &mut self.config).await
+        auth::execute(command, &self.config).await
     }
     
     /// Handles workspace commands
