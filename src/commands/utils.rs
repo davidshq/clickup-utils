@@ -66,8 +66,21 @@ use comfy_table::{Cell, Table};
 /// ## Example Usage
 ///
 /// ```rust
-/// impl CommandExecutor for WorkspaceCommands {
-///     type Commands = WorkspaceCommands;
+/// use clickup_cli::commands::utils::{CommandExecutor, ApiUtils};
+/// use clickup_cli::config::Config;
+/// use clickup_cli::error::ClickUpError;
+/// use clickup_cli::api::ClickUpApi;
+/// use clap::Subcommand;
+///
+/// // Define your command enum
+/// #[derive(Debug, Clone, Subcommand)]
+/// enum MyCommands {
+///     List,
+///     Show { id: String },
+/// }
+///
+/// impl CommandExecutor for MyCommands {
+///     type Commands = MyCommands;
 ///     
 ///     async fn execute(command: Self::Commands, config: &Config) -> Result<(), ClickUpError> {
 ///         let api = ApiUtils::create_client(config)?;
@@ -76,8 +89,8 @@ use comfy_table::{Cell, Table};
 ///     
 ///     async fn handle_command(command: Self::Commands, api: &ClickUpApi) -> Result<(), ClickUpError> {
 ///         match command {
-///             WorkspaceCommands::List => list_workspaces(api).await?,
-///             WorkspaceCommands::Show { id } => show_workspace(api, &id).await?,
+///             MyCommands::List => { /* list logic */ },
+///             MyCommands::Show { id } => { /* show logic */ },
 ///         }
 ///         Ok(())
 ///     }
@@ -126,22 +139,38 @@ pub trait CommandExecutor {
 /// ## Usage Pattern
 ///
 /// ```rust
-/// let mut table_builder = TableBuilder::new();
-/// table_builder.add_header(vec![
-///     TableHeaders::id(),
-///     TableHeaders::name(),
-///     TableHeaders::members(),
-/// ]);
+/// use clickup_cli::commands::utils::{TableBuilder, TableHeaders};
 ///
-/// for item in &items {
-///     table_builder.add_row(vec![
-///         item.id.clone(),
-///         item.name.as_deref().unwrap_or("").to_string(),
-///         item.members.len().to_string(),
+/// fn example() {
+///     let mut table_builder = TableBuilder::new();
+///     table_builder.add_header(vec![
+///         TableHeaders::id(),
+///         TableHeaders::name(),
+///         TableHeaders::members(),
 ///     ]);
+///
+///     let items = vec![MockItem {
+///         id: "item_id".to_string(),
+///         name: Some("Test Item".to_string()),
+///         members: vec!["member1".to_string()],
+///     }];
+///     for item in &items {
+///         table_builder.add_row(vec![
+///             item.id.clone(),
+///             item.name.as_deref().unwrap_or("").to_string(),
+///             item.members.len().to_string(),
+///         ]);
+///     }
+///
+///     table_builder.print();
 /// }
 ///
-/// table_builder.print();
+/// // Mock item for example
+/// struct MockItem {
+///     id: String,
+///     name: Option<String>,
+///     members: Vec<String>,
+/// }
 /// ```
 ///
 /// ## Features
@@ -218,31 +247,80 @@ impl Default for TableBuilder {
 ///
 /// ### Empty Results
 /// ```rust
-/// if items.is_empty() {
-///     DisplayUtils::display_empty_message("workspaces");
-///     return Ok(());
+/// use clickup_cli::commands::utils::DisplayUtils;
+/// use clickup_cli::error::ClickUpError;
+///
+/// fn example() -> Result<(), ClickUpError> {
+///     let items: Vec<String> = vec![]; // Your items
+///     if items.is_empty() {
+///         DisplayUtils::display_empty_message("workspaces");
+///         return Ok(());
+///     }
+///     Ok(())
 /// }
 /// ```
 ///
 /// ### Details Display
 /// ```rust
-/// DisplayUtils::display_details_header("Workspace");
-/// println!("ID: {}", workspace.id);
-/// println!("Name: {}", workspace.name.as_deref().unwrap_or(""));
+/// use clickup_cli::commands::utils::DisplayUtils;
+///
+/// fn example() {
+///     let workspace = MockWorkspace {
+///         id: "workspace_id".to_string(),
+///         name: Some("Test Workspace".to_string()),
+///     };
+///     DisplayUtils::display_details_header("Workspace");
+///     println!("ID: {}", workspace.id);
+///     println!("Name: {}", workspace.name.as_deref().unwrap_or(""));
+/// }
+///
+/// // Mock workspace for example
+/// struct MockWorkspace {
+///     id: String,
+///     name: Option<String>,
+/// }
 /// ```
 ///
 /// ### Member Display
 /// ```rust
-/// let members: Vec<(String, Option<String>)> = workspace
-///     .members
-///     .iter()
-///     .map(|m| {
-///         let username = m.user.username.as_deref().unwrap_or("Unknown user").to_string();
-///         let email = m.user.email.clone();
-///         (username, email)
-///     })
-///     .collect();
-/// DisplayUtils::display_members(&members);
+/// use clickup_cli::commands::utils::DisplayUtils;
+///
+/// fn example() {
+///     let workspace = MockWorkspace {
+///         members: vec![
+///             MockMember {
+///                 user: MockUser {
+///                     username: Some("user1".to_string()),
+///                     email: Some("user1@example.com".to_string()),
+///                 }
+///             }
+///         ]
+///     };
+///     let members: Vec<(String, Option<String>)> = workspace
+///         .members
+///         .iter()
+///         .map(|m| {
+///             let username = m.user.username.as_deref().unwrap_or("Unknown user").to_string();
+///             let email = m.user.email.clone();
+///             (username, email)
+///         })
+///         .collect();
+///     DisplayUtils::display_members(&members);
+/// }
+///
+/// // Mock structures for example
+/// struct MockWorkspace {
+///     members: Vec<MockMember>,
+/// }
+///
+/// struct MockMember {
+///     user: MockUser,
+/// }
+///
+/// struct MockUser {
+///     username: Option<String>,
+///     email: Option<String>,
+/// }
 /// ```
 pub struct DisplayUtils;
 
@@ -310,9 +388,27 @@ impl DisplayUtils {
 /// ## Usage Pattern
 ///
 /// ```rust
-/// match api.get_item(id).await {
-///     Ok(item) => { /* handle item */ },
-///     Err(_) => return Err(ErrorUtils::not_found_error("Workspace", id)),
+/// use clickup_cli::commands::utils::ErrorUtils;
+/// use clickup_cli::error::ClickUpError;
+///
+/// async fn example() -> Result<(), ClickUpError> {
+///     // Simulate API client
+///     let api = MockApiClient;
+///     let id = "workspace_id";
+///     
+///     match api.get_item(id).await {
+///         Ok(item) => { /* handle item */ },
+///         Err(_) => return Err(ErrorUtils::not_found_error("Workspace", id)),
+///     }
+///     Ok(())
+/// }
+///
+/// // Mock API client for example
+/// struct MockApiClient;
+/// impl MockApiClient {
+///     async fn get_item(&self, _id: &str) -> Result<(), ClickUpError> {
+///         Err(ClickUpError::NotFoundError("Not found".to_string()))
+///     }
 /// }
 /// ```
 pub struct ErrorUtils;
@@ -343,7 +439,15 @@ impl ErrorUtils {
 /// ## Usage Pattern
 ///
 /// ```rust
-/// let api = ApiUtils::create_client(config)?;
+/// use clickup_cli::commands::utils::ApiUtils;
+/// use clickup_cli::config::Config;
+/// use clickup_cli::error::ClickUpError;
+///
+/// fn example() -> Result<(), ClickUpError> {
+///     let config = Config::default(); // Your config
+///     let api = ApiUtils::create_client(&config)?;
+///     Ok(())
+/// }
 /// ```
 ///
 /// ## Benefits
@@ -376,12 +480,17 @@ impl ApiUtils {
 /// ## Usage Pattern
 ///
 /// ```rust
-/// table_builder.add_header(vec![
-///     TableHeaders::id(),
-///     TableHeaders::name(),
-///     TableHeaders::members(),
-///     TableHeaders::color(),
-/// ]);
+/// use clickup_cli::commands::utils::{TableBuilder, TableHeaders};
+///
+/// fn example() {
+///     let mut table_builder = TableBuilder::new();
+///     table_builder.add_header(vec![
+///         TableHeaders::id(),
+///         TableHeaders::name(),
+///         TableHeaders::members(),
+///         TableHeaders::color(),
+///     ]);
+/// }
 /// ```
 ///
 /// ## Benefits
