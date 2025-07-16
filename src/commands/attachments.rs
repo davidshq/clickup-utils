@@ -151,7 +151,7 @@ impl CommandExecutor for AttachmentCommands {
 /// - Network errors (connection issues)
 /// - Not found errors (task doesn't exist)
 async fn list_attachments(repo: &dyn ClickUpRepository, task_id: &str) -> Result<(), ClickUpError> {
-    info!("Fetching attachments for task: {}", task_id);
+    info!("Fetching attachments for task: {task_id}");
     
     let response = repo.get_attachments(task_id).await?;
     let attachments = response.attachments;
@@ -182,7 +182,7 @@ async fn list_attachments(repo: &dyn ClickUpRepository, task_id: &str) -> Result
             .unwrap_or("Unknown");
         
         let size = attachment.size
-            .map(|s| format!("{} B", s))
+            .map(|s| format!("{s} B"))
             .unwrap_or_else(|| "Unknown".to_string());
         
         let uploaded = attachment.date_created
@@ -237,7 +237,7 @@ async fn upload_attachment(repo: &dyn ClickUpRepository, params: UploadAttachmen
     info!("File path: {}", params.file_path);
     
     if let Some(ref filename) = params.filename {
-        info!("Custom filename: {}", filename);
+        info!("Custom filename: {filename}");
     }
     
     // Validate file exists
@@ -297,7 +297,7 @@ async fn create_link_attachment(repo: &dyn ClickUpRepository, params: CreateLink
     info!("Link URL: {}", params.link);
     
     if let Some(ref title) = params.title {
-        info!("Custom title: {}", title);
+        info!("Custom title: {title}");
     }
     
     // Create the link attachment request
@@ -318,13 +318,13 @@ async fn create_link_attachment(repo: &dyn ClickUpRepository, params: CreateLink
     
     if let Some(ref link_preview) = attachment.link_preview {
         if let Some(ref title) = link_preview.title {
-            println!("Preview Title: {}", title);
+            println!("Preview Title: {title}");
         }
         if let Some(ref description) = link_preview.description {
-            println!("Preview Description: {}", description);
+            println!("Preview Description: {description}");
         }
         if let Some(ref domain) = link_preview.domain {
-            println!("Domain: {}", domain);
+            println!("Domain: {domain}");
         }
     }
     
@@ -357,14 +357,14 @@ async fn create_link_attachment(repo: &dyn ClickUpRepository, params: CreateLink
 /// - Network errors (connection issues)
 /// - Not found errors (attachment doesn't exist)
 async fn delete_attachment(repo: &dyn ClickUpRepository, attachment_id: &str) -> Result<(), ClickUpError> {
-    info!("Deleting attachment: {}", attachment_id);
+    info!("Deleting attachment: {attachment_id}");
     
     // Delete the attachment
     repo.delete_attachment(attachment_id).await?;
     
     // Display success message
     println!("{}", "✓ Attachment deleted successfully!".green().bold());
-    println!("Attachment ID: {}", attachment_id);
+    println!("Attachment ID: {attachment_id}");
     
     Ok(())
 } 

@@ -1410,11 +1410,11 @@ impl ClickUpApi {
         // Add multipart form
         request = request.multipart(form);
 
-        debug!("Uploading attachment to: {}", url);
+        debug!("Uploading attachment to: {url}");
 
         // Send the request
         let response = request.send().await.map_err(|e| {
-            error!("Upload request failed: {}", e);
+            error!("Upload request failed: {e}");
             ClickUpError::from(e)
         })?;
 
@@ -1432,46 +1432,45 @@ impl ClickUpApi {
 
         let status = response.status();
         let response_text = response.text().await.map_err(|e| {
-            error!("Failed to read response: {}", e);
-            ClickUpError::NetworkError(format!("Failed to read response: {}", e))
+            error!("Failed to read response: {e}");
+            ClickUpError::NetworkError(format!("Failed to read response: {e}"))
         })?;
 
-        debug!("Upload response status: {}, body: {}", status, response_text);
+        debug!("Upload response status: {status}, body: {response_text}");
 
         // Handle different response statuses
         match status.as_u16() {
             200..=299 => {
                 // Success - parse the response
                 serde_json::from_str(&response_text).map_err(|e| {
-                    error!("Failed to parse response: {}", e);
-                    ClickUpError::SerializationError(format!("Failed to parse response: {}", e))
+                    error!("Failed to parse response: {e}");
+                    ClickUpError::SerializationError(format!("Failed to parse response: {e}"))
                 })
             }
             401 => {
-                error!("Authentication failed: {}", response_text);
+                error!("Authentication failed: {response_text}");
                 Err(ClickUpError::AuthError("Authentication failed".to_string()))
             }
             403 => {
-                error!("Permission denied: {}", response_text);
+                error!("Permission denied: {response_text}");
                 Err(ClickUpError::PermissionError("Permission denied".to_string()))
             }
             404 => {
-                error!("Task not found: {}", response_text);
+                error!("Task not found: {response_text}");
                 Err(ClickUpError::NotFoundError("Task not found".to_string()))
             }
             429 => {
-                error!("Rate limit exceeded: {}", response_text);
+                error!("Rate limit exceeded: {response_text}");
                 Err(ClickUpError::RateLimitError)
             }
             500..=599 => {
-                error!("Server error: {}", response_text);
-                Err(ClickUpError::ApiError(format!("Server error: {}", response_text)))
+                error!("Server error: {response_text}");
+                Err(ClickUpError::ApiError(format!("Server error: {response_text}")))
             }
             _ => {
-                error!("Unexpected status {}: {}", status, response_text);
+                error!("Unexpected status {status}: {response_text}");
                 Err(ClickUpError::ApiError(format!(
-                    "Unexpected status {}: {}",
-                    status, response_text
+                    "Unexpected status {status}: {response_text}"
                 )))
             }
         }
