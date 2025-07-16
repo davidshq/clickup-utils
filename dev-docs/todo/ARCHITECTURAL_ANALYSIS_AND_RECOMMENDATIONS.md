@@ -53,7 +53,6 @@ The codebase follows an excellent layered architecture with clean separation and
 **Areas for Improvement:**
 - ⚠️ **Missing caching layer** - No response caching implemented
 - ⚠️ **No event system** - Limited extensibility and monitoring
-- ⚠️ **Limited dependency injection** - Could be expanded with service container
 
 ### 2. **Design Patterns Analysis**
 
@@ -74,36 +73,30 @@ The codebase follows an excellent layered architecture with clean separation and
 ### 1. **⚠️ PENDING: Add Caching Layer**
 
 **Current Issue:** No response caching
-**Solution:** Implement intelligent caching
+**Solution:** Implement intelligent caching with multi-client safety strategies
 
-```rust
-use std::collections::HashMap;
-use std::time::{Duration, Instant};
+**Reference:** [Caching Strategy & Implementation](../CACHING_STRATEGY.md)
 
-#[derive(Clone)]
-pub struct CachedValue<T> {
-    data: T,
-    expires_at: Instant,
-}
+The caching layer will be implemented as a decorator pattern around the existing repository, providing:
 
-impl<T> CachedValue<T> {
-    pub fn new(data: T, ttl: Duration) -> Self {
-        Self {
-            data,
-            expires_at: Instant::now() + ttl,
-        }
-    }
-    
-    pub fn is_expired(&self) -> bool {
-        Instant::now() > self.expires_at
-    }
-}
+- **ETag-first validation** for multi-client data freshness
+- **Conservative TTL strategy** (30 seconds to 5 minutes) for multi-client safety
+- **Event-based invalidation** when related data is modified by this client
+- **Pattern-based invalidation** for related cache entries
+- **Transparent integration** with existing repository pattern
 
-pub struct CacheManager {
-    cache: Arc<Mutex<HashMap<String, CachedValue<serde_json::Value>>>>,
-    default_ttl: Duration,
-}
-```
+**Multi-Client Considerations:**
+- **ETag validation priority** over TTL for data freshness
+- **Short TTLs** as safety net for ETag failures
+- **Conservative performance gains** (40-60% vs 60-80% API call reduction)
+- **Data accuracy** prioritized over maximum cache performance
+
+**Key Benefits:**
+- Reduces API calls by 40-60% for read-heavy operations (conservative for multi-client safety)
+- ETag validation ensures data freshness in multi-user environments
+- Smart invalidation ensures data freshness when changes occur
+- Configurable TTLs for different data types
+- No changes required to existing command modules
 
 ### 2. **⚠️ PENDING: Implement Event System**
 
@@ -142,41 +135,6 @@ impl EventBus {
     }
 }
 ```
-
-### 3. **⚠️ PENDING: Add Dependency Injection**
-
-**Current Issue:** Limited dependency injection
-**Solution:** Implement DI container
-
-```rust
-use std::sync::Arc;
-
-pub struct ServiceContainer {
-    config: Arc<Config>,
-    api_repository: Arc<dyn ClickUpRepository>,
-    event_bus: Arc<EventBus>,
-    cache_manager: Arc<CacheManager>,
-}
-
-impl ServiceContainer {
-    pub fn new(config: Config) -> Result<Self, ClickUpError> {
-        let config = Arc::new(config);
-        let event_bus = Arc::new(EventBus::new());
-        let cache_manager = Arc::new(CacheManager::new());
-        
-        let api = ClickUpApi::new(config.as_ref().clone())?;
-        let api_repository = Arc::new(ClickUpApiRepository::new(api, cache_manager.clone()));
-        
-        Ok(Self {
-            config,
-            api_repository,
-            event_bus,
-            cache_manager,
-        })
-    }
-}
-```
-
 ---
 
 ## 🛡️ Security Enhancements
@@ -240,7 +198,7 @@ impl CreateTaskRequest {
 ### 1. **⚠️ PENDING: Batch Operations**
 
 **Current Issue:** No batch API operations
-**Solution:** Implement batch processing
+**Solution:** Implement batch processing with multi-client awareness
 
 ```rust
 impl ClickUpApi {
@@ -261,6 +219,9 @@ impl ClickUpApi {
             let chunk_results = futures::future::join_all(futures).await;
             results.extend(chunk_results.into_iter().filter_map(|r| r.ok()));
         }
+        
+        // Invalidate related caches after batch operations
+        self.invalidate_task_caches(list_id).await;
         
         Ok(results)
     }
@@ -302,7 +263,7 @@ impl ConnectionPool {
 ### 3. **⚠️ PENDING: Async Streaming**
 
 **Current Issue:** Loading all data at once
-**Solution:** Implement streaming for large datasets
+**Solution:** Implement streaming for large datasets with multi-client awareness
 
 ```rust
 use tokio_stream::{Stream, StreamExt};
@@ -329,10 +290,12 @@ impl Stream for TaskStream {
     type Item = Result<Task, ClickUpError>;
     
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        // Implement streaming logic
+        // Implement streaming logic with ETag validation for multi-client safety
     }
 }
 ```
+
+**Multi-Client Consideration:** Streaming operations should include ETag validation to ensure data freshness during long-running operations.
 
 ---
 
@@ -378,7 +341,7 @@ proptest! {
 > **Note:** Completed items have been moved to [ROADMAP_COMPLETED.md](../ROADMAP_COMPLETED.md)
 
 ### ⚠️ **Phase 4: Caching & Performance** (2-3 weeks)
-- [ ] Add intelligent caching layer to repository
+- [ ] Add intelligent caching layer to repository (see [Caching Strategy](../CACHING_STRATEGY.md))
 - [ ] Implement connection pooling
 - [ ] Add batch operations for bulk tasks
 - [ ] Implement streaming for large datasets
@@ -392,14 +355,12 @@ proptest! {
 
 ### ⚠️ **Phase 6: Advanced Architecture** (4-6 weeks)
 - [ ] Implement event system with event bus
-- [ ] Add dependency injection container
 - [ ] Implement plugin system for extensibility
 - [ ] Add comprehensive monitoring and metrics
 
 ### ⚠️ **Phase 7: Testing & Quality** (2-3 weeks)
 - [ ] Add property-based testing with proptest
 - [ ] Add performance benchmarks and profiling
-- [ ] Improve documentation coverage to 95%
 
 ---
 
@@ -408,7 +369,7 @@ proptest! {
 > **Note:** Completed quick wins have been moved to [ROADMAP_COMPLETED.md](../ROADMAP_COMPLETED.md)
 
 ### ⚠️ **1. Performance Optimizations** (1-2 weeks)
-- [ ] Add intelligent caching layer to repository
+- [ ] Add intelligent caching layer to repository (see [Caching Strategy](../CACHING_STRATEGY.md))
 - [ ] Implement connection pooling
 - [ ] Add batch operations for bulk tasks
 
