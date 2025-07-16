@@ -230,5 +230,7 @@ pub mod lists;
 pub mod spaces;
 pub mod tasks;
 pub mod teams;
-pub mod workspaces;
 pub mod utils;
+pub mod workspaces;
+pub mod tags;
+pub mod attachments;

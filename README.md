@@ -282,6 +282,20 @@ clickup-cli tasks update \
 clickup-cli tasks delete --id <task-id>
 ```
 
+### Tag Commands
+
+```bash
+# List all tags in a space
+clickup-cli tags list --space-id <space-id>
+
+# Create a new tag
+clickup-cli tags create \
+  --space-id <space-id> \
+  --name "urgent" \
+  --tag-fg "#ffffff" \
+  --tag-bg "#ff0000"
+```
+
 ### Comment Commands
 
 ```bash

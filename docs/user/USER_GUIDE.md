@@ -256,6 +256,47 @@ clickup-cli tasks update-overdue-by-tag --tag "urgent" --dry-run
 clickup-cli tasks update-overdue-by-tag --tag "urgent"
 ```
 
+## Tag Management
+
+Tags help organize tasks with visual labels and colors. You can list existing tags and create new ones.
+
+### Tag Commands
+
+```bash
+# List all tags in a space
+clickup-cli tags list --space-id <space-id>
+
+# Create a new tag
+clickup-cli tags create \
+  --space-id <space-id> \
+  --name "urgent" \
+  --tag-fg "#ffffff" \
+  --tag-bg "#ff0000"
+```
+
+### Tag Creation Options
+
+When creating tags, you can specify:
+
+- `--space-id`: Space ID where the tag will be created (required)
+- `--name`: Tag name (required)
+- `--tag-fg`: Foreground color in hex format (default: "#ffffff")
+- `--tag-bg`: Background color in hex format (default: "#ff0000")
+
+```bash
+# Create a tag with custom colors
+clickup-cli tags create \
+  --space-id "space_id" \
+  --name "bug" \
+  --tag-fg "#000000" \
+  --tag-bg "#ffff00"
+
+# Create a tag with default colors
+clickup-cli tags create \
+  --space-id "space_id" \
+  --name "feature"
+```
+
 ## Comment Management
 
 ```bash

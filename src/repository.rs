@@ -97,6 +97,16 @@ pub trait ClickUpRepository: Send + Sync {
     async fn get_comment(&self, comment_id: &str) -> Result<Comment, ClickUpError>;
     async fn create_comment(&self, task_id: &str, comment: CreateCommentRequest) -> Result<(), ClickUpError>;
     async fn delete_comment(&self, comment_id: &str) -> Result<(), ClickUpError>;
+    
+    // Tag operations
+    async fn get_tags(&self, space_id: &str) -> Result<TagsResponse, ClickUpError>;
+    async fn create_tag(&self, space_id: &str, tag: CreateTagRequest) -> Result<Tag, ClickUpError>;
+    
+    // Attachment operations
+    async fn get_attachments(&self, task_id: &str) -> Result<AttachmentsResponse, ClickUpError>;
+    async fn upload_attachment(&self, task_id: &str, file_path: &str, filename: Option<&str>) -> Result<Attachment, ClickUpError>;
+    async fn create_link_attachment(&self, task_id: &str, link_data: CreateLinkAttachmentRequest) -> Result<Attachment, ClickUpError>;
+    async fn delete_attachment(&self, attachment_id: &str) -> Result<(), ClickUpError>;
 }
 
 /// ClickUp API repository implementation
@@ -216,6 +226,32 @@ impl ClickUpRepository for ClickUpApiRepository {
     
     async fn delete_comment(&self, comment_id: &str) -> Result<(), ClickUpError> {
         self.api.delete_comment(comment_id).await
+    }
+    
+    // Tag operations
+    async fn get_tags(&self, space_id: &str) -> Result<TagsResponse, ClickUpError> {
+        self.api.get_tags(space_id).await
+    }
+    
+    async fn create_tag(&self, space_id: &str, tag: CreateTagRequest) -> Result<Tag, ClickUpError> {
+        self.api.create_tag(space_id, tag).await
+    }
+    
+    // Attachment operations
+    async fn get_attachments(&self, task_id: &str) -> Result<AttachmentsResponse, ClickUpError> {
+        self.api.get_attachments(task_id).await
+    }
+    
+    async fn upload_attachment(&self, task_id: &str, file_path: &str, filename: Option<&str>) -> Result<Attachment, ClickUpError> {
+        self.api.upload_attachment(task_id, file_path, filename).await
+    }
+    
+    async fn create_link_attachment(&self, task_id: &str, link_data: CreateLinkAttachmentRequest) -> Result<Attachment, ClickUpError> {
+        self.api.create_link_attachment(task_id, link_data).await
+    }
+    
+    async fn delete_attachment(&self, attachment_id: &str) -> Result<(), ClickUpError> {
+        self.api.delete_attachment(attachment_id).await
     }
 }
 

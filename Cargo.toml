@@ -34,7 +34,7 @@ clap = { version = "4.4", features = ["derive"] }
 
 # HTTP client for API requests
 # Handles HTTP requests to ClickUp API with JSON support
-reqwest = { version = "0.12.22", features = ["json"] }
+reqwest = { version = "0.12.22", features = ["json", "multipart"] }
 
 # JSON serialization and deserialization
 # Used for API request/response handling and configuration

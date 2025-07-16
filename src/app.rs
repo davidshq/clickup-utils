@@ -14,7 +14,7 @@
 //! ```
 
 use clickup_cli::{Config, ClickUpError, constants, di::ServiceContainer};
-use clickup_cli::commands::{auth, comments, lists, spaces, tasks, teams, workspaces};
+use clickup_cli::commands::{auth, comments, lists, spaces, tasks, teams, workspaces, tags, attachments};
 use clap::{Parser, Subcommand};
 use log::{error, info, warn};
 
@@ -87,6 +87,18 @@ pub enum Commands {
         /// The comment subcommand to execute
         #[command(subcommand)]
         command: comments::CommentCommands,
+    },
+    /// Tag management operations
+    Tags {
+        /// The tag subcommand to execute
+        #[command(subcommand)]
+        command: tags::TagCommands,
+    },
+    /// Attachment management on tasks
+    Attachments {
+        /// The attachment subcommand to execute
+        #[command(subcommand)]
+        command: attachments::AttachmentCommands,
     },
 }
 
@@ -177,6 +189,12 @@ impl ClickUpApp {
             }
             Commands::Comments { command } => {
                 self.handle_comments(command).await
+            }
+            Commands::Tags { command } => {
+                self.handle_tags(command).await
+            }
+            Commands::Attachments { command } => {
+                self.handle_attachments(command).await
             }
         }
     }
@@ -270,6 +288,32 @@ impl ClickUpApp {
     /// Returns `Ok(())` on success, or a `ClickUpError` on failure.
     async fn handle_comments(&self, command: comments::CommentCommands) -> Result<(), ClickUpError> {
         comments::execute(command, self.container.config()).await
+    }
+
+    /// Handles tag commands
+    ///
+    /// # Arguments
+    ///
+    /// * `command` - The tag command to execute
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(())` on success, or a `ClickUpError` on failure.
+    async fn handle_tags(&self, command: tags::TagCommands) -> Result<(), ClickUpError> {
+        tags::execute(command, self.container.config()).await
+    }
+
+    /// Handles attachment commands
+    ///
+    /// # Arguments
+    ///
+    /// * `command` - The attachment command to execute
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(())` on success, or a `ClickUpError` on failure.
+    async fn handle_attachments(&self, command: attachments::AttachmentCommands) -> Result<(), ClickUpError> {
+        attachments::execute(command, self.container.config()).await
     }
     
 }

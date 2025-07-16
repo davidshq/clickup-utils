@@ -1134,6 +1134,44 @@ pub struct CommentsResponse {
     pub comments: Vec<Comment>,
 }
 
+/// Response containing a list of tags
+///
+/// This struct represents the API response when fetching tags for a space.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TagsResponse {
+    /// List of tags in the space
+    pub tags: Vec<Tag>,
+}
+
+/// Tag information
+///
+/// This struct represents a tag in a space, including its name,
+/// colors, and metadata.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Tag {
+    /// Tag display name
+    pub name: Option<String>,
+    /// Tag foreground color
+    pub tag_fg: String,
+    /// Tag background color
+    pub tag_bg: String,
+    /// Tag creator user ID
+    pub creator: i64,
+}
+
+/// Request data for creating a new tag
+///
+/// This struct contains the data needed to create a new tag in a space.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CreateTagRequest {
+    /// Tag display name (required)
+    pub name: String,
+    /// Tag foreground color (hex format, e.g., "#ffffff")
+    pub tag_fg: String,
+    /// Tag background color (hex format, e.g., "#ff0000")
+    pub tag_bg: String,
+}
+
 /// Comment information
 ///
 /// This struct represents a comment on a task, including its content,
@@ -1220,4 +1258,104 @@ pub struct CreateCommentRequest {
     pub assignee: Option<i64>,
     /// Whether to notify assignee
     pub notify_all: Option<bool>,
+}
+
+// Attachment models
+
+/// Response containing a list of attachments
+///
+/// This struct represents the API response when fetching attachments for a task.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AttachmentsResponse {
+    /// List of attachments on the task
+    pub attachments: Vec<Attachment>,
+}
+
+/// Attachment information
+///
+/// This struct represents an attachment on a task, including its file information,
+/// metadata, and download details.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Attachment {
+    /// Unique attachment identifier
+    #[serde(deserialize_with = "string_or_number")]
+    pub id: String,
+    /// Attachment display name
+    pub title: Option<String>,
+    /// Attachment file name
+    pub filename: Option<String>,
+    /// Attachment file size in bytes
+    pub size: Option<i64>,
+    /// Attachment file type/MIME type
+    pub mimetype: Option<String>,
+    /// Attachment file extension
+    pub extension: Option<String>,
+    /// URL to download the attachment
+    pub url: Option<String>,
+    /// Attachment creation timestamp
+    pub date_created: Option<String>,
+    /// Attachment last update timestamp
+    pub date_updated: Option<String>,
+    /// User who uploaded the attachment
+    pub user: Option<AttachmentUser>,
+    /// Whether the attachment is a link (vs file upload)
+    pub is_link: Option<bool>,
+    /// Link URL (if attachment is a link)
+    pub link: Option<String>,
+    /// Link preview information (if attachment is a link)
+    pub link_preview: Option<LinkPreview>,
+}
+
+/// Attachment user information
+///
+/// This struct contains information about the user who uploaded the attachment.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AttachmentUser {
+    /// Unique user identifier
+    pub id: i64,
+    /// User's display name
+    pub username: String,
+    /// User's preferred color
+    pub color: Option<String>,
+    /// URL to user's profile picture
+    pub profile_picture: Option<String>,
+}
+
+/// Link preview information
+///
+/// This struct contains preview information for link attachments.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct LinkPreview {
+    /// Link title
+    pub title: Option<String>,
+    /// Link description
+    pub description: Option<String>,
+    /// Link image URL
+    pub image: Option<String>,
+    /// Link domain
+    pub domain: Option<String>,
+    /// Link URL
+    pub url: Option<String>,
+}
+
+/// Request data for uploading an attachment
+///
+/// This struct contains the data needed to upload a new attachment to a task.
+#[derive(Debug, Serialize)]
+pub struct UploadAttachmentRequest {
+    /// File path to upload
+    pub file_path: String,
+    /// Custom filename (optional)
+    pub filename: Option<String>,
+}
+
+/// Request data for creating a link attachment
+///
+/// This struct contains the data needed to create a link attachment on a task.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CreateLinkAttachmentRequest {
+    /// Link URL (required)
+    pub link: String,
+    /// Custom title for the link (optional)
+    pub title: Option<String>,
 }

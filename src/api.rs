@@ -1087,6 +1087,103 @@ impl ClickUpApi {
         Ok(())
     }
 
+    /// Deletes a comment
+    ///
+    /// # Arguments
+    ///
+    /// * `comment_id` - The ID of the comment to delete
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(())` on successful deletion.
+    ///
+    /// # Errors
+    ///
+    /// This function can return authentication, permission, or network errors.
+    pub async fn delete_comment(&self, comment_id: &str) -> Result<(), ClickUpError> {
+        let endpoint = format!("/comment/{comment_id}");
+        // DELETE operations may return empty responses, so we use make_request_raw
+        // and handle the response manually
+        let response_text = self
+            .make_request_raw(reqwest::Method::DELETE, &endpoint, None, None)
+            .await?;
+
+        // For DELETE operations, empty response or 204 status indicates success
+        if response_text.trim().is_empty() || response_text.trim() == "{}" {
+            Ok(())
+        } else {
+            // If there's a response body, it might be an error message
+            // Try to parse it as JSON to get a proper error
+            if let Ok(error_json) = serde_json::from_str::<serde_json::Value>(&response_text) {
+                if let (Some(err_msg), Some(ecode)) = (
+                    error_json.get("err").and_then(|v| v.as_str()),
+                    error_json.get("ECODE").and_then(|v| v.as_str()),
+                ) {
+                    Err(ClickUpError::ApiError(format!(
+                        "ClickUp Error {ecode}: {err_msg}"
+                    )))
+                } else {
+                    Err(ClickUpError::ApiError(format!(
+                        "Delete failed: {response_text}"
+                    )))
+                }
+            } else {
+                // If it's not JSON, treat as generic error
+                Err(ClickUpError::ApiError(format!(
+                    "Delete failed: {response_text}"
+                )))
+            }
+        }
+    }
+
+    // Tag endpoints
+
+    /// Retrieves all tags within a specific space
+    ///
+    /// # Arguments
+    ///
+    /// * `space_id` - The ID of the space to get tags from
+    ///
+    /// # Returns
+    ///
+    /// Returns a `TagsResponse` containing a list of tags.
+    ///
+    /// # Errors
+    ///
+    /// This function can return authentication, permission, or network errors.
+    pub async fn get_tags(&self, space_id: &str) -> Result<TagsResponse, ClickUpError> {
+        let endpoint = format!("/space/{space_id}/tag");
+        self.make_request(reqwest::Method::GET, &endpoint, None, None)
+            .await
+    }
+
+    /// Creates a new tag in a specific space
+    ///
+    /// # Arguments
+    ///
+    /// * `space_id` - The ID of the space to create the tag in
+    /// * `tag_data` - The tag data to create
+    ///
+    /// # Returns
+    ///
+    /// Returns the created `Tag` with its assigned metadata.
+    ///
+    /// # Errors
+    ///
+    /// This function can return authentication, permission, validation, or network errors.
+    pub async fn create_tag(
+        &self,
+        space_id: &str,
+        tag_data: CreateTagRequest,
+    ) -> Result<Tag, ClickUpError> {
+        let endpoint = format!("/space/{space_id}/tag");
+        let body = serde_json::to_value(tag_data).map_err(|e| {
+            ClickUpError::SerializationError(format!("Failed to serialize tag data: {e}"))
+        })?;
+        self.make_request(reqwest::Method::POST, &endpoint, Some(body), None)
+            .await
+    }
+
     // Additional API endpoints
 
     /// Retrieves a specific workspace by its ID
@@ -1135,55 +1232,6 @@ impl ClickUpApi {
             .make_request_raw(reqwest::Method::PUT, &endpoint, Some(body), None)
             .await?;
         Ok(())
-    }
-
-    /// Deletes a comment
-    ///
-    /// # Arguments
-    ///
-    /// * `comment_id` - The ID of the comment to delete
-    ///
-    /// # Returns
-    ///
-    /// Returns `Ok(())` on successful deletion.
-    ///
-    /// # Errors
-    ///
-    /// This function can return authentication, permission, or network errors.
-    pub async fn delete_comment(&self, comment_id: &str) -> Result<(), ClickUpError> {
-        let endpoint = format!("/comment/{comment_id}");
-        // DELETE operations may return empty responses, so we use make_request_raw
-        // and handle the response manually
-        let response_text = self
-            .make_request_raw(reqwest::Method::DELETE, &endpoint, None, None)
-            .await?;
-
-        // For DELETE operations, empty response or 204 status indicates success
-        if response_text.trim().is_empty() || response_text.trim() == "{}" {
-            Ok(())
-        } else {
-            // If there's a response body, it might be an error message
-            // Try to parse it as JSON to get a proper error
-            if let Ok(error_json) = serde_json::from_str::<serde_json::Value>(&response_text) {
-                if let (Some(err_msg), Some(ecode)) = (
-                    error_json.get("err").and_then(|v| v.as_str()),
-                    error_json.get("ECODE").and_then(|v| v.as_str()),
-                ) {
-                    Err(ClickUpError::ApiError(format!(
-                        "ClickUp Error {ecode}: {err_msg}"
-                    )))
-                } else {
-                    Err(ClickUpError::ApiError(format!(
-                        "Delete failed: {response_text}"
-                    )))
-                }
-            } else {
-                // If it's not JSON, treat as generic error
-                Err(ClickUpError::ApiError(format!(
-                    "Delete failed: {response_text}"
-                )))
-            }
-        }
     }
 
     /// Gets rate limiting statistics
@@ -1283,5 +1331,225 @@ impl ClickUpApi {
         
         // If we get here, the comment wasn't found
         Err(ClickUpError::NotFoundError(format!("Comment with ID '{comment_id}' not found")))
+    }
+
+    // Attachment endpoints
+
+    /// Retrieves all attachments for a specific task
+    ///
+    /// # Arguments
+    ///
+    /// * `task_id` - The ID of the task to get attachments from
+    ///
+    /// # Returns
+    ///
+    /// Returns an `AttachmentsResponse` containing a list of attachments.
+    ///
+    /// # Errors
+    ///
+    /// This function can return authentication, permission, or network errors.
+    pub async fn get_attachments(&self, task_id: &str) -> Result<AttachmentsResponse, ClickUpError> {
+        let endpoint = format!("/task/{task_id}/attachment");
+        self.make_request(reqwest::Method::GET, &endpoint, None, None)
+            .await
+    }
+
+    /// Uploads a file attachment to a task
+    ///
+    /// # Arguments
+    ///
+    /// * `task_id` - The ID of the task to upload the attachment to
+    /// * `file_path` - The path to the file to upload
+    /// * `filename` - Optional custom filename for the attachment
+    ///
+    /// # Returns
+    ///
+    /// Returns the created `Attachment` with its assigned metadata.
+    ///
+    /// # Errors
+    ///
+    /// This function can return authentication, permission, validation, or network errors.
+    pub async fn upload_attachment(
+        &self,
+        task_id: &str,
+        file_path: &str,
+        filename: Option<&str>,
+    ) -> Result<Attachment, ClickUpError> {
+        // Read the file
+        let file_content = std::fs::read(file_path).map_err(|e| {
+            ClickUpError::IoError(e)
+        })?;
+
+        // Get the filename from path if not provided
+        let filename = filename.unwrap_or_else(|| {
+            std::path::Path::new(file_path)
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("unknown_file")
+        });
+
+        // Create multipart form
+        let form = reqwest::multipart::Form::new()
+            .part("attachment", reqwest::multipart::Part::bytes(file_content).file_name(filename.to_string()));
+
+        // Reset retry count for new request
+        self.rate_limiter.reset_retry_count().await?;
+        // Wait if we're approaching rate limits
+        self.rate_limiter.wait_if_needed().await?;
+
+        // Construct the full URL
+        let url = format!("{}/task/{}/attachment", self.config.api_base_url, task_id);
+
+        // Create request
+        let mut request = self.client.request(reqwest::Method::POST, &url);
+        
+        // Add authentication header
+        let auth_header = self.get_auth_header()?;
+        request = request.header(AUTHORIZATION, auth_header);
+        
+        // Add multipart form
+        request = request.multipart(form);
+
+        debug!("Uploading attachment to: {}", url);
+
+        // Send the request
+        let response = request.send().await.map_err(|e| {
+            error!("Upload request failed: {}", e);
+            ClickUpError::from(e)
+        })?;
+
+        // Handle rate limiting
+        let retry_after_seconds = response
+            .headers()
+            .get("Retry-After")
+            .and_then(|h| h.to_str().ok())
+            .and_then(|s| s.parse::<u64>().ok());
+
+        if let Some(retry_after) = retry_after_seconds {
+            self.rate_limiter.handle_rate_limit(Some(retry_after)).await?;
+            return Err(ClickUpError::RateLimitError);
+        }
+
+        let status = response.status();
+        let response_text = response.text().await.map_err(|e| {
+            error!("Failed to read response: {}", e);
+            ClickUpError::NetworkError(format!("Failed to read response: {}", e))
+        })?;
+
+        debug!("Upload response status: {}, body: {}", status, response_text);
+
+        // Handle different response statuses
+        match status.as_u16() {
+            200..=299 => {
+                // Success - parse the response
+                serde_json::from_str(&response_text).map_err(|e| {
+                    error!("Failed to parse response: {}", e);
+                    ClickUpError::SerializationError(format!("Failed to parse response: {}", e))
+                })
+            }
+            401 => {
+                error!("Authentication failed: {}", response_text);
+                Err(ClickUpError::AuthError("Authentication failed".to_string()))
+            }
+            403 => {
+                error!("Permission denied: {}", response_text);
+                Err(ClickUpError::PermissionError("Permission denied".to_string()))
+            }
+            404 => {
+                error!("Task not found: {}", response_text);
+                Err(ClickUpError::NotFoundError("Task not found".to_string()))
+            }
+            429 => {
+                error!("Rate limit exceeded: {}", response_text);
+                Err(ClickUpError::RateLimitError)
+            }
+            500..=599 => {
+                error!("Server error: {}", response_text);
+                Err(ClickUpError::ApiError(format!("Server error: {}", response_text)))
+            }
+            _ => {
+                error!("Unexpected status {}: {}", status, response_text);
+                Err(ClickUpError::ApiError(format!(
+                    "Unexpected status {}: {}",
+                    status, response_text
+                )))
+            }
+        }
+    }
+
+    /// Creates a link attachment on a task
+    ///
+    /// # Arguments
+    ///
+    /// * `task_id` - The ID of the task to create the link attachment on
+    /// * `link_data` - The link attachment data
+    ///
+    /// # Returns
+    ///
+    /// Returns the created `Attachment` with its assigned metadata.
+    ///
+    /// # Errors
+    ///
+    /// This function can return authentication, permission, validation, or network errors.
+    pub async fn create_link_attachment(
+        &self,
+        task_id: &str,
+        link_data: CreateLinkAttachmentRequest,
+    ) -> Result<Attachment, ClickUpError> {
+        let endpoint = format!("/task/{task_id}/attachment");
+        let body = serde_json::to_value(link_data).map_err(|e| {
+            ClickUpError::SerializationError(format!("Failed to serialize link data: {e}"))
+        })?;
+        self.make_request(reqwest::Method::POST, &endpoint, Some(body), None)
+            .await
+    }
+
+    /// Deletes an attachment
+    ///
+    /// # Arguments
+    ///
+    /// * `attachment_id` - The ID of the attachment to delete
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(())` on successful deletion.
+    ///
+    /// # Errors
+    ///
+    /// This function can return authentication, permission, or network errors.
+    pub async fn delete_attachment(&self, attachment_id: &str) -> Result<(), ClickUpError> {
+        let endpoint = format!("/attachment/{attachment_id}");
+        // DELETE operations may return empty responses, so we use make_request_raw
+        // and handle the response manually
+        let response_text = self
+            .make_request_raw(reqwest::Method::DELETE, &endpoint, None, None)
+            .await?;
+
+        // For DELETE operations, empty response or 204 status indicates success
+        if response_text.trim().is_empty() {
+            Ok(())
+        } else {
+            // If there's a response body, it might be an error message
+            // Try to parse it as JSON to get a proper error
+            if let Ok(error_json) = serde_json::from_str::<serde_json::Value>(&response_text) {
+                if let (Some(err_msg), Some(ecode)) = (
+                    error_json.get("err").and_then(|v| v.as_str()),
+                    error_json.get("ECODE").and_then(|v| v.as_str()),
+                ) {
+                    Err(ClickUpError::ApiError(format!(
+                        "ClickUp Error {ecode}: {err_msg}"
+                    )))
+                } else {
+                    Err(ClickUpError::ApiError(format!(
+                        "Delete failed: {response_text}"
+                    )))
+                }
+            } else {
+                // If it's not JSON, treat as generic error
+                Err(ClickUpError::ApiError(format!(
+                    "Delete failed: {response_text}"
+                )))
+            }
+        }
     }
 }
