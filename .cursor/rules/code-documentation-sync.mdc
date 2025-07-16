@@ -1,0 +1,213 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+
+# Code Documentation Sync Rules
+
+## Core Principle
+**Every code change should trigger corresponding documentation updates.** When modifying code, always consider what documentation needs to be updated to reflect the changes.
+
+## Documentation Categories
+
+### 1. User Documentation (`docs/user/`)
+- **Purpose**: End-user facing documentation
+- **When to update**: Changes to CLI commands, new features, breaking changes
+- **Files to update**:
+  - `USER_GUIDE.md` - New commands, features, examples
+  - `QUICK_REFERENCE.md` - Command summaries, syntax changes
+  - `TROUBLESHOOTING.md` - New error scenarios, solutions
+  - `INSTALLATION.md` - Dependency changes, build requirements
+
+### 2. Developer Documentation (`docs/dev/`)
+- **Purpose**: Developer-facing documentation
+- **When to update**: API changes, architectural decisions, testing updates
+- **Files to update**:
+  - `PROJECT_STATUS.md` - New features, test coverage updates
+  - `INTEGRATION_TESTS_README.md` - New test scenarios, setup changes
+  - `todo/` - Move completed items, add new requirements
+  - `adr/` - New architectural decisions
+
+## Code Change Triggers
+
+### When Adding New Commands (`src/commands/`)
+1. **Update User Documentation**:
+   - Add command to `docs/user/QUICK_REFERENCE.md`
+   - Add detailed guide to `docs/user/USER_GUIDE.md`
+   - Add examples and use cases
+
+2. **Update Developer Documentation**:
+   - Update `docs/dev/PROJECT_STATUS.md` with new feature
+   - Add integration test requirements to `docs/dev/todo/`
+   - Update command count and feature list
+
+### When Modifying API (`src/api.rs`)
+1. **Update Developer Documentation**:
+   - Document new endpoints in relevant ADR files
+   - Update rate limiting documentation if changed
+   - Update error handling documentation
+
+2. **Update User Documentation**:
+   - If API changes affect CLI behavior, update user guides
+   - Update troubleshooting for new error scenarios
+
+### When Adding New Models (`src/models.rs`)
+1. **Update Developer Documentation**:
+   - Document new data structures
+   - Update test coverage documentation
+   - Add to relevant ADR if architectural decision
+
+### When Modifying Tests (`tests/`)
+1. **Update Developer Documentation**:
+   - Update `docs/dev/PROJECT_STATUS.md` test counts
+   - Update `docs/dev/INTEGRATION_TESTS_README.md` if new test scenarios
+   - Move completed test items to `docs/dev/ROADMAP_COMPLETED.md`
+
+### When Adding Dependencies (`Cargo.toml`)
+1. **Update Developer Documentation**:
+   - Document why new dependency was needed
+   - Update installation requirements if needed
+   - Check for security implications
+
+## Documentation Update Checklist
+
+### For New Features:
+- [ ] **User Guide**: Add comprehensive usage examples
+- [ ] **Quick Reference**: Add command syntax
+- [ ] **Project Status**: Update feature list and metrics
+- [ ] **Integration Tests**: Add test requirements to todo
+- [ ] **Troubleshooting**: Add common issues and solutions
+
+### For Bug Fixes:
+- [ ] **User Guide**: Update affected sections
+- [ ] **Troubleshooting**: Add fix description
+- [ ] **Project Status**: Update resolved issues count
+- [ ] **Test Documentation**: Update if new tests added
+
+### For Breaking Changes:
+- [ ] **User Guide**: Clear migration instructions
+- [ ] **Quick Reference**: Update command syntax
+- [ ] **Installation**: Update version requirements
+- [ ] **Troubleshooting**: Add migration troubleshooting
+- [ ] **Project Status**: Document breaking change
+
+### For Performance Improvements:
+- [ ] **Project Status**: Update performance metrics
+- [ ] **User Guide**: Update if affects usage patterns
+- [ ] **Developer Docs**: Document optimization techniques
+
+## Documentation Standards
+
+### User Documentation Standards:
+- **Clear Examples**: Every command should have practical examples
+- **Progressive Disclosure**: Start simple, add complexity
+- **Error Handling**: Show common errors and solutions
+- **Consistent Formatting**: Use consistent markdown structure
+
+### Developer Documentation Standards:
+- **Architectural Context**: Explain design decisions
+- **Test Coverage**: Document test strategies
+- **Performance Notes**: Document performance considerations
+- **Security Considerations**: Document security implications
+
+## Automatic Documentation Triggers
+
+### High Priority (Always Update):
+- New CLI commands
+- Breaking changes
+- Security updates
+- Performance improvements
+- New dependencies
+
+### Medium Priority (Update When Relevant):
+- Bug fixes
+- Code refactoring
+- Test additions
+- Configuration changes
+
+### Low Priority (Optional Updates):
+- Minor code cleanup
+- Comment updates
+- Formatting changes
+
+## Documentation Location Guidelines
+
+### User-Facing Changes → `docs/user/`
+- New commands → `USER_GUIDE.md` + `QUICK_REFERENCE.md`
+- Error scenarios → `TROUBLESHOOTING.md`
+- Installation changes → `INSTALLATION.md`
+
+### Developer-Facing Changes → `docs/dev/`
+- New features → `PROJECT_STATUS.md`
+- Test updates → `INTEGRATION_TESTS_README.md`
+- Architecture changes → `adr/` directory
+- Completed work → `ROADMAP_COMPLETED.md`
+
+## Quality Checks
+
+### Before Committing:
+- [ ] All new features documented for users
+- [ ] All breaking changes have migration guides
+- [ ] All new tests documented for developers
+- [ ] Project status metrics updated
+- [ ] Quick reference updated for new commands
+
+### Documentation Review:
+- [ ] Examples are practical and complete
+- [ ] Error messages match actual output
+- [ ] Command syntax is accurate
+- [ ] Links and references are valid
+- [ ] Status indicators are current
+
+## Examples
+
+### Adding New Command:
+```rust
+// src/commands/tasks.rs - New command added
+pub async fn create_task(args: CreateTaskArgs) -> Result<(), Error> {
+    // Implementation
+}
+```
+
+**Required Documentation Updates:**
+1. `docs/user/USER_GUIDE.md` - Add comprehensive guide
+2. `docs/user/QUICK_REFERENCE.md` - Add command syntax
+3. `docs/dev/PROJECT_STATUS.md` - Update command count
+4. `docs/dev/todo/` - Add integration test requirement
+
+### Fixing Bug:
+```rust
+// src/api.rs - Bug fix in rate limiting
+pub async fn handle_rate_limit(&self) -> Result<(), Error> {
+    // Fixed implementation
+}
+```
+
+**Required Documentation Updates:**
+1. `docs/dev/PROJECT_STATUS.md` - Update resolved issues
+2. `docs/user/TROUBLESHOOTING.md` - Add fix description
+3. `docs/dev/ROADMAP_COMPLETED.md` - Move from todo if completed
+
+## Integration with Existing Rules
+
+This rule works in conjunction with:
+- **Documentation Organization Rules**: Follows the established structure
+- **Check for Current Stable Crates**: Updates installation docs when dependencies change
+- **Test Status Tracking**: Updates test documentation when tests are added/modified
+
+## Enforcement
+
+### Automatic Checks:
+- New commands must have user documentation
+- Breaking changes must have migration guides
+- New tests must update test documentation
+- Project status must reflect current state
+
+### Manual Reviews:
+- Documentation accuracy and completeness
+- User experience clarity
+- Developer workflow updates
+- Cross-reference validity
+
+Remember: **Good documentation is as important as good code.** Every code change should consider its documentation impact and ensure users and developers have the information they need to work effectively with the updated codebase.

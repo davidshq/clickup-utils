@@ -1,0 +1,89 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+
+# Code Test Sync Rules
+
+## Core Principle
+**Every significant code change should be accompanied by appropriate tests.** When adding or modifying code, always consider what tests need to be created or updated to ensure major functionality is covered and regressions are prevented.
+
+## Test Categories
+
+### 1. Unit Tests (`tests/`, `*_tests.rs`)
+- **Purpose**: Test individual functions, methods, or modules in isolation
+- **When to update**: Any time core logic, algorithms, or error handling is added or changed
+- **Files to update**: Corresponding `*_tests.rs` files or inline module tests
+
+### 2. Integration Tests (`tests/integration_tests.rs`, `clickup_integration_tests.rs`, etc.)
+- **Purpose**: Test interactions between components, workflows, or with external systems (e.g., API, DB)
+- **When to update**: When workflows, API boundaries, or multi-component logic is added or changed
+- **Files to update**: Integration test files in `tests/`
+
+## Test Coverage Guidelines
+- **Major Functionality**: All new features, bug fixes, and refactors affecting user-facing or critical logic must have tests
+- **Risk-Based**: Focus on areas with higher risk, complexity, or likelihood of regression
+- **Not Exhaustive**: 100% line coverage is not required, but all important paths, edge cases, and error conditions should be tested
+- **Regression Prevention**: Add tests for previously untested bugs or edge cases
+
+## Test Update Checklist
+
+### For New Features:
+- [ ] Unit tests for new functions, methods, or modules
+- [ ] Integration tests for new workflows or API interactions
+- [ ] Edge cases and error handling covered
+
+### For Bug Fixes:
+- [ ] Regression test for the fixed bug
+- [ ] Unit/integration test updated if logic changed
+
+### For Refactoring:
+- [ ] Existing tests updated to match new logic
+- [ ] Add tests if coverage was previously missing
+
+### For API/Workflow Changes:
+- [ ] Integration tests updated for new/changed endpoints or flows
+- [ ] Unit tests for new/changed business logic
+
+## Examples
+
+### Adding a New Function:
+```rust
+// src/utils.rs
+pub fn parse_id(input: &str) -> Result<u64, ParseError> {
+    // ...
+}
+```
+**Required Test Updates:**
+- Add unit tests for valid, invalid, and edge-case inputs in `tests/utils_tests.rs`
+
+### Changing a Workflow:
+```rust
+// src/commands/tasks.rs
+pub async fn complete_task(id: u64) -> Result<(), Error> {
+    // ...
+}
+```
+**Required Test Updates:**
+- Update or add integration tests in `tests/task_tests.rs` and/or `tests/clickup_integration_tests.rs`
+- Add/modify unit tests for new logic
+
+### Fixing a Bug:
+```rust
+// src/api.rs
+// Fixed off-by-one error in pagination
+```
+**Required Test Updates:**
+- Add regression test in `tests/api_tests.rs` for the specific bug scenario
+
+## Enforcement
+- PRs should not merge without appropriate new or updated tests for all major code changes
+- Reviewers should verify that tests cover the main logic, edge cases, and error conditions
+- Test coverage should be risk-based, not exhaustive
+
+## Integration with Other Rules
+- **Code Documentation Sync Rules**: Document new/changed tests in developer docs
+- **Documentation Organization Rules**: Move completed test requirements to `ROADMAP_COMPLETED.md` as appropriate
+
+Remember: **Good tests are essential for code quality and maintainability.** Every code change should consider its testing impact and ensure the codebase remains robust and reliable.

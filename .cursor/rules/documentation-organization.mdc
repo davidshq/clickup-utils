@@ -17,14 +17,9 @@ alwaysApply: false
 #### Todo Documents (`dev-docs/todo/`)
 - Should contain **ONLY** items that still need work
 - Use checkboxes `[ ]` for incomplete items
-- Use `✅ **COMPLETED**` for sections that are done
-- Add notes like `> **Note:** Completed items moved to [ROADMAP_COMPLETED.md](../ROADMAP_COMPLETED.md)`
 
 #### Completed Documents (`ROADMAP_COMPLETED.md`)
 - Should contain **ONLY** completed items and achievements
-- Use `✅ **COMPLETED**` status indicators
-- Include completion dates and details
-- Reference the original todo documents
 
 ### Rule 3: Status Indicators
 
@@ -48,12 +43,6 @@ When updating documentation:
 3. **Third**: Update status indicators in todo documents
 4. **Fourth**: Add references to completed items in todo documents
 
-### Rule 5: Cross-References
-
-- Todo documents should reference `ROADMAP_COMPLETED.md` for completed items
-- `ROADMAP_COMPLETED.md` should reference original todo documents
-- Use consistent linking patterns: `[ROADMAP_COMPLETED.md](../ROADMAP_COMPLETED.md)`
-
 ### Rule 6: Documentation Consolidation
 
 #### Single Source of Truth Principle
@@ -62,10 +51,8 @@ When updating documentation:
 - **Centralized Metrics**: Keep quality metrics, test counts, and achievement lists in one place
 
 #### When to Consolidate Documents
-- **Similar Topics**: Documents covering related subjects (e.g., testing + test planning)
 - **Duplicated Information**: Same metrics or status repeated across files
 - **Overlapping Scopes**: Documents with significant content overlap
-- **Maintenance Burden**: Too many files to keep updated consistently
 
 #### Consolidation Process
 1. **Analyze Content**: Identify overlapping sections and unique content
