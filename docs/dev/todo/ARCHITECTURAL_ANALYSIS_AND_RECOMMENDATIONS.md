@@ -30,33 +30,6 @@ The codebase follows an excellent layered architecture with clean separation and
 │  (config.rs, constants.rs)         │
 └─────────────────────────────────────┘
 ```
-
-## **⚠️ PENDING: Implement Event System**
-
-**Current Issue:** No extensibility or monitoring
-**Solution:** Add event-driven architecture
-
----
-
-## 🛡️ Security Enhancements
-
-### 1. **⚠️ PENDING: Secure Token Storage**
-
-**Current Issue:** Plain text token storage
-**Solution:** Implement secure storage using system keyring
-
-### 2. **⚠️ PENDING: Token Expiration Handling**
-**Issue**: No token expiration detection
-**Solution**: Implement token validation
-
----
-
-## ⚡ Performance Optimizations
-
-### 2. **⚠️ PENDING: Plugin System**
-**Current State**: No extensibility
-**Opportunity**: Add plugin system for custom commands
-
 ---
 
 ## 🛠️ Quick Fix Commands
@@ -82,15 +55,15 @@ cargo update
 # Check for security vulnerabilities
 cargo audit
 ```
-
 ---
+## 📝 Long-Term 
 
-## 📝 Action Items
-
-- [ ] Add secure token storage
-- [ ] Add token expiration handling
-- [ ] Implement event system
-- [ ] Add plugin system
+These are items that I'd like to add eventually but aren't the priority for the time being:
+- Secure Token Storage
+- Token Expiration Handling
+- Keyring Implementation for Token
+- Implement event system
+- Implement plugin system
 
 ---
 

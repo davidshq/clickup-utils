@@ -2,18 +2,6 @@
 
 ## ⚠️ **Remaining Test Coverage Gaps**
 
-### High Priority - Performance & Security Tests
-
-#### Security Tests
-- [ ] **Token Handling Security** - Test token storage and transmission security
-- [ ] **Input Validation Security** - Test against malicious input and injection attacks
-- [ ] **File System Security** - Test configuration file access and permissions
-- [ ] **Network Security** - Test HTTPS enforcement and certificate validation
-- [ ] **Error Information Disclosure** - Ensure sensitive data isn't leaked in error messages
-
-### Medium Priority - Edge Case & Stress Tests
-
-#### Edge Case Tests
 - [ ] **Network Failure Scenarios** - Test behavior during network interruptions
 - [ ] **API Downtime Handling** - Test graceful degradation during API outages
 - [ ] **Malformed Response Handling** - Test handling of unexpected API responses
