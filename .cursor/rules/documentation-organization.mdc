@@ -1,0 +1,184 @@
+---
+title: Documentation Organization Rules
+globs:
+alwaysApply: false
+---
+
+# Documentation Organization Rules
+
+## Core Rules
+
+### Rule 1: Completed vs Todo Items
+- **COMPLETED ITEMS** should be moved to `ROADMAP_COMPLETED.md` and removed from todo documents
+- **TODO ITEMS** should remain in the appropriate todo documents with clear status indicators
+
+### Rule 2: Documentation Structure
+
+#### Todo Documents (`dev-docs/todo/`)
+- Should contain **ONLY** items that still need work
+- Use checkboxes `[ ]` for incomplete items
+- Use `✅ **COMPLETED**` for sections that are done
+- Add notes like `> **Note:** Completed items moved to [ROADMAP_COMPLETED.md](../ROADMAP_COMPLETED.md)`
+
+#### Completed Documents (`ROADMAP_COMPLETED.md`)
+- Should contain **ONLY** completed items and achievements
+- Use `✅ **COMPLETED**` status indicators
+- Include completion dates and details
+- Reference the original todo documents
+
+### Rule 3: Status Indicators
+
+#### For Todo Items:
+- `[ ]` - Not started
+- `[🔄]` - In progress
+- `[⚠️]` - Blocked or needs attention
+- `[✅]` - Completed (move to ROADMAP_COMPLETED.md)
+
+#### For Completed Items:
+- `✅ **COMPLETED**` - Fully implemented and tested
+- `✅ **PASSING**` - Tests are implemented and passing
+- `✅ **RESOLVED**` - Issues are fixed and verified
+
+### Rule 4: Documentation Updates
+
+When updating documentation:
+
+1. **First**: Move completed items to `ROADMAP_COMPLETED.md`
+2. **Second**: Remove completed items from todo documents
+3. **Third**: Update status indicators in todo documents
+4. **Fourth**: Add references to completed items in todo documents
+
+### Rule 5: Cross-References
+
+- Todo documents should reference `ROADMAP_COMPLETED.md` for completed items
+- `ROADMAP_COMPLETED.md` should reference original todo documents
+- Use consistent linking patterns: `[ROADMAP_COMPLETED.md](../ROADMAP_COMPLETED.md)`
+
+### Rule 6: Documentation Consolidation
+
+#### Single Source of Truth Principle
+- **Status Information**: Maintain one primary status document (e.g., `PROJECT_STATUS.md`) that serves as the authoritative source
+- **Cross-References**: Use references instead of duplicating information across multiple files
+- **Centralized Metrics**: Keep quality metrics, test counts, and achievement lists in one place
+
+#### When to Consolidate Documents
+- **Similar Topics**: Documents covering related subjects (e.g., testing + test planning)
+- **Duplicated Information**: Same metrics or status repeated across files
+- **Overlapping Scopes**: Documents with significant content overlap
+- **Maintenance Burden**: Too many files to keep updated consistently
+
+#### Consolidation Process
+1. **Analyze Content**: Identify overlapping sections and unique content
+2. **Choose Primary Document**: Select the most comprehensive or frequently referenced file
+3. **Merge Content**: Combine all unique information into the primary document
+4. **Update References**: Fix all cross-references to point to the consolidated document
+5. **Delete Redundant Files**: Remove the merged documents
+6. **Document Changes**: Create a summary of what was consolidated
+
+#### Common Duplications to Watch For
+- **Status Metrics**: "200+ tests", "Zero Clippy warnings", "22/22 doc tests"
+- **Setup Instructions**: Installation steps, configuration guides
+- **Achievement Lists**: Completed features, quality improvements
+- **Implementation Plans**: Roadmaps, next steps, action items
+
+#### Similar Document Types to Consider Merging
+- **Analysis + Recommendations**: Architectural analysis + Code review
+- **Planning + Implementation**: Test planning + Test coverage analysis
+- **Comparison + Planning**: API comparison + Documentation planning
+- **Status + Metrics**: Project status + Quality metrics
+
+## Implementation Guidelines
+
+### When Completing Items:
+1. Add completion details to `ROADMAP_COMPLETED.md`
+2. Remove completed items from todo documents
+3. Add reference notes in todo documents
+4. Update any status indicators
+
+### When Adding New Items:
+1. Add to appropriate todo document
+2. Use proper status indicators
+3. Include clear descriptions and requirements
+4. Link to related completed items if applicable
+
+### When Updating Status:
+1. Update status indicators consistently
+2. Move completed items promptly
+3. Keep todo documents focused on remaining work
+4. Maintain clear cross-references
+
+### When Consolidating Documents:
+1. **Before Consolidation**:
+   - [ ] All unique information identified and preserved
+   - [ ] Cross-references mapped and updated
+   - [ ] No critical information will be lost
+   - [ ] Logical organization maintained
+
+2. **After Consolidation**:
+   - [ ] All links work correctly
+   - [ ] Information is logically organized
+   - [ ] No duplicate content remains
+   - [ ] Document structure is clear and navigable
+
+### Documentation Hierarchy
+```
+Primary Documents (Single Source of Truth):
+├── PROJECT_STATUS.md - Current status and metrics
+├── README.md - User-facing documentation
+└── INTEGRATION_TESTS_README.md - Test setup and execution
+
+Reference Documents:
+├── ROADMAP_COMPLETED.md - Historical achievements
+├── TODO/ - Remaining work items (consolidated)
+└── ADR/ - Architecture decision records
+```
+
+## Examples
+
+### ✅ Correct Todo Document Structure:
+```markdown
+# Test Coverage Analysis
+
+## Overview
+The application has achieved excellent test coverage.
+
+> **Note:** Completed test coverage items have been moved to [ROADMAP_COMPLETED.md](../ROADMAP_COMPLETED.md)
+
+## ⚠️ **Remaining Test Coverage Gaps**
+
+### High Priority - Performance Tests
+- [ ] **Rate Limiting Under Load** - Test rate limiting behavior with high request volumes
+- [ ] **Large Data Set Handling** - Test performance with large workspaces/spaces/lists
+```
+
+### ✅ Correct Completed Document Structure:
+```markdown
+# ROADMAP_COMPLETED.md
+
+## 🧪 Testing & Quality ✅ **COMPLETED**
+
+### Comprehensive Test Coverage ✅ **COMPLETED**
+**Completion Date:** July 2025
+
+- ✅ **API Client** (`src/api.rs`) - 508 lines of tests
+- ✅ **Data Models** (`src/models.rs`) - 1238 lines of tests
+
+**Reference:** [TEST_COVERAGE_ANALYSIS.md](dev-docs/todo/TEST_COVERAGE_ANALYSIS.md)
+```
+
+### ✅ Correct Consolidation Example:
+```markdown
+# Before: Two separate documents
+# architectural-analysis.md - Contains architectural recommendations
+# code-review.md - Contains code review recommendations
+
+# After: Single consolidated document
+# architectural-analysis-and-code-review.md - Contains both architectural and code review recommendations
+# References updated throughout the codebase
+# Redundant file deleted
+```
+
+- ✅ **Data Models** (`src/models.rs`) - 1238 lines of tests
+
+**Reference:** [TEST_COVERAGE_ANALYSIS.md](dev-docs/todo/TEST_COVERAGE_ANALYSIS.md)
+```

@@ -128,6 +128,8 @@ This document tracks all completed roadmap items and major achievements for the 
 
 ## 📊 Major Achievements Summary
 
+For current project status and detailed achievements, see [dev-docs/PROJECT_STATUS.md](dev-docs/PROJECT_STATUS.md).
+
 ### Code Quality Improvements
 - **Zero Clippy Warnings**: All code quality issues resolved
 - **Comprehensive Testing**: 200+ tests with excellent coverage
@@ -170,6 +172,8 @@ This document tracks all completed roadmap items and major achievements for the 
 - **Complete Migration**: All direct API usage eliminated from command modules
 
 ## 🎯 Impact Metrics
+
+For current quality metrics and detailed status, see [dev-docs/PROJECT_STATUS.md](dev-docs/PROJECT_STATUS.md).
 
 - **Code Reduction**: ~200+ lines of duplicate code eliminated
 - **File Size Reduction**: 30-40% reduction in command file sizes

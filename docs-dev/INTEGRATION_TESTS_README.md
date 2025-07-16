@@ -6,6 +6,8 @@ This document explains how to set up and run the integration tests for the Click
 
 The integration tests verify that the CLI works correctly with the real ClickUp API. They test authentication, workspace management, task lifecycle operations, commenting, error handling, and rate limiting.
 
+> **Note:** For detailed test implementation status and remaining gaps, see [TEST_COVERAGE_ANALYSIS.md](todo/TEST_COVERAGE_ANALYSIS.md)
+
 ## Prerequisites
 
 1. **ClickUp Account**: You need a ClickUp account with API access
