@@ -31,6 +31,7 @@ use clickup_cli::error::ClickUpError;
 
 use std::env;
 use std::fs;
+use std::path::PathBuf;
 use tempfile::TempDir;
 
 /// Test configuration for isolated test environments
@@ -77,12 +78,12 @@ impl TestConfig {
     ///
     /// Returns a `TestConfig` instance that will clean up automatically.
     pub fn new() -> Self {
-        let temp_dir = TempDir::new().expect("Failed to create temp directory");
+        let temp_dir = TestErrorHandler::create_temp_dir();
         let temp_path = temp_dir.path().to_path_buf();
         let config_file = temp_path.join("clickup-cli").join("config.toml");
 
         // Remove any existing config file first to ensure clean test state
-        let real_config_dir = dirs::config_dir().unwrap().join("clickup-cli");
+        let real_config_dir = TestErrorHandler::get_config_dir();
         let real_config_file = real_config_dir.join("config.toml");
         let _ = fs::remove_file(&real_config_file);
 
@@ -131,6 +132,203 @@ impl Drop for TestConfig {
         }
 
         // Clean up temp directory (this happens automatically when temp_dir is dropped)
+    }
+}
+
+/// Test error handling utilities for consistent error handling in tests
+///
+/// This struct provides standardized methods for handling errors in test environments,
+/// ensuring consistent error handling patterns and avoiding `unwrap()` calls that
+/// violate ADR 0012 (Code Quality Standards).
+///
+/// ## Features
+///
+/// - **Safe Error Handling**: Replaces `unwrap()` calls with proper error handling
+/// - **Consistent Patterns**: Standardized error handling across all tests
+/// - **ADR 0012 Compliance**: Aligns with zero clippy warnings policy
+/// - **Test-Specific**: Optimized for test environments with clear error messages
+///
+/// ## Usage
+///
+/// ```rust
+/// use clickup_cli::tests::test_utils::TestErrorHandler;
+/// use clickup_cli::error::ClickUpError;
+///
+/// fn example() {
+///     let result: Result<String, ClickUpError> = Ok("success".to_string());
+///     let value = TestErrorHandler::expect_success(result, "test operation");
+///     
+///     let error_result: Result<String, ClickUpError> = Err(ClickUpError::AuthError("test".to_string()));
+///     TestErrorHandler::expect_error(&error_result, "Authentication failed");
+/// }
+/// ```
+pub struct TestErrorHandler;
+
+impl TestErrorHandler {
+    /// Expect a successful result or panic with a descriptive message
+    ///
+    /// This method replaces `unwrap()` calls in tests with proper error handling
+    /// that provides clear context about what operation failed.
+    ///
+    /// # Arguments
+    ///
+    /// * `result` - The result to check
+    /// * `context` - Description of the operation being tested
+    ///
+    /// # Returns
+    ///
+    /// Returns the success value, or panics with a descriptive error message.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use clickup_cli::tests::test_utils::TestErrorHandler;
+    /// use clickup_cli::error::ClickUpError;
+    ///
+    /// fn example_success() {
+    ///     let result: Result<String, ClickUpError> = Ok("test".to_string());
+    ///     let value = TestErrorHandler::expect_success(result, "string creation");
+    ///     assert_eq!(value, "test");
+    /// }
+    /// ```
+    pub fn expect_success<T>(result: Result<T, ClickUpError>, context: &str) -> T {
+        result.unwrap_or_else(|e| panic!("{} failed: {}", context, e))
+    }
+    
+    /// Expect an error result or panic if successful
+    ///
+    /// This method provides a standardized way to check for expected errors
+    /// in tests, ensuring consistent error validation patterns.
+    ///
+    /// # Arguments
+    ///
+    /// * `result` - The result to check
+    /// * `expected_error` - The expected error message (partial match)
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use clickup_cli::tests::test_utils::TestErrorHandler;
+    /// use clickup_cli::error::ClickUpError;
+    ///
+    /// fn example_error() {
+    ///     let result: Result<String, ClickUpError> = Err(ClickUpError::AuthError("Invalid token".to_string()));
+    ///     TestErrorHandler::expect_error(&result, "Authentication failed");
+    /// }
+    /// ```
+    pub fn expect_error<T>(result: &Result<T, ClickUpError>, expected_error: &str) {
+        match result {
+            Ok(_) => panic!("Expected error but got success"),
+            Err(e) => assert!(e.to_string().contains(expected_error), 
+                "Expected error containing '{}', but got: {}", expected_error, e),
+        }
+    }
+    
+    /// Create a temporary directory for testing
+    ///
+    /// This method provides a safe way to create temporary directories
+    /// for testing, with proper error handling that aligns with ADR 0012.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `TempDir` instance, or panics with a descriptive error message.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use clickup_cli::tests::test_utils::TestErrorHandler;
+    ///
+    /// fn example_temp_dir() {
+    ///     let temp_dir = TestErrorHandler::create_temp_dir();
+    ///     // Use temp_dir for testing...
+    /// }
+    /// ```
+    pub fn create_temp_dir() -> TempDir {
+        TempDir::new().expect("Failed to create temp directory")
+    }
+    
+    /// Get the configuration directory path
+    ///
+    /// This method provides a safe way to get the configuration directory
+    /// path, with proper error handling that aligns with ADR 0012.
+    ///
+    /// # Returns
+    ///
+    /// Returns the configuration directory path, or panics with a descriptive error message.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use clickup_cli::tests::test_utils::TestErrorHandler;
+    ///
+    /// fn example_config_dir() {
+    ///     let config_dir = TestErrorHandler::get_config_dir();
+    ///     // Use config_dir for testing...
+    /// }
+    /// ```
+    pub fn get_config_dir() -> PathBuf {
+        dirs::config_dir()
+            .expect("Failed to get config directory")
+            .join("clickup-cli")
+    }
+    
+    /// Execute a command and expect success
+    ///
+    /// This method provides a safe way to execute commands in tests,
+    /// with proper error handling that aligns with ADR 0012.
+    ///
+    /// # Arguments
+    ///
+    /// * `cmd` - The command to execute
+    /// * `context` - Description of the command being executed
+    ///
+    /// # Returns
+    ///
+    /// Returns the command output, or panics with a descriptive error message.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use clickup_cli::tests::test_utils::TestErrorHandler;
+    /// use std::process::Command;
+    ///
+    /// fn example_command() {
+    ///     let mut cmd = Command::new("echo");
+    ///     cmd.arg("hello");
+    ///     let output = TestErrorHandler::expect_command_success(cmd, "echo command");
+    ///     assert!(output.status.success());
+    /// }
+    /// ```
+    pub fn expect_command_success(mut cmd: std::process::Command, context: &str) -> std::process::Output {
+        cmd.output().expect(&format!("{} failed to execute", context))
+    }
+    
+    /// Set an API token safely in tests
+    ///
+    /// This method provides a safe way to set API tokens in test configurations,
+    /// with proper error handling that aligns with ADR 0012.
+    ///
+    /// # Arguments
+    ///
+    /// * `config` - The configuration to modify
+    /// * `token` - The token to set
+    /// * `context` - Description of the operation
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use clickup_cli::tests::test_utils::TestErrorHandler;
+    /// use clickup_cli::config::Config;
+    ///
+    /// fn example_set_token() {
+    ///     let mut config = Config::default();
+    ///     TestErrorHandler::set_api_token(&mut config, "test_token_12345", "test configuration");
+    ///     assert!(config.is_authenticated());
+    /// }
+    /// ```
+    pub fn set_api_token(config: &mut Config, token: &str, context: &str) {
+        config.set_api_token(token.to_string())
+            .expect(&format!("{} failed to set API token", context));
     }
 }
 
@@ -369,5 +567,52 @@ mod tests {
     fn test_assertions_not_found_error() {
         let result: Result<(), ClickUpError> = Err(ClickUpError::NotFoundError("Item not found".to_string()));
         TestAssertions::assert_not_found_error(&result);
+    }
+
+    // TestErrorHandler tests
+    #[test]
+    fn test_error_handler_expect_success() {
+        let result: Result<String, ClickUpError> = Ok("test".to_string());
+        let value = TestErrorHandler::expect_success(result, "string creation");
+        assert_eq!(value, "test");
+    }
+
+    #[test]
+    fn test_error_handler_expect_error() {
+        let result: Result<String, ClickUpError> = Err(ClickUpError::AuthError("Invalid token".to_string()));
+        TestErrorHandler::expect_error(&result, "Authentication failed");
+    }
+
+    #[test]
+    fn test_error_handler_create_temp_dir() {
+        let temp_dir = TestErrorHandler::create_temp_dir();
+        assert!(temp_dir.path().exists());
+    }
+
+    #[test]
+    fn test_error_handler_get_config_dir() {
+        let config_dir = TestErrorHandler::get_config_dir();
+        assert!(config_dir.to_string_lossy().contains("clickup-cli"));
+    }
+
+    #[test]
+    fn test_error_handler_set_api_token() {
+        let mut config = Config::default();
+        TestErrorHandler::set_api_token(&mut config, "test_token_12345", "test configuration");
+        assert!(config.is_authenticated());
+    }
+
+    #[test]
+    #[should_panic(expected = "string creation failed")]
+    fn test_error_handler_expect_success_panic() {
+        let result: Result<String, ClickUpError> = Err(ClickUpError::AuthError("Invalid token".to_string()));
+        let _value = TestErrorHandler::expect_success(result, "string creation");
+    }
+
+    #[test]
+    #[should_panic(expected = "Expected error but got success")]
+    fn test_error_handler_expect_error_panic() {
+        let result: Result<String, ClickUpError> = Ok("test".to_string());
+        TestErrorHandler::expect_error(&result, "Authentication failed");
     }
 } 
